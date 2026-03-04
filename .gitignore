@@ -1,0 +1,11 @@
+# 忽略前端依赖
+frontend/node_modules/
+frontend/dist/
+
+# 忽略后端环境和依赖
+backend/venv/
+backend/__pycache__/
+backend/.env
+
+
+backend/target

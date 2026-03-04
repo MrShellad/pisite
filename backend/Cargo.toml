@@ -1,0 +1,19 @@
+[package]
+name = "Pibackend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = {version = "0.8.8", features = ["multipart"]}
+bcrypt = "0.19.0"
+jsonwebtoken = { version = "10.3.0", features = ["rust_crypto"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+sqlx = { version = "0.8.6", features = ["json", "runtime-tokio-rustls", "sqlite"] }
+tokio = { version = "1.50.0", features = ["full"] }
+
+tower-http = { version = "0.5", features = ["fs", "cors"] }
+uuid = { version = "1.21.0", features = ["v4", "serde"] }
+scraper = "0.19.0"
+reqwest = { version = "0.12.3", features = ["json", "rustls-tls"] }
+semver = "1.0.27"
