@@ -1,11 +1,11 @@
-// frontend/src/components/Navbar.tsx
-import { useState, useEffect } from 'react';
-import { Sun, Moon, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Moon, Sun, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { styleTokens } from '../lib/design-tokens';
-import { api } from '../api/client';
 
-// 定义导航锚点
+import { api } from '../api/client';
+import { styleTokens } from '../lib/design-tokens';
+
 const navItems = [
   { label: '核心特性', href: '#features' },
   { label: '常见问题', href: '#faq' },
@@ -18,20 +18,26 @@ export default function Navbar() {
   const [siteName, setSiteName] = useState('加载中...');
 
   useEffect(() => {
-    api.get('/settings')
-      .then(res => { if (res.data && res.data.siteName) setSiteName(res.data.siteName); })
+    api
+      .get('/settings')
+      .then((response) => {
+        if (response.data?.siteName) {
+          setSiteName(response.data.siteName);
+        }
+      })
       .catch(() => setSiteName('FlowCore'));
 
     const savedTheme = localStorage.getItem('flowcore_theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
+
     if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
       document.documentElement.classList.add('dark');
       setIsDark(true);
-    } else {
-      document.documentElement.classList.remove('dark');
-      setIsDark(false);
+      return;
     }
+
+    document.documentElement.classList.remove('dark');
+    setIsDark(false);
   }, []);
 
   const toggleTheme = () => {
@@ -39,45 +45,44 @@ export default function Navbar() {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('flowcore_theme', 'light');
       setIsDark(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('flowcore_theme', 'dark');
-      setIsDark(true);
+      return;
     }
+
+    document.documentElement.classList.add('dark');
+    localStorage.setItem('flowcore_theme', 'dark');
+    setIsDark(true);
   };
 
-  // 智能平滑滚动函数 (带高度偏移，防止导航栏遮挡标题)
-  const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    e.preventDefault();
+  const scrollToSection = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    event.preventDefault();
     const targetId = href.replace('#', '');
-    const elem = document.getElementById(targetId);
-    
-    if (elem) {
-      // 获取元素距离顶部的绝对位置
-      const elementPosition = elem.getBoundingClientRect().top + window.scrollY;
-      // 减去导航栏的高度和额外的 Padding (大约 100px)
-      const offsetPosition = elementPosition - 100;
+    const element = document.getElementById(targetId);
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
+    if (!element) {
+      return;
     }
+
+    const elementPosition = element.getBoundingClientRect().top + window.scrollY;
+    const offsetPosition = elementPosition - 100;
+
+    window.scrollTo({
+      top: offsetPosition,
+      behavior: 'smooth',
+    });
   };
 
   return (
-    // navbarFrosted 在 design-tokens.ts 中已经包含了 sticky top-0 z-50 属性
     <nav className={styleTokens.navbarFrosted}>
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        
-        {/* 左侧：应用 Logo & 名称 */}
-        <motion.div 
-          className="flex items-center gap-2.5 cursor-pointer w-48" // 固定宽度保持居中平衡
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+        <motion.div
+          className="flex w-48 cursor-pointer items-center gap-2.5"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           title="回到顶部"
         >
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white drop-shadow-sm">
+          <div className="rounded-xl bg-gradient-to-br from-blue-500 to-orange-500 p-2.5 text-white drop-shadow-sm">
             <Zap size={22} strokeWidth={2.5} />
           </div>
           <span className={`text-xl font-bold tracking-tight ${styleTokens.textPrimary}`}>
@@ -85,31 +90,40 @@ export default function Navbar() {
           </span>
         </motion.div>
 
-        {/* 中间：锚点导航 (PC端显示，移动端隐藏) */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden items-center gap-8 md:flex">
           {navItems.map((item) => (
             <a
               key={item.href}
               href={item.href}
-              onClick={(e) => scrollToSection(e, item.href)}
-              className="text-sm font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white transition-colors duration-300"
+              onClick={(event) => scrollToSection(event, item.href)}
+              className="text-sm font-medium text-neutral-500 transition-colors duration-300 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
             >
               {item.label}
             </a>
           ))}
+          <Link
+            to="/servers/submit"
+            className="rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-600 transition hover:border-orange-300 hover:bg-orange-100"
+          >
+            提交服务器
+          </Link>
         </div>
 
-        {/* 右侧：主题切换按钮与预留空间 */}
-        <div className="flex items-center justify-end w-48 gap-4">
+        <div className="flex w-auto items-center justify-end gap-3 sm:w-48">
+          <Link
+            to="/servers/submit"
+            className="rounded-full border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-600 transition hover:border-orange-300 hover:bg-orange-100 md:hidden"
+          >
+            提交
+          </Link>
           <button
             onClick={toggleTheme}
-            className={`p-2.5 rounded-full transition-colors bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-400 ${styleTokens.focusRing}`}
+            className={`rounded-full bg-neutral-100 p-2.5 text-neutral-600 transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700 ${styleTokens.focusRing}`}
             title={isDark ? '切换到亮色模式' : '切换到暗色模式'}
           >
             {isDark ? <Sun size={20} /> : <Moon size={20} />}
           </button>
         </div>
-
       </div>
     </nav>
   );

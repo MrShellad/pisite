@@ -1,27 +1,29 @@
 // backend/src/handlers/sponsors.rs
+use crate::models::{Claims, Sponsor};
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use sqlx::SqlitePool;
-use crate::models::{Claims, Sponsor};
 
 // ==================== 赞助商模块 ====================
 
 // 前台接口：获取所有启用的赞助商
 pub async fn get_sponsors(State(pool): State<SqlitePool>) -> Json<Vec<Sponsor>> {
-    let sponsors = sqlx::query_as::<_, Sponsor>("SELECT * FROM sponsors WHERE enabled = 1 ORDER BY priority ASC")
-        .fetch_all(&pool)
-        .await
-        .unwrap_or_else(|_| vec![]);
+    let sponsors = sqlx::query_as::<_, Sponsor>(
+        "SELECT * FROM sponsors WHERE enabled = 1 ORDER BY priority ASC",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap_or_else(|_| vec![]);
     Json(sponsors)
 }
 
 // 后台接口：获取所有赞助商
 pub async fn get_all_sponsors(
     _claims: Claims,
-    State(pool): State<SqlitePool>
+    State(pool): State<SqlitePool>,
 ) -> Json<Vec<Sponsor>> {
     let sponsors = sqlx::query_as::<_, Sponsor>("SELECT * FROM sponsors ORDER BY priority ASC")
         .fetch_all(&pool)
@@ -43,13 +45,16 @@ pub async fn toggle_sponsor(
 
     match result {
         Ok(res) if res.rows_affected() > 0 => Ok(StatusCode::OK),
-        _ => Err((StatusCode::INTERNAL_SERVER_ERROR, "切换状态失败".to_string())),
+        _ => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "切换状态失败".to_string(),
+        )),
     }
 }
 
 // 后台接口：添加赞助商
 pub async fn add_sponsor(
-    _claims: Claims, 
+    _claims: Claims,
     State(pool): State<SqlitePool>,
     Json(payload): Json<Sponsor>,
 ) -> Result<StatusCode, (StatusCode, String)> {
@@ -75,7 +80,10 @@ pub async fn add_sponsor(
 
     match result {
         Ok(_) => Ok(StatusCode::CREATED),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, format!("插入失败: {}", e))),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("插入失败: {}", e),
+        )),
     }
 }
 
@@ -93,6 +101,9 @@ pub async fn delete_sponsor(
     match result {
         Ok(res) if res.rows_affected() > 0 => Ok(StatusCode::NO_CONTENT),
         Ok(_) => Err((StatusCode::NOT_FOUND, "未找到该赞助商".to_string())),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, format!("数据库删除失败: {}", e))),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("数据库删除失败: {}", e),
+        )),
     }
 }

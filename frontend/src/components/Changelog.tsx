@@ -50,7 +50,7 @@ export default function Changelog({ isFullPage = false }: { isFullPage?: boolean
         {/* 时间轴主容器 */}
         <div className="relative border-l-2 border-blue-200/60 dark:border-blue-800/60 ml-4 md:ml-6 pb-4">
           
-          {displayLogs.map((entry, index) => (
+          {displayLogs.map((entry) => (
             <motion.div 
               key={entry.id}
               initial={{ opacity: 0, x: -20 }}

@@ -1,15 +1,15 @@
 // backend/src/handlers/stats.rs
+use crate::models::{
+    ActivationPayload, ActivationResponse, Claims, DailyStat, DashboardStats, DownloadTrackPayload,
+    PlatformStat,
+};
 use axum::{
+    Json,
     extract::State,
     http::{HeaderMap, StatusCode},
-    Json,
 };
 use sqlx::SqlitePool;
 use uuid::Uuid;
-use crate::models::{
-    ActivationPayload, ActivationResponse, Claims, DailyStat, DashboardStats,
-    DownloadTrackPayload, PlatformStat,
-};
 
 // ==================== 数据追踪与统计模块 ====================
 
@@ -20,7 +20,8 @@ pub async fn track_download(
     Json(payload): Json<DownloadTrackPayload>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     // 获取真实 IP
-    let ip = headers.get("x-forwarded-for")
+    let ip = headers
+        .get("x-forwarded-for")
         .and_then(|h| h.to_str().ok())
         .or_else(|| headers.get("x-real-ip").and_then(|h| h.to_str().ok()))
         .unwrap_or("unknown")
@@ -31,7 +32,8 @@ pub async fn track_download(
         .bind(payload.fingerprint)
         .bind(ip)
         .bind(payload.platform)
-        .execute(&pool).await
+        .execute(&pool)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(StatusCode::OK)
@@ -43,7 +45,8 @@ pub async fn activate_app(
     headers: HeaderMap,
     Json(payload): Json<ActivationPayload>,
 ) -> Result<Json<ActivationResponse>, (StatusCode, String)> {
-    let ip = headers.get("x-forwarded-for")
+    let ip = headers
+        .get("x-forwarded-for")
         .and_then(|h| h.to_str().ok())
         .or_else(|| headers.get("x-real-ip").and_then(|h| h.to_str().ok()))
         .unwrap_or("unknown")
@@ -53,13 +56,16 @@ pub async fn activate_app(
     let device_uuid = Uuid::new_v4().to_string();
 
     // 存入激活数据库
-    sqlx::query("INSERT INTO app_activations (device_uuid, platform, ip, os_version) VALUES (?, ?, ?, ?)")
-        .bind(&device_uuid)
-        .bind(payload.platform)
-        .bind(ip)
-        .bind(payload.os_version)
-        .execute(&pool).await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    sqlx::query(
+        "INSERT INTO app_activations (device_uuid, platform, ip, os_version) VALUES (?, ?, ?, ?)",
+    )
+    .bind(&device_uuid)
+    .bind(payload.platform)
+    .bind(ip)
+    .bind(payload.os_version)
+    .execute(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // 将 UUID 下发给 App
     Ok(Json(ActivationResponse { device_uuid }))
@@ -71,16 +77,18 @@ pub async fn get_dashboard_stats(
     _claims: Claims, // 必须是登录的管理员
     State(pool): State<SqlitePool>,
 ) -> Result<Json<DashboardStats>, (StatusCode, String)> {
-    
     // 1. 获取总下载和独立下载 (按设备指纹去重)
-    let downloads_count: (i64, i64) = sqlx::query_as(
-        "SELECT COUNT(*), COUNT(DISTINCT fingerprint) FROM downloads_log"
-    ).fetch_one(&pool).await.unwrap_or((0, 0));
+    let downloads_count: (i64, i64) =
+        sqlx::query_as("SELECT COUNT(*), COUNT(DISTINCT fingerprint) FROM downloads_log")
+            .fetch_one(&pool)
+            .await
+            .unwrap_or((0, 0));
 
     // 2. 获取总激活量
-    let activations_count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM app_activations"
-    ).fetch_one(&pool).await.unwrap_or((0,));
+    let activations_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM app_activations")
+        .fetch_one(&pool)
+        .await
+        .unwrap_or((0,));
 
     // 3. 按平台统计下载量 (饼图/进度条用)
     let platform_downloads = sqlx::query_as::<_, PlatformStat>(

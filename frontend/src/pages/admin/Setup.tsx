@@ -1,7 +1,7 @@
 // frontend/src/pages/admin/Setup.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Mail, Lock, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, ShieldCheck } from 'lucide-react';
 import { styleTokens } from '../../lib/design-tokens';
 import { api } from '../../api/client';
 

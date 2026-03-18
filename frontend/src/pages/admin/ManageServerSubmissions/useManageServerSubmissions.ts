@@ -1,0 +1,207 @@
+// frontend/src/pages/admin/ManageServerSubmissions/useManageServerSubmissions.ts
+import { useState, useEffect, useMemo } from 'react';
+import type { ChangeEvent } from 'react';
+import { api } from '@/api/client';
+import type { ServerSubmission, SocialLink, ServerSubmissionFormState } from '@/types';
+
+const BACKEND_ORIGIN = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
+export interface AdminServerSubmissionFormState extends ServerSubmissionFormState {
+  verified: boolean;
+}
+
+function toPreviewUrl(url: string) {
+  if (!url) return '';
+  return url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:') ? url : `${BACKEND_ORIGIN}${url}`;
+}
+
+// 将后端的 ServerSubmission 实体转换为表单状态
+function toFormState(item: ServerSubmission): AdminServerSubmissionFormState {
+  return {
+    name: item.name || '',
+    description: item.description || '',
+    ip: item.ip || '',
+    port: item.port || 25565,
+    versions: Array.isArray(item.versions) ? item.versions : [],
+    maxPlayers: item.maxPlayers || 100,
+    onlinePlayers: item.onlinePlayers || 0,
+    icon: item.icon || '',
+    hero: item.hero || '',
+    website: item.website || '',
+    serverType: item.serverType || 'vanilla',
+    language: item.language || 'zh-CN',
+    modpackUrl: item.modpackUrl || '',
+    hasPaidContent: item.hasPaidContent || false,
+    ageRecommendation: item.ageRecommendation || '全年龄',
+    features: Array.isArray(item.features) ? item.features : [],
+    mechanics: Array.isArray(item.mechanics) ? item.mechanics : [],
+    elements: Array.isArray(item.elements) ? item.elements : [],
+    community: Array.isArray(item.community) ? item.community : [],
+    tags: Array.isArray(item.tags) ? item.tags : [],
+    socialLinks: Array.isArray(item.socialLinks) ? item.socialLinks : [],
+    hasVoiceChat: item.hasVoiceChat || false,
+    voicePlatform: item.voicePlatform || 'QQ',
+    voiceUrl: item.voiceUrl || '',
+    verified: item.verified || false,
+  };
+}
+
+export function useManageServerSubmissions() {
+  const [submissions, setSubmissions] = useState<ServerSubmission[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<AdminServerSubmissionFormState | null>(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState<'icon' | 'hero' | null>(null);
+  const [tagDict, setTagDict] = useState<any[]>([]);
+
+  // 筛选与搜索状态
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'verified'>('all');
+
+  // 拉取列表与字典
+  const fetchData = async () => {
+    try {
+      api.get('/server-tags-dict').then(res => setTagDict(res.data)).catch(() => { });
+      const response = await api.get<ServerSubmission[]>('/admin/server-submissions');
+      setSubmissions(response.data);
+
+      if (response.data.length && !selectedId) {
+        setSelectedId(response.data[0].id);
+        setFormData(toFormState(response.data[0]));
+      }
+    } catch (err) {
+      console.error('Failed to fetch submissions:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchData();
+  }, []);
+
+  // 快速审批切换
+  const handleToggleVerify = async (id: string, currentStatus: boolean) => {
+    try {
+      await api.put(`/admin/server-submissions/${id}/toggle-verify`);
+      setSubmissions(prev => prev.map(item => item.id === id ? { ...item, verified: !currentStatus } : item));
+      if (selectedId === id) {
+        setFormData(prev => prev ? { ...prev, verified: !currentStatus } : null);
+      }
+    } catch {
+      alert('操作失败');
+    }
+  };
+
+  // 快速删除
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('确定要删除该服务器记录吗？此操作不可逆。')) return;
+    try {
+      await api.delete(`/admin/server-submissions/${id}`);
+      setSubmissions(prev => prev.filter(item => item.id !== id));
+      if (selectedId === id) {
+        setSelectedId(null);
+        setFormData(null);
+      }
+    } catch {
+      alert('删除失败');
+    }
+  };
+
+  // 基于计算属性的快速筛选列表
+  const filteredSubmissions = useMemo(() => {
+    return submissions.filter(item => {
+      const matchesSearch =
+        (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.ip || '').toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesStatus =
+        filterStatus === 'all' ? true :
+          filterStatus === 'verified' ? item.verified : !item.verified;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [submissions, searchQuery, filterStatus]);
+
+  const handleSelect = (item: ServerSubmission) => {
+    setSelectedId(item.id);
+    setFormData(toFormState(item));
+  };
+
+  const handleUpload = async (event: ChangeEvent<HTMLInputElement>, field: 'icon' | 'hero') => {
+    const file = event.target.files?.[0];
+    if (!file || !formData) return;
+
+    setIsUploading(field);
+    try {
+      const payload = new FormData();
+      payload.append('file', file);
+      const response = await api.post<{ url: string }>('/server-submissions/upload-cover', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setFormData({ ...formData, [field]: toPreviewUrl(response.data.url) });
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('上传失败');
+    } finally {
+      setIsUploading(null);
+      event.target.value = '';
+    }
+  };
+
+  const handleSave = async () => {
+    if (!selectedId || !formData) return;
+    setIsSaving(true);
+    try {
+      await api.put(`/admin/server-submissions/${selectedId}`, {
+        ...formData,
+        name: (formData.name || '').trim(),
+        description: formData.description,
+        ip: (formData.ip || '').trim(),
+        port: Number(formData.port),
+        modpackUrl: formData.serverType === 'modded' ? (formData.modpackUrl || '').trim() : '',
+        socialLinks: (formData.socialLinks || []).filter(item => item.platform.trim() && item.url.trim()),
+      });
+      window.alert('保存成功！');
+      await fetchData();
+    } catch {
+      window.alert('保存失败，请检查字段后重试。');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const addSocialLink = () => setFormData(c => c ? ({ ...c, socialLinks: [...(c.socialLinks || []), { platform: 'QQ', url: '' }] }) : c);
+  const updateSocialLink = (index: number, key: keyof SocialLink, value: string) => {
+    setFormData(c => c ? ({ ...c, socialLinks: (c.socialLinks || []).map((item, i) => i === index ? { ...item, [key]: value } : item) }) : c);
+  };
+  const removeSocialLink = (index: number) => setFormData(c => c ? ({ ...c, socialLinks: (c.socialLinks || []).filter((_, i) => i !== index) }) : c);
+
+  return {
+    submissions,
+    filteredSubmissions,
+    selectedId,
+    formData,
+    setFormData,
+    isLoading,
+    setIsLoading,
+    isSaving,
+    isUploading,
+    tagDict,
+    searchQuery,
+    setSearchQuery,
+    filterStatus,
+    setFilterStatus,
+    fetchData,
+    handleSelect,
+    handleUpload,
+    handleSave,
+    handleDelete,
+    handleToggleVerify,
+    addSocialLink,
+    updateSocialLink,
+    removeSocialLink
+  };
+}

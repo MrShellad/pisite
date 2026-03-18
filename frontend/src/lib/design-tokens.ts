@@ -85,6 +85,8 @@ export const styleTokens = {
   // ----------------------------------------
   
   focusRing: `focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50 dark:focus-visible:ring-offset-neutral-950`,
+
+  navbarFrosted: `sticky top-0 z-50 border-b border-neutral-200/70 bg-white/75 backdrop-blur-xl dark:border-neutral-800/80 dark:bg-neutral-950/75`,
   
   cardFrosted: `bg-white/70 dark:bg-neutral-950/70 backdrop-blur-xl border-2 border-neutral-100 dark:border-neutral-800 rounded-xl transition-all duration-300 hover:border-blue-400/80 dark:hover:border-blue-500/80 hover:bg-neutral-50/70 dark:hover:bg-neutral-800/70 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50 dark:focus-visible:ring-offset-neutral-950`,
   

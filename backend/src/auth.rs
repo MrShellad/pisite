@@ -1,10 +1,10 @@
 // backend/src/auth.rs
+use crate::models::Claims;
 use axum::{
     extract::FromRequestParts,
-    http::{request::Parts, StatusCode},
+    http::{StatusCode, request::Parts},
 };
-use jsonwebtoken::{decode, DecodingKey, Validation};
-use crate::models::Claims;
+use jsonwebtoken::{DecodingKey, Validation, decode};
 
 // 注意：生产环境中，请绝对要把这个秘钥放在 .env 环境变量里！
 pub const JWT_SECRET: &[u8] = b"flowcore_super_secret_key_123456";
@@ -26,7 +26,12 @@ where
 
         let auth_header = match auth_header {
             Some(header) => header,
-            None => return Err((StatusCode::UNAUTHORIZED, "缺少 Authorization 标头".to_string())),
+            None => {
+                return Err((
+                    StatusCode::UNAUTHORIZED,
+                    "缺少 Authorization 标头".to_string(),
+                ));
+            }
         };
 
         if !auth_header.starts_with("Bearer ") {

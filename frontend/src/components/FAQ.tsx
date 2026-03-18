@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { MessageCircle, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { staggerContainer, cardSpringUp, accordionContent, styleTokens } from '../lib/design-tokens';
+import { staggerContainer, cardSpringUp, accordionContent } from '../lib/design-tokens';
 import { api } from '../api/client';
 
 export default function FAQ() {

@@ -1,12 +1,18 @@
 // backend/src/handlers/mod.rs
 pub mod auth;
-pub mod hero;
-pub mod sponsors;
-pub mod features;
 pub mod changelog;
+pub mod donor_admin;
+pub mod donor_client;
 pub mod faqs;
+pub mod features;
+pub mod hero;
+pub mod minecraft_api;
+pub mod misc;
+pub mod api_key_middleware;
+pub mod api_keys;
+pub mod api_endpoint_policies;
+pub mod server_submissions;
 pub mod settings;
+pub mod sponsors;
 pub mod stats;
 pub mod upload;
-pub mod misc;
-pub mod minecraft_api;

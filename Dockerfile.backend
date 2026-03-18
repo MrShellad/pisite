@@ -1,0 +1,31 @@
+FROM rust:1.86-bookworm AS builder
+WORKDIR /app
+
+# 先拷贝清单文件以利用缓存
+COPY backend/Cargo.toml backend/Cargo.lock ./backend/
+
+# 伪造 src 让依赖先编译缓存
+RUN mkdir -p backend/src && \
+    printf "fn main() {}\n" > backend/src/main.rs && \
+    cargo build --release --manifest-path backend/Cargo.toml && \
+    rm -rf backend/src
+
+# 再拷贝完整源码编译
+COPY backend ./backend
+RUN cargo build --release --manifest-path backend/Cargo.toml
+
+FROM debian:bookworm-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app/backend/target/release/Pibackend /usr/local/bin/pibackend
+
+ENV BIND_HOST=0.0.0.0
+ENV PORT=3000
+ENV DATABASE_URL=sqlite:///data/flowcore.db?mode=rwc
+
+EXPOSE 3000
+VOLUME ["/data"]
+
+CMD ["pibackend"]
+
