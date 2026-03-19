@@ -111,12 +111,8 @@ export default function Hero({ previewConfig }: HeroProps) {
       >
         <motion.div
           variants={logoEntry}
-          className="mb-8 rounded-[2rem] p-6 shadow-2xl transition-transform hover:scale-105 md:p-8"
-          style={{
-            backgroundColor: '#1C1C1E',
-            color: config.logoColor,
-            boxShadow: `0 10px 40px ${config.logoColor}33`,
-          }}
+          className="mb-8 transition-transform hover:scale-105"
+          style={{ color: config.logoColor }}
         >
           <div className="flex h-12 w-12 items-center justify-center md:h-16 md:w-16">
             {config.logoUrl ? (

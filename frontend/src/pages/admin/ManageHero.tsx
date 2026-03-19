@@ -58,14 +58,24 @@ export default function ManageHero() {
               
               {/* 【修改】图片实时预览 */}
               <div className="flex flex-col items-center justify-center p-8 bg-neutral-100/50 dark:bg-black/40 rounded-2xl border border-neutral-200 dark:border-white/5 relative group">
-                <div className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-lg dark:shadow-2xl transition-transform duration-500 group-hover:scale-110" style={{ backgroundColor: '#1C1C1E', color: formData.logoColor, boxShadow: `0 10px 40px ${formData.logoColor}40` }}>
+                <div
+                  className="w-24 h-24 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110 border border-neutral-300/80 dark:border-white/10"
+                  style={{
+                    color: formData.logoColor,
+                    backgroundColor: '#ffffff',
+                    backgroundImage:
+                      'linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)',
+                    backgroundSize: '16px 16px',
+                    backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
+                  }}
+                >
                   {formData.logoUrl ? (
-                    <img src={formData.logoUrl} alt="Logo" className="w-12 h-12 object-contain drop-shadow-[0_0_12px_currentColor]" />
+                    <img src={formData.logoUrl} alt="Logo" className="w-16 h-16 object-contain drop-shadow-[0_0_12px_currentColor]" />
                   ) : (
                     <ImageIcon className="text-neutral-600 w-8 h-8" />
                   )}
                 </div>
-                <span className="text-[10px] text-neutral-500 uppercase mt-6 font-bold">Live Preview</span>
+                <span className="text-[10px] text-neutral-500 uppercase mt-6 font-bold">Transparent Preview</span>
               </div>
               
               <div>
