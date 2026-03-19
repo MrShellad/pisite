@@ -1,22 +1,30 @@
-FROM rust:1.88-bookworm AS builder
+# 1. 准备阶段：安装 cargo-chef
+FROM rust:1.88-bookworm AS chef
+USER root
+RUN cargo install cargo-chef
 WORKDIR /app
 
-# 先拷贝清单文件以利用缓存
-COPY backend/Cargo.toml backend/Cargo.lock ./backend/
-
-# 伪造 src 让依赖先编译缓存
-RUN mkdir -p backend/src && \
-    printf "fn main() {}\n" > backend/src/main.rs && \
-    cargo build --release --manifest-path backend/Cargo.toml && \
-    rm -rf backend/src
-
-# 再拷贝完整源码编译
+# 2. 规划阶段：分析依赖
+FROM chef AS planner
 COPY backend ./backend
-RUN cargo build --release --manifest-path backend/Cargo.toml
+WORKDIR /app/backend
+RUN cargo chef prepare --recipe-path recipe.json
 
+# 3. 构建阶段：先构建依赖，再构建源码
+FROM chef AS builder
+WORKDIR /app/backend
+COPY --from=planner /app/backend/recipe.json recipe.json
+# 先只编译依赖 (这层会被缓存)
+RUN cargo chef cook --release --recipe-path recipe.json
+# 拷贝真实代码并编译应用包
+COPY backend .
+RUN cargo build --release
+
+# 4. 运行阶段
 FROM debian:bookworm-slim
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+# 建议加上 libssl 等基础运行库，很多 Rust 后端库(如 reqwest)需要它
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/backend/target/release/Pibackend /usr/local/bin/pibackend
 
@@ -28,4 +36,3 @@ EXPOSE 3000
 VOLUME ["/data"]
 
 CMD ["pibackend"]
-
