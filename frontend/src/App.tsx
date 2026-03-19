@@ -21,6 +21,7 @@ import ServerSuccessPreview from './pages/ServerSubmission/SuccessPreview';
 import ManageDonorUsers from './pages/admin/ManageDonorUsers';
 import ManageApiKeys from './pages/admin/ManageApiKeys';
 import ManageApiAccess from './pages/admin/ManageApiAccess';
+import ManageAdminProfile from './pages/admin/ManageAdminProfile';
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
             <Route path="api-keys" element={<ManageApiKeys />} />
             <Route path="api-access" element={<ManageApiAccess />} />
             <Route path="settings" element={<ManageSettings />} />
+            <Route path="account" element={<ManageAdminProfile />} />
             <Route path="mccrawler" element={<ManageMcCrawler />} />
             <Route path="server-submissions" element={<ManageServerSubmissions />} />
             <Route path="server-tags" element={<ManageServerTags />} />

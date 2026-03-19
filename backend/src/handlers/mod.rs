@@ -15,4 +15,5 @@ pub mod server_submissions;
 pub mod settings;
 pub mod sponsors;
 pub mod stats;
+pub mod admin_profile;
 pub mod upload;

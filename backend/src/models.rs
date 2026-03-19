@@ -48,6 +48,20 @@ pub struct AuthResponse {
     pub token: String,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminProfileResponse {
+    pub email: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAdminProfilePayload {
+    pub currentPassword: String,
+    pub newEmail: String,
+    pub newPassword: String,
+}
+
 // 【新增】第一次初始化的请求体
 #[derive(Deserialize)]
 pub struct InitPayload {

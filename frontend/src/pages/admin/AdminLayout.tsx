@@ -1,4 +1,4 @@
-import { LayoutDashboard, LayoutGrid, Link as LinkIcon, LogOut, MessageCircle, PanelTop, Server, Star, History, Tags, HeartHandshake, KeyRound, GlobeLock } from 'lucide-react';
+import { LayoutDashboard, LayoutGrid, Link as LinkIcon, LogOut, MessageCircle, PanelTop, Server, Star, History, Tags, HeartHandshake, KeyRound, GlobeLock, ShieldCheck } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
 const adminNavs = [
@@ -11,6 +11,7 @@ const adminNavs = [
   { name: '捐赠用户授权', path: '/admin/donors', icon: <HeartHandshake size={18} /> },
   { name: 'API Key 管理', path: '/admin/api-keys', icon: <KeyRound size={18} /> },
   { name: '公网 API 控制', path: '/admin/api-access', icon: <GlobeLock size={18} /> },
+  { name: '账号安全', path: '/admin/account', icon: <ShieldCheck size={18} /> },
   { name: '站点设置', path: '/admin/settings', icon: <LinkIcon size={18} /> },
   { name: '爬虫配置', path: '/admin/mccrawler', icon: <MessageCircle size={18} /> },
   { name: '服务器提交', path: '/admin/server-submissions', icon: <Star size={18} /> },

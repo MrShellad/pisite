@@ -210,6 +210,11 @@ pub fn create_router(pool: SqlitePool) -> Router {
             "/api/admin/api-logs",
             get(handlers::api_keys::list_logs),
         )
+        // 管理员账号（修改邮箱/密码）
+        .route(
+            "/api/admin/profile",
+            get(handlers::admin_profile::get_profile).put(handlers::admin_profile::update_profile),
+        )
         // 10. API 公网访问控制（策略表）
         .route(
             "/api/admin/api-endpoints",
