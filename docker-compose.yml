@@ -13,8 +13,8 @@ services:
     volumes:
       - backend_data:/data
 
-      ports:
-      - "13000:3000"
+    ports:
+      - "12000:3000"
     restart: always
 
   frontend:
