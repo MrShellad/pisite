@@ -17,3 +17,4 @@ pub mod sponsors;
 pub mod stats;
 pub mod admin_profile;
 pub mod upload;
+pub mod admin_internal_middleware;

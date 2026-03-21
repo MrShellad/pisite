@@ -548,6 +548,9 @@ async fn main() {
     let app = Router::new()
         .merge(app_router)
         .nest_service("/uploads", ServeDir::new("uploads"))
+        .layer(middleware::from_fn(
+            crate::handlers::admin_internal_middleware::admin_internal_only_middleware,
+        ))
         .layer(middleware::from_fn_with_state(
             pool.clone(),
             crate::handlers::api_key_middleware::api_key_middleware,
@@ -563,5 +566,7 @@ async fn main() {
     println!("后端服务器已启动，监听在 http://{}", addr);
 
     let listener = TcpListener::bind(&addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+        .await
+        .unwrap();
 }
