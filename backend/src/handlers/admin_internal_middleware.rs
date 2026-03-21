@@ -56,7 +56,7 @@ pub async fn admin_internal_only_middleware(
     next: Next,
 ) -> Result<Response, StatusCode> {
     let path = req.uri().path();
-    let is_admin_path = path.starts_with("/api/admin") || path.starts_with("/api/auth");
+    let is_admin_path = path.starts_with("/api/admin");
 
     if !is_admin_path {
         return Ok(next.run(req).await);
