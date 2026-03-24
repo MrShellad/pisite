@@ -29,6 +29,20 @@ export default function ManageMcCrawler() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [newInterval, setNewInterval] = useState('');
 
+  const buildCoverUrl = (coverPath: string) => {
+    if (!coverPath) return '';
+    if (/^https?:\/\//i.test(coverPath)) return coverPath;
+
+    const normalizedPath = coverPath.startsWith('/') ? coverPath : `/${coverPath}`;
+    const baseURL = api.defaults.baseURL;
+
+    if (typeof baseURL === 'string' && /^https?:\/\//i.test(baseURL)) {
+      return `${new URL(baseURL).origin}${normalizedPath}`;
+    }
+
+    return normalizedPath;
+  };
+
   const fetchData = async () => {
     try {
       const [confRes, updRes] = await Promise.all([
@@ -116,7 +130,7 @@ export default function ManageMcCrawler() {
             {updates.map(update => (
               <div key={update.version} className="bg-white dark:bg-[#111] border border-neutral-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow group flex flex-col">
                 <div className="h-40 overflow-hidden relative">
-                  <img src={`http://localhost:3000${update.cover}`} alt={update.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={buildCoverUrl(update.cover)} alt={update.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-3 left-3 px-2.5 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider rounded-md border border-white/20">
                     {update.vType}
                   </div>
