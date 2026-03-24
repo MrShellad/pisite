@@ -548,9 +548,9 @@ async fn main() {
     let app = Router::new()
         .merge(app_router)
         .nest_service("/uploads", ServeDir::new("uploads"))
-        .layer(middleware::from_fn(
-            crate::handlers::admin_internal_middleware::admin_internal_only_middleware,
-        ))
+        // .layer(middleware::from_fn(
+        //     crate::handlers::admin_internal_middleware::admin_internal_only_middleware,
+        // ))
         .layer(middleware::from_fn_with_state(
             pool.clone(),
             crate::handlers::api_key_middleware::api_key_middleware,
