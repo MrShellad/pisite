@@ -149,7 +149,7 @@ pub async fn login(
     let token = encode(
         &Header::default(),
         &claims,
-        &EncodingKey::from_secret(JWT_SECRET),
+        &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
     )
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -175,7 +175,7 @@ fn decode_activation_id(auth_header: Option<&str>) -> Result<String, (StatusCode
     let token = &auth_header[7..];
     let token_data = decode::<ClientClaims>(
         token,
-        &DecodingKey::from_secret(JWT_SECRET),
+        &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
         &Validation::default(),
     )
     .map_err(|_| (StatusCode::UNAUTHORIZED, "Token 无效或已过期".to_string()))?;
@@ -267,7 +267,7 @@ pub async fn refresh(
     let token = encode(
         &Header::default(),
         &claims,
-        &EncodingKey::from_secret(JWT_SECRET),
+        &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
     )
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 

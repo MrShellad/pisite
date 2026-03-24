@@ -80,7 +80,7 @@ pub async fn login(
             let token = encode(
                 &Header::default(),
                 &claims,
-                &EncodingKey::from_secret(JWT_SECRET),
+                &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
             )
             .unwrap();
             return Ok(Json(AuthResponse { token }));

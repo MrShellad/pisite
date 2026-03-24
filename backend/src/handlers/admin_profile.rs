@@ -84,7 +84,7 @@ pub async fn update_profile(
     let token = encode(
         &Header::default(),
         &new_claims,
-        &EncodingKey::from_secret(JWT_SECRET),
+        &EncodingKey::from_secret(JWT_SECRET.as_bytes()), 
     )
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
