@@ -48,6 +48,71 @@ pub async fn get_changelog(State(pool): State<SqlitePool>) -> Json<Vec<Changelog
 
 // ==================== 2. Tauri 动态分发引擎 ====================
 
+fn platform_has_assets(platform: &serde_json::Value) -> bool {
+    let url = platform
+        .get("url")
+        .and_then(|value| value.as_str())
+        .unwrap_or_default();
+    let signature = platform
+        .get("signature")
+        .and_then(|value| value.as_str())
+        .unwrap_or_default();
+
+    !url.is_empty() && !signature.is_empty()
+}
+
+fn find_requested_platform<'a>(
+    platforms: &'a serde_json::Value,
+    target: Option<&str>,
+) -> Option<&'a serde_json::Value> {
+    match target {
+        Some("windows") => platforms.get("windows").filter(|platform| platform_has_assets(platform)),
+        Some("darwin") => platforms.get("darwin").filter(|platform| platform_has_assets(platform)),
+        Some("linux") => platforms.get("linux").filter(|platform| platform_has_assets(platform)),
+        _ => None,
+    }
+}
+
+fn build_updater_platforms(
+    platforms: &serde_json::Value,
+) -> serde_json::Map<String, serde_json::Value> {
+    let mut mapped = serde_json::Map::new();
+
+    if let Some(platform) = platforms.get("darwin").filter(|platform| platform_has_assets(platform))
+    {
+        mapped.insert("darwin-x86_64".to_string(), platform.clone());
+        mapped.insert("darwin-aarch64".to_string(), platform.clone());
+    }
+
+    if let Some(platform) = platforms.get("windows").filter(|platform| platform_has_assets(platform))
+    {
+        mapped.insert("windows-x86_64".to_string(), platform.clone());
+    }
+
+    if let Some(platform) = platforms.get("linux").filter(|platform| platform_has_assets(platform))
+    {
+        mapped.insert("linux-x86_64".to_string(), platform.clone());
+    }
+
+    mapped
+}
+
+fn build_release_notes(changes: Vec<serde_json::Value>) -> String {
+    let mut notes = String::new();
+
+    for change in changes {
+        if let Some(text) = change.get("text").and_then(|t| t.as_str()) {
+            notes.push_str(&format!("- {}\n", text));
+        }
+    }
+
+    if notes.is_empty() {
+        "Routine improvements and fixes".to_string()
+    } else {
+        notes
+    }
+}
+
 pub async fn tauri_updater(
     Query(params): Query<UpdaterParams>,
     State(pool): State<SqlitePool>,
@@ -62,11 +127,19 @@ pub async fn tauri_updater(
     let client_version = Version::parse(&params.version).unwrap_or(Version::new(0, 0, 0));
     let client_uuid = params.uuid.unwrap_or_default();
     let client_region = params.region.unwrap_or_default();
+    let requested_format = params.format.as_deref();
+    let expected_version = params.expected_version.as_deref();
 
     for release in active_releases {
         let release_version = Version::parse(&release.version).unwrap_or(Version::new(0, 0, 0));
         if release_version <= client_version {
             continue;
+        }
+
+        if let Some(expected_version) = expected_version {
+            if release.version != expected_version {
+                continue;
+            }
         }
 
         if release.allowed_regions != "ALL" && !release.allowed_regions.contains(&client_region) {
@@ -94,26 +167,41 @@ pub async fn tauri_updater(
         if matched {
             let platforms: serde_json::Value =
                 serde_json::from_str(&release.platforms_json).unwrap_or(serde_json::json!({}));
+            let requested_platform = find_requested_platform(&platforms, params.target.as_deref());
+            if params.target.is_some() && requested_platform.is_none() {
+                continue;
+            }
+
+            let updater_platforms = build_updater_platforms(&platforms);
+            if updater_platforms.is_empty() {
+                continue;
+            }
 
             let changes: Vec<serde_json::Value> =
                 serde_json::from_str(&release.changes_json).unwrap_or_default();
-            let mut notes = String::new();
-            for change in changes {
-                if let Some(text) = change.get("text").and_then(|t| t.as_str()) {
-                    notes.push_str(&format!("- {}\n", text));
-                }
+            let notes = build_release_notes(changes);
+
+            if requested_format == Some("dynamic") {
+                let Some(platform) = requested_platform else {
+                    continue;
+                };
+
+                let response = serde_json::json!({
+                    "version": release.version,
+                    "notes": notes,
+                    "pub_date": format!("{}T00:00:00Z", release.date),
+                    "url": platform.get("url").and_then(|value| value.as_str()).unwrap_or_default(),
+                    "signature": platform.get("signature").and_then(|value| value.as_str()).unwrap_or_default(),
+                });
+
+                return Ok(Json(response).into_response());
             }
 
             let response = serde_json::json!({
                 "version": release.version,
-                "notes": if notes.is_empty() { "常规性能更新与优化".to_string() } else { notes },
+                "notes": notes,
                 "pub_date": format!("{}T00:00:00Z", release.date),
-                "platforms": {
-                    "darwin-x86_64": platforms.get("darwin").unwrap_or(&serde_json::json!(null)),
-                    "darwin-aarch64": platforms.get("darwin").unwrap_or(&serde_json::json!(null)),
-                    "windows-x86_64": platforms.get("windows").unwrap_or(&serde_json::json!(null)),
-                    "linux-x86_64": platforms.get("linux").unwrap_or(&serde_json::json!(null)),
-                }
+                "platforms": updater_platforms
             });
 
             return Ok(Json(response).into_response());

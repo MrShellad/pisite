@@ -22,6 +22,7 @@ import ManageDonorUsers from './pages/admin/ManageDonorUsers';
 import ManageApiKeys from './pages/admin/ManageApiKeys';
 import ManageApiAccess from './pages/admin/ManageApiAccess';
 import ManageAdminProfile from './pages/admin/ManageAdminProfile';
+import ManageSignalingServers from './pages/admin/ManageSignalingServers';
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
             <Route path="mccrawler" element={<ManageMcCrawler />} />
             <Route path="server-submissions" element={<ManageServerSubmissions />} />
             <Route path="server-tags" element={<ManageServerTags />} />
+            <Route path="signaling" element={<ManageSignalingServers />} />
           </Route>
         </Route>
       </Routes>

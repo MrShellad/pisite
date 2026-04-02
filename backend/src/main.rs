@@ -414,6 +414,29 @@ async fn main() {
     .await
     .expect("创建 server_tags_dict 表失败");
 
+    // ==============================================
+    // 自动建表：Signaling Servers (信令服务器管理)
+    // ==============================================
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS signaling_servers (
+            id TEXT PRIMARY KEY,
+            url TEXT NOT NULL,
+            region TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            priority INTEGER NOT NULL DEFAULT 100,
+            weight INTEGER NOT NULL DEFAULT 1,
+            secure BOOLEAN NOT NULL DEFAULT 1,
+            features_p2p BOOLEAN NOT NULL DEFAULT 1,
+            features_relay BOOLEAN NOT NULL DEFAULT 0,
+            limits_max_connections INTEGER NOT NULL DEFAULT 1000,
+            enabled BOOLEAN NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+    )
+    .execute(&pool)
+    .await
+    .expect("创建 signaling_servers 表失败");
+
     // 初始化一些种子数据供前端使用
     let dict_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM server_tags_dict")
         .fetch_one(&pool)
@@ -518,6 +541,15 @@ async fn main() {
         .execute(&pool)
         .await;
     }
+
+    // 主动将 /api/signaling-servers 修改/插入为 require_api_key = 1
+    let _ = sqlx::query(
+        "INSERT INTO api_endpoint_policies (method, path_template, group_name, public_enabled, require_api_key)
+         VALUES ('GET', '/api/signaling-servers', 'public', 1, 1)
+         ON CONFLICT(method, path_template) DO UPDATE SET require_api_key = 1;"
+    )
+    .execute(&pool)
+    .await;
 
     let crawler_pool = pool.clone();
     tokio::spawn(async move {

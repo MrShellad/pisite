@@ -382,6 +382,8 @@ pub struct UpdaterParams {
     pub arch: Option<String>,
     pub uuid: Option<String>,
     pub region: Option<String>,
+    pub format: Option<String>,
+    pub expected_version: Option<String>,
 }
 
 // ==================== 服务器发现页模型 ====================
@@ -583,3 +585,54 @@ pub struct UpdateApiEndpointPolicyPayload {
     pub public_enabled: bool,
     pub require_api_key: bool,
 }
+
+// ==================== Signaling Server Management ====================
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct SignalingServer {
+    pub id: String,
+    pub url: String,
+    pub region: String,
+    pub provider: String,
+    pub priority: i32,
+    pub weight: i32,
+    pub secure: bool,
+    pub features_p2p: bool,
+    pub features_relay: bool,
+    pub limits_max_connections: i32,
+    pub enabled: bool,
+    pub created_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSignalingServerPayload {
+    pub id: String,
+    pub url: String,
+    pub region: String,
+    pub provider: String,
+    pub priority: i32,
+    pub weight: i32,
+    pub secure: bool,
+    pub features_p2p: bool,
+    pub features_relay: bool,
+    pub limits_max_connections: i32,
+    pub enabled: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSignalingServerPayload {
+    pub url: String,
+    pub region: String,
+    pub provider: String,
+    pub priority: i32,
+    pub weight: i32,
+    pub secure: bool,
+    pub features_p2p: bool,
+    pub features_relay: bool,
+    pub limits_max_connections: i32,
+    pub enabled: bool,
+}
+

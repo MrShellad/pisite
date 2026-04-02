@@ -92,5 +92,12 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem { method: "PUT", path: "/api/admin/api-keys/{id}", group: "admin" },
     ApiEndpointCatalogItem { method: "DELETE", path: "/api/admin/api-keys/{id}", group: "admin" },
     ApiEndpointCatalogItem { method: "GET", path: "/api/admin/api-logs", group: "admin" },
+
+    ApiEndpointCatalogItem { method: "GET", path: "/api/admin/signaling-servers", group: "admin" },
+    ApiEndpointCatalogItem { method: "POST", path: "/api/admin/signaling-servers", group: "admin" },
+    ApiEndpointCatalogItem { method: "PUT", path: "/api/admin/signaling-servers/{id}", group: "admin" },
+    ApiEndpointCatalogItem { method: "DELETE", path: "/api/admin/signaling-servers/{id}", group: "admin" },
+    ApiEndpointCatalogItem { method: "PUT", path: "/api/admin/signaling-servers/{id}/toggle", group: "admin" },
+    ApiEndpointCatalogItem { method: "GET", path: "/api/signaling-servers", group: "public" },
 ];
 

@@ -48,6 +48,8 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route("/api/donors/login", post(handlers::donor_client::login))
         .route("/api/donors/refresh", post(handlers::donor_client::refresh))
         .route("/api/donors/me", get(handlers::donor_client::me))
+        // 8. 信令服务器列表 (Public / Client API)
+        .route("/api/signaling-servers", get(handlers::signaling::get_public_signaling_servers))
         // ==========================================
         // 后台管理接口 (Admin API)
         // ==========================================
@@ -223,6 +225,19 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/api-endpoints/{id}",
             put(handlers::api_endpoint_policies::update_policy),
+        )
+        // 11. 信令服务器管理
+        .route(
+            "/api/admin/signaling-servers",
+            get(handlers::signaling::list_signaling_servers).post(handlers::signaling::add_signaling_server),
+        )
+        .route(
+            "/api/admin/signaling-servers/{id}",
+            put(handlers::signaling::update_signaling_server).delete(handlers::signaling::delete_signaling_server),
+        )
+        .route(
+            "/api/admin/signaling-servers/{id}/toggle",
+            put(handlers::signaling::toggle_signaling_server),
         )
         // 将 SQLite 数据库连接池注入到整个路由树中
         .with_state(pool)

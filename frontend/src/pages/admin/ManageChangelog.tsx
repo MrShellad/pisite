@@ -1,7 +1,15 @@
 // frontend/src/pages/admin/ManageChangelog.tsx
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, GitCommit, Upload, ShieldCheck, Target, Globe, Users, Percent } from 'lucide-react';
+import { Plus, Trash2, GitCommit, Upload, ShieldCheck, Target, Globe, Users, Percent, Star, Bug, Zap, Shield, Sparkles } from 'lucide-react';
 import { api } from '../../api/client';
+
+const PRESET_ICONS = [
+  { name: 'Feature', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>', color: '#3b82f6' },
+  { name: 'Bugfix', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bug"><rect width="8" height="14" x="8" y="6" rx="4"/><path d="m19 7-3 2"/><path d="m5 7 3 2"/><path d="m19 19-3-2"/><path d="m5 19 3-2"/><path d="M20 13h-4"/><path d="M4 13h4"/><path d="m10 4 1 2"/><path d="m14 4-1 2"/></svg>', color: '#ef4444' },
+  { name: 'Performance', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-zap"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>', color: '#eab308' },
+  { name: 'Security', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>', color: '#10b981' },
+  { name: 'UI/UX', svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>', color: '#8b5cf6' },
+];
 
 export default function ManageChangelog() {
   const [logs, setLogs] = useState<any[]>([]);
@@ -52,7 +60,7 @@ export default function ManageChangelog() {
     }
   };
 
-  const handleAddChange = () => { setFormData({ ...formData, changes: [...formData.changes, { iconSvg: '', iconColor: '#10b981', text: '' }] }); };
+  const handleAddChange = () => { setFormData({ ...formData, changes: [...formData.changes, { iconSvg: PRESET_ICONS[0].svg, iconColor: PRESET_ICONS[0].color, text: '' }] }); };
   const updateChange = (index: number, field: string, value: string) => {
     const newChanges = [...formData.changes]; newChanges[index] = { ...newChanges[index], [field]: value }; setFormData({ ...formData, changes: newChanges });
   };
@@ -72,6 +80,17 @@ export default function ManageChangelog() {
     if (window.confirm('警告：回滚将撤回此版本的所有更新推送！确定执行？')) {
       await api.post(`/admin/changelog/${id}/rollback`);
       fetchLogs();
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('确定要删除此版本记录吗？此操作不可撤销，且会丢失对应的分发配置！')) {
+      try {
+        await api.delete(`/admin/changelog/${id}`);
+        fetchLogs();
+      } catch (err) {
+        alert('删除失败');
+      }
     }
   };
 
@@ -135,8 +154,8 @@ export default function ManageChangelog() {
               <div className="space-y-5">
                 <div className="grid grid-cols-3 gap-2">
                   <button type="button" onClick={() => setFormData({...formData, rolloutType: 'all'})} className={`py-2 rounded-lg text-xs font-bold border ${formData.rolloutType === 'all' ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-500/20 dark:border-blue-500/50' : 'bg-transparent border-neutral-200 dark:border-white/10 text-neutral-500'}`}><Globe size={14} className="inline mr-1"/> 全网推送</button>
-                  <button type="button" onClick={() => setFormData({...formData, rolloutType: 'grayscale'})} className={`py-2 rounded-lg text-xs font-bold border ${formData.rolloutType === 'grayscale' ? 'bg-purple-50 border-purple-200 text-purple-600 dark:bg-purple-500/20 dark:border-purple-500/50' : 'bg-transparent border-neutral-200 dark:border-white/10 text-neutral-500'}`}><Percent size={14} className="inline mr-1"/> 灰度发布</button>
-                  <button type="button" onClick={() => setFormData({...formData, rolloutType: 'targeted'})} className={`py-2 rounded-lg text-xs font-bold border ${formData.rolloutType === 'targeted' ? 'bg-orange-50 border-orange-200 text-orange-600 dark:bg-orange-500/20 dark:border-orange-500/50' : 'bg-transparent border-neutral-200 dark:border-white/10 text-neutral-500'}`}><Users size={14} className="inline mr-1"/> 特定 UUID</button>
+                  <button type="button" onClick={() => setFormData({...formData, rolloutType: 'grayscale'})} className={`py-2 rounded-lg text-xs font-bold border ${formData.rolloutType === 'grayscale' ? 'bg-purple-50 border-purple-200 text-purple-600 dark:bg-purple-500/20 dark:border-blue-500/50' : 'bg-transparent border-neutral-200 dark:border-white/10 text-neutral-500'}`}><Percent size={14} className="inline mr-1"/> 灰度发布</button>
+                  <button type="button" onClick={() => setFormData({...formData, rolloutType: 'targeted'})} className={`py-2 rounded-lg text-xs font-bold border ${formData.rolloutType === 'targeted' ? 'bg-orange-50 border-orange-200 text-orange-600 dark:bg-orange-500/20 dark:border-blue-500/50' : 'bg-transparent border-neutral-200 dark:border-white/10 text-neutral-500'}`}><Users size={14} className="inline mr-1"/> 特定 UUID</button>
                 </div>
 
                 {formData.rolloutType === 'grayscale' && (
@@ -155,16 +174,39 @@ export default function ManageChangelog() {
             <div className={cardClass}>
               <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-neutral-900 dark:text-white flex items-center gap-2">更新日志详情</h3></div>
               {formData.changes.map((item, i) => (
-                <div key={i} className="flex gap-2 items-start mb-3">
-                  <input type="color" value={item.iconColor} onChange={e => updateChange(i, 'iconColor', e.target.value)} className="w-8 h-8 rounded shrink-0 border-0 p-0" />
-                  <div className="flex-1 space-y-2">
-                    <input placeholder="SVG" value={item.iconSvg} onChange={e => updateChange(i, 'iconSvg', e.target.value)} className={`${inputClass} font-mono text-xs py-2`} />
-                    <input placeholder="文字描述" value={item.text} onChange={e => updateChange(i, 'text', e.target.value)} className={`${inputClass} py-2`} />
+                <div key={i} className="mb-6 p-4 bg-neutral-50/50 dark:bg-white/[0.02] border border-neutral-200 dark:border-white/10 rounded-xl relative">
+                  <div className="flex gap-2 items-start mb-3">
+                    <input type="color" value={item.iconColor} onChange={e => updateChange(i, 'iconColor', e.target.value)} className="w-10 h-10 rounded shrink-0 border-0 p-0 cursor-pointer overflow-hidden" />
+                    <div className="flex-1 space-y-2">
+                      <input placeholder="SVG 内容" value={item.iconSvg} onChange={e => updateChange(i, 'iconSvg', e.target.value)} className={`${inputClass} font-mono text-[10px] py-1.5`} />
+                      <input placeholder="变更点文字描述" value={item.text} onChange={e => updateChange(i, 'text', e.target.value)} className={`${inputClass} py-2`} />
+                    </div>
+                    <button type="button" onClick={() => removeChange(i)} className="text-neutral-400 hover:text-red-500 transition-colors p-2"><Trash2 size={16}/></button>
                   </div>
-                  <button type="button" onClick={() => removeChange(i)} className="text-red-500 p-2"><Trash2 size={16}/></button>
+                  
+                  {/* 预设图标选择器 */}
+                  <div className="flex items-center gap-3 mt-2 pl-12">
+                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">预设图标:</span>
+                    <div className="flex gap-2">
+                       {PRESET_ICONS.map((preset, idx) => (
+                         <button 
+                           key={idx} 
+                           type="button" 
+                           onClick={() => {
+                             updateChange(i, 'iconSvg', preset.svg);
+                             updateChange(i, 'iconColor', preset.color);
+                           }}
+                           className="w-7 h-7 flex items-center justify-center rounded-lg border border-neutral-200 dark:border-white/10 hover:border-blue-500 dark:hover:border-blue-500 transition-all bg-white dark:bg-white/5"
+                           title={preset.name}
+                         >
+                           <div dangerouslySetInnerHTML={{ __html: preset.svg }} className="w-3.5 h-3.5" style={{ color: preset.color }} />
+                         </button>
+                       ))}
+                    </div>
+                  </div>
                 </div>
               ))}
-              <button type="button" onClick={handleAddChange} className="w-full py-2 border border-dashed border-neutral-300 dark:border-white/20 text-xs font-bold rounded-lg mt-2">+ 追加条目</button>
+              <button type="button" onClick={handleAddChange} className="w-full py-2 border border-dashed border-neutral-300 dark:border-white/20 text-xs font-bold rounded-lg mt-2 text-neutral-500 hover:text-blue-500 hover:border-blue-500/50 transition-all">+ 追加更新条目</button>
             </div>
 
             <button type="submit" disabled={isSubmitting} className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-all active:scale-[0.98]">
@@ -190,22 +232,33 @@ export default function ManageChangelog() {
                     <span>{log.date}</span> | <span>策略: {log.rolloutType} {log.rolloutValue}</span>
                   </div>
                 </div>
-                {log.status !== 'rollback' && (
-                  <button onClick={() => handleRollback(log.id)} className="text-xs px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors font-bold">撤回/回滚</button>
-                )}
+                <div className="flex items-center gap-2">
+                  {log.status !== 'rollback' && (
+                    <button onClick={() => handleRollback(log.id)} className="text-[10px] px-2.5 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors font-bold">回滚</button>
+                  )}
+                  <button onClick={() => handleDelete(log.id)} className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all" title="物理删除">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
               
               {/* 日志内容展示 */}
               <div className="space-y-2 opacity-80">
                 {log.changes?.map((item: any, i: number) => (
                    <div key={i} className="text-sm flex gap-2 items-center text-neutral-600 dark:text-neutral-400">
-                     <span style={{ color: item.iconColor }} dangerouslySetInnerHTML={{ __html: item.iconSvg }} className="w-4 h-4"/>
+                     <span style={{ color: item.iconColor }} dangerouslySetInnerHTML={{ __html: item.iconSvg }} className="w-4 h-4 shrink-0 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full"/>
                      {item.text}
                    </div>
                 ))}
               </div>
             </div>
           ))}
+          {logs.length === 0 && (
+            <div className="py-20 text-center border-2 border-dashed border-neutral-100 dark:border-white/5 rounded-3xl text-neutral-400">
+              <GitCommit className="mx-auto mb-2 opacity-20" size={48} />
+              <p className="text-sm">暂无发布后的版本记录</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
