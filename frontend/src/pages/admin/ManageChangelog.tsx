@@ -1,6 +1,6 @@
 // frontend/src/pages/admin/ManageChangelog.tsx
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, GitCommit, Upload, ShieldCheck, Target, Globe, Users, Percent, Star, Bug, Zap, Shield, Sparkles } from 'lucide-react';
+import { Plus, Trash2, GitCommit, Upload, ShieldCheck, Target, Globe, Users, Percent } from 'lucide-react';
 import { api } from '../../api/client';
 
 const PRESET_ICONS = [
