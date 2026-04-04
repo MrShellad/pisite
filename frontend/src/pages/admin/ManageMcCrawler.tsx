@@ -1,7 +1,7 @@
 // frontend/src/pages/admin/ManageMcCrawler.tsx
 import { useState, useEffect } from 'react';
 import { Bot, RefreshCw, BarChart2, Clock, Globe, BookOpen } from 'lucide-react';
-import { api } from '../../api/client';
+import { api, getUploadUrl } from '../../api/client';
 
 interface McCrawlerConfig {
   id: string;
@@ -28,20 +28,6 @@ export default function ManageMcCrawler() {
   const [updates, setUpdates] = useState<McUpdate[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [newInterval, setNewInterval] = useState('');
-
-  const buildCoverUrl = (coverPath: string) => {
-    if (!coverPath) return '';
-    if (/^https?:\/\//i.test(coverPath)) return coverPath;
-
-    const normalizedPath = coverPath.startsWith('/') ? coverPath : `/${coverPath}`;
-    const baseURL = api.defaults.baseURL;
-
-    if (typeof baseURL === 'string' && /^https?:\/\//i.test(baseURL)) {
-      return `${new URL(baseURL).origin}${normalizedPath}`;
-    }
-
-    return normalizedPath;
-  };
 
   const fetchData = async () => {
     try {
@@ -120,7 +106,7 @@ export default function ManageMcCrawler() {
         <h3 className="text-lg font-bold text-neutral-900 dark:text-white flex items-center gap-2 mt-4">
           <BookOpen className="text-indigo-500" /> 已缓存日志库 (仅保留4个月内)
         </h3>
-        
+
         {updates.length === 0 ? (
           <div className="p-10 text-center text-neutral-500 border-2 border-dashed border-neutral-200 dark:border-white/10 rounded-2xl">
             暂无抓取记录，请等待定时任务执行或点击强制抓取。
@@ -130,7 +116,7 @@ export default function ManageMcCrawler() {
             {updates.map(update => (
               <div key={update.version} className="bg-white dark:bg-[#111] border border-neutral-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow group flex flex-col">
                 <div className="h-40 overflow-hidden relative">
-                  <img src={buildCoverUrl(update.cover)} alt={update.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={getUploadUrl(update.cover)} alt={update.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-3 left-3 px-2.5 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider rounded-md border border-white/20">
                     {update.vType}
                   </div>
@@ -140,7 +126,7 @@ export default function ManageMcCrawler() {
                     <h4 className="font-bold text-lg leading-tight text-neutral-900 dark:text-white">{update.title}</h4>
                   </div>
                   <div className="text-xs text-neutral-500 mb-4 font-mono">{update.date} | {update.version}</div>
-                  
+
                   <div className="mt-auto flex flex-wrap gap-2">
                     <a href={update.article} target="_blank" rel="noreferrer" className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-white/5 dark:hover:bg-white/10 rounded-lg text-xs font-bold text-neutral-700 dark:text-neutral-300 transition-colors">
                       <Globe size={14} /> 官网原文

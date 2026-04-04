@@ -1,7 +1,7 @@
 // frontend/src/pages/admin/ManageSponsors.tsx
 import { useState, useEffect } from 'react';
 import { Plus, Power, Trash2, Upload } from 'lucide-react';
-import { api } from '../../api/client';
+import { api, getUploadUrl } from '../../api/client';
 import type { Sponsor } from '../../types';
 
 const initialFormState = {
@@ -23,7 +23,7 @@ export default function ManageSponsors() {
     const file = e.target.files?.[0]; if (!file) return;
     const formDataObj = new FormData(); formDataObj.append('file', file);
     setIsUploading(true);
-    try { const res = await api.post('/admin/upload', formDataObj); setFormData(prev => ({ ...prev, icon: `http://localhost:3000${res.data.url}` })); } 
+    try { const res = await api.post('/admin/upload', formDataObj); setFormData(prev => ({ ...prev, icon: getUploadUrl(res.data.url) })); } 
     catch (err) { alert('上传失败'); } finally { setIsUploading(false); }
   };
 

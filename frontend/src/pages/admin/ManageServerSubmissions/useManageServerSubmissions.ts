@@ -1,18 +1,11 @@
 // frontend/src/pages/admin/ManageServerSubmissions/useManageServerSubmissions.ts
 import { useState, useEffect, useMemo } from 'react';
 import type { ChangeEvent } from 'react';
-import { api } from '@/api/client';
+import { api, getUploadUrl } from '@/api/client';
 import type { ServerSubmission, SocialLink, ServerSubmissionFormState } from '@/types';
-
-const BACKEND_ORIGIN = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 export interface AdminServerSubmissionFormState extends ServerSubmissionFormState {
   verified: boolean;
-}
-
-function toPreviewUrl(url: string) {
-  if (!url) return '';
-  return url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:') ? url : `${BACKEND_ORIGIN}${url}`;
 }
 
 // 将后端的 ServerSubmission 实体转换为表单状态
@@ -141,7 +134,7 @@ export function useManageServerSubmissions() {
       const response = await api.post<{ url: string }>('/server-submissions/upload-cover', payload, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setFormData({ ...formData, [field]: toPreviewUrl(response.data.url) });
+      setFormData({ ...formData, [field]: getUploadUrl(response.data.url) });
     } catch (err) {
       console.error('Upload failed:', err);
       alert('上传失败');

@@ -1,7 +1,8 @@
 // frontend/src/api/index.ts
 import type { Sponsor, FriendLink, ChangelogEntry } from '../types';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = ((import.meta as any).env?.VITE_API_BASE_URL ?? '/api') as string;
+
 
 export const getSponsors = async (): Promise<Sponsor[]> => {
   const response = await fetch(`${API_BASE_URL}/sponsors`);

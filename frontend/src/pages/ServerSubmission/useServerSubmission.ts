@@ -2,11 +2,9 @@
 import { useState, useEffect } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom'; // 【新增】引入路由跳转
-import { api } from '@/api/client';
+import { api, getUploadUrl } from '@/api/client';
 import { initialFormState, type ServerSubmissionFormState } from './types';
 
-const BACKEND_ORIGIN = 'http://localhost:3000';
-const toPreviewUrl = (url: string) => !url ? '' : url.startsWith('http') ? url : `${BACKEND_ORIGIN}${url}`;
 
 export interface ServerTagDict {
   id: string;
@@ -45,7 +43,7 @@ export function useServerSubmission() {
       const response = await api.post<{ url: string }>('/server-submissions/upload-cover', payload, { 
         headers: { 'Content-Type': 'multipart/form-data' } 
       });
-      setFormData(current => ({ ...current, [field]: toPreviewUrl(response.data.url) }));
+      setFormData(current => ({ ...current, [field]: getUploadUrl(response.data.url) }));
     } catch {
       setError(`上传失败，请稍后再试。`);
     } finally {

@@ -1,6 +1,6 @@
 // frontend/src/pages/admin/hooks/useManageHero.ts
 import { useState, useEffect } from 'react';
-import { api } from '../../../api/client';
+import { api, getUploadUrl } from '../../../api/client';
 import type { HeroFormData } from '../types/hero';
 
 export function useManageHero() {
@@ -40,9 +40,8 @@ export function useManageHero() {
       const res = await api.post('/admin/upload', formDataObj, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      // 拼接后端返回的图片地址
-      const imageUrl = res.data.url.startsWith('/') ? res.data.url : `/${res.data.url}`;
-        handleChange('logoUrl', `http://localhost:3000${imageUrl}`);
+      const imageUrl = res.data.url;
+        handleChange('logoUrl', getUploadUrl(imageUrl));
     } catch (err) {
       alert('图片上传失败，请检查后端服务');
     } finally {
