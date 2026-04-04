@@ -22,6 +22,7 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem { method: "GET", path: "/api/changelog", group: "public" },
     ApiEndpointCatalogItem { method: "GET", path: "/api/friends", group: "public" },
     ApiEndpointCatalogItem { method: "GET", path: "/api/mc/latest-update", group: "public" },
+    ApiEndpointCatalogItem { method: "GET", path: "/api/server-submissions", group: "public" },
     ApiEndpointCatalogItem { method: "POST", path: "/api/server-submissions", group: "public" },
     ApiEndpointCatalogItem { method: "POST", path: "/api/server-submissions/upload-cover", group: "public" },
     ApiEndpointCatalogItem { method: "POST", path: "/api/track/download", group: "public" },

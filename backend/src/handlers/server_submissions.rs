@@ -142,6 +142,20 @@ pub async fn get_all_server_submissions(
     Ok(Json(submissions))
 }
 
+// ================= 3.5. 获取公开(已审核)的服务器列表 =================
+pub async fn get_public_server_submissions(
+    State(pool): State<SqlitePool>,
+) -> Result<Json<Vec<ServerSubmission>>, (StatusCode, String)> {
+    let submissions = sqlx::query_as::<_, ServerSubmission>(
+        "SELECT * FROM server_submissions WHERE verified = 1 ORDER BY datetime(created_at) DESC",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(submissions))
+}
+
 // ================= 4. 修改服务器信息 =================
 pub async fn update_server_submission(
     _claims: Claims,

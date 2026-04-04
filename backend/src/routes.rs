@@ -34,7 +34,7 @@ pub fn create_router(pool: SqlitePool) -> Router {
         )
         .route(
             "/api/server-submissions",
-            post(handlers::server_submissions::create_server_submission),
+            post(handlers::server_submissions::create_server_submission).get(handlers::server_submissions::get_public_server_submissions),
         )
         .route(
             "/api/server-submissions/upload-cover",
