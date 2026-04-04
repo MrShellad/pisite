@@ -75,6 +75,12 @@ export interface ServerSubmission {
   
   createdAt?: string | null;
   verified: boolean;
+  statusOnlinePlayers?: number | null;
+  statusMaxPlayers?: number | null;
+  statusIsOnline?: boolean | null;
+  statusUpdatedAt?: string | null;
+  statusExpiresAt?: string | null;
+  statusIsExpired?: boolean | null;
 }
 
 // 3. 前端提交表单的状态模型 (剔除了由后端生成的 id, createdAt, verified)
@@ -103,4 +109,22 @@ export interface ServerSubmissionFormState {
   elements: IconTag[];
   community: IconTag[];
   tags: string[];
+}
+
+export interface ServerPingConfig {
+  id: string;
+  enabled: boolean;
+  intervalSeconds: number;
+  batchSize: number;
+  timeoutMs: number;
+  ttlSeconds: number;
+  cursor: number;
+  lastRunAt?: string | null;
+  lastRunStatus?: string | null;
+}
+
+export interface ServerPingBatchRunResult {
+  totalServers: number;
+  processedServers: number;
+  cursor: number;
 }

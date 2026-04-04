@@ -418,6 +418,81 @@ async fn main() {
     // 自动建表：Signaling Servers (信令服务器管理)
     // ==============================================
     sqlx::query(
+        "CREATE TABLE IF NOT EXISTS server_status (
+            server_id TEXT PRIMARY KEY,
+            online_players INTEGER NOT NULL DEFAULT 0,
+            max_players INTEGER NOT NULL DEFAULT 0,
+            is_online BOOLEAN NOT NULL DEFAULT 0,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            expires_at DATETIME,
+            FOREIGN KEY(server_id) REFERENCES server_submissions(id) ON DELETE CASCADE
+        );",
+    )
+    .execute(&pool)
+    .await
+    .expect("failed to create server_status table");
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS server_status_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            server_id TEXT NOT NULL,
+            online_players INTEGER NOT NULL,
+            max_players INTEGER NOT NULL,
+            is_online BOOLEAN NOT NULL,
+            recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(server_id) REFERENCES server_submissions(id) ON DELETE CASCADE
+        );",
+    )
+    .execute(&pool)
+    .await
+    .expect("failed to create server_status_history table");
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS server_ping_config (
+            id TEXT PRIMARY KEY,
+            enabled BOOLEAN NOT NULL DEFAULT 1,
+            interval_seconds INTEGER NOT NULL DEFAULT 120,
+            batch_size INTEGER NOT NULL DEFAULT 20,
+            timeout_ms INTEGER NOT NULL DEFAULT 3000,
+            ttl_seconds INTEGER NOT NULL DEFAULT 300,
+            cursor INTEGER NOT NULL DEFAULT 0,
+            last_run_at DATETIME,
+            last_run_status TEXT
+        );",
+    )
+    .execute(&pool)
+    .await
+    .expect("failed to create server_ping_config table");
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_server_status_expires_at ON server_status(expires_at);",
+    )
+    .execute(&pool)
+    .await
+    .expect("failed to create server_status expires index");
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_server_status_history_server_time ON server_status_history(server_id, recorded_at DESC);",
+    )
+    .execute(&pool)
+    .await
+    .expect("failed to create server_status_history index");
+
+    let ping_cfg_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM server_ping_config")
+        .fetch_one(&pool)
+        .await
+        .unwrap_or((0,));
+    if ping_cfg_count.0 == 0 {
+        sqlx::query(
+            "INSERT INTO server_ping_config (id, enabled, interval_seconds, batch_size, timeout_ms, ttl_seconds, cursor, last_run_status)
+             VALUES ('1', 1, 120, 20, 3000, 300, 0, 'waiting first run')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+
+    sqlx::query(
         "CREATE TABLE IF NOT EXISTS signaling_servers (
             id TEXT PRIMARY KEY,
             url TEXT NOT NULL,
@@ -554,6 +629,11 @@ async fn main() {
     let crawler_pool = pool.clone();
     tokio::spawn(async move {
         crate::handlers::minecraft_api::crawler_daemon(crawler_pool).await;
+    });
+
+    let server_ping_pool = pool.clone();
+    tokio::spawn(async move {
+        crate::handlers::server_submissions::server_status_daemon(server_ping_pool).await;
     });
 
     // 9. 目录与服务启动

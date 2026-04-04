@@ -2,7 +2,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { ChangeEvent } from 'react';
 import { api, getUploadUrl } from '@/api/client';
-import type { ServerSubmission, SocialLink, ServerSubmissionFormState } from '@/types';
+import type {
+  ServerPingBatchRunResult,
+  ServerPingConfig,
+  ServerSubmission,
+  ServerSubmissionFormState,
+  SocialLink
+} from '@/types';
 
 export interface AdminServerSubmissionFormState extends ServerSubmissionFormState {
   verified: boolean;
@@ -47,7 +53,10 @@ export function useManageServerSubmissions() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState<'icon' | 'hero' | null>(null);
+  const [isSavingPingConfig, setIsSavingPingConfig] = useState(false);
+  const [isRunningPingJob, setIsRunningPingJob] = useState(false);
   const [tagDict, setTagDict] = useState<any[]>([]);
+  const [pingConfig, setPingConfig] = useState<ServerPingConfig | null>(null);
 
   // 筛选与搜索状态
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,7 +67,9 @@ export function useManageServerSubmissions() {
     try {
       api.get('/server-tags-dict').then(res => setTagDict(res.data)).catch(() => { });
       const response = await api.get<ServerSubmission[]>('/admin/server-submissions');
+      const pingConfigRes = await api.get<ServerPingConfig>('/admin/server-status/config');
       setSubmissions(response.data);
+      setPingConfig(pingConfigRes.data);
 
       if (response.data.length && !selectedId) {
         setSelectedId(response.data[0].id);
@@ -166,6 +177,48 @@ export function useManageServerSubmissions() {
     }
   };
 
+  const updatePingConfigField = (key: keyof ServerPingConfig, value: string | number | boolean) => {
+    setPingConfig(prev => {
+      if (!prev) return prev;
+      return { ...prev, [key]: value } as ServerPingConfig;
+    });
+  };
+
+  const handleSavePingConfig = async () => {
+    if (!pingConfig) return;
+    setIsSavingPingConfig(true);
+    try {
+      await api.put('/admin/server-status/config', {
+        enabled: pingConfig.enabled,
+        intervalSeconds: Number(pingConfig.intervalSeconds),
+        batchSize: Number(pingConfig.batchSize),
+        timeoutMs: Number(pingConfig.timeoutMs),
+        ttlSeconds: Number(pingConfig.ttlSeconds),
+      });
+      await fetchData();
+      window.alert('Server ping schedule saved.');
+    } catch (err) {
+      console.error('Failed to save ping config:', err);
+      window.alert('Failed to save server ping schedule.');
+    } finally {
+      setIsSavingPingConfig(false);
+    }
+  };
+
+  const handleRunPingBatch = async () => {
+    setIsRunningPingJob(true);
+    try {
+      const res = await api.post<ServerPingBatchRunResult>('/admin/server-status/run');
+      await fetchData();
+      window.alert(`Ping batch done: ${res.data.processedServers}/${res.data.totalServers}`);
+    } catch (err) {
+      console.error('Failed to run ping batch:', err);
+      window.alert('Failed to run ping batch.');
+    } finally {
+      setIsRunningPingJob(false);
+    }
+  };
+
   const addSocialLink = () => setFormData(c => c ? ({ ...c, socialLinks: [...(c.socialLinks || []), { platform: 'QQ', url: '' }] }) : c);
   const updateSocialLink = (index: number, key: keyof SocialLink, value: string) => {
     setFormData(c => c ? ({ ...c, socialLinks: (c.socialLinks || []).map((item, i) => i === index ? { ...item, [key]: value } : item) }) : c);
@@ -182,7 +235,13 @@ export function useManageServerSubmissions() {
     setIsLoading,
     isSaving,
     isUploading,
+    isSavingPingConfig,
+    isRunningPingJob,
     tagDict,
+    pingConfig,
+    updatePingConfigField,
+    handleSavePingConfig,
+    handleRunPingBatch,
     searchQuery,
     setSearchQuery,
     filterStatus,

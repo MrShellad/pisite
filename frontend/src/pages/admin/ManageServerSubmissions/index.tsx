@@ -1,123 +1,277 @@
-// frontend/src/pages/admin/ManageServerSubmissions/index.tsx
-import { RefreshCw, Save, Server, ShieldCheck, Upload, ImagePlus, Plus, Search, Trash2, CheckCircle2, Circle } from 'lucide-react';
+﻿import {
+  CheckCircle2,
+  Circle,
+  Clock3,
+  ImagePlus,
+  Play,
+  Plus,
+  RefreshCw,
+  Save,
+  Search,
+  Server,
+  ShieldCheck,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
-import { useManageServerSubmissions } from './useManageServerSubmissions';
 import { getUploadUrl } from '@/api/client';
 import IconTagEditor from '@/pages/ServerSubmission/components/IconTagEditor';
 import StringTagEditor from '@/pages/ServerSubmission/components/StringTagEditor';
+import { useManageServerSubmissions } from './useManageServerSubmissions';
 
 export default function ManageServerSubmissions() {
   const {
-    filteredSubmissions, selectedId, formData, setFormData,
-    isLoading, setIsLoading, isSaving, isUploading, tagDict,
-    searchQuery, setSearchQuery, filterStatus, setFilterStatus,
-    fetchData, handleSelect, handleUpload, handleSave, handleDelete, handleToggleVerify,
-    addSocialLink, updateSocialLink, removeSocialLink
+    filteredSubmissions,
+    selectedId,
+    formData,
+    setFormData,
+    isLoading,
+    setIsLoading,
+    isSaving,
+    isUploading,
+    isSavingPingConfig,
+    isRunningPingJob,
+    tagDict,
+    pingConfig,
+    updatePingConfigField,
+    handleSavePingConfig,
+    handleRunPingBatch,
+    searchQuery,
+    setSearchQuery,
+    filterStatus,
+    setFilterStatus,
+    fetchData,
+    handleSelect,
+    handleUpload,
+    handleSave,
+    handleDelete,
+    handleToggleVerify,
+    addSocialLink,
+    updateSocialLink,
+    removeSocialLink,
   } = useManageServerSubmissions();
 
-  const inputClass = 'w-full rounded-xl border border-neutral-200 bg-neutral-100/60 px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-orange-500 focus:bg-white';
+  const inputClass =
+    'w-full rounded-xl border border-neutral-200 bg-neutral-100/60 px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-orange-500 focus:bg-white';
   const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-500';
   const cardClass = 'rounded-2xl border border-neutral-200/70 bg-white/85 p-6 shadow-sm backdrop-blur';
 
-  if (isLoading) return <div className="animate-pulse text-neutral-500 p-8">Loading submissions...</div>;
+  if (isLoading) {
+    return <div className="animate-pulse p-8 text-neutral-500">Loading submissions...</div>;
+  }
 
   return (
     <div className="space-y-8 pb-12">
-      {/* 顶部标题与快速筛选 */}
       <div className="flex flex-wrap items-center justify-between gap-6">
         <div>
           <h2 className="flex items-center gap-2 text-2xl font-bold text-neutral-900">
             <Server className="text-orange-500" />
-            服务器资料管理
+            服务器提交管理
           </h2>
-          <p className="mt-2 text-sm text-neutral-500">在此处审核、编辑用户提交的服务器资料。</p>
+          <p className="mt-2 text-sm text-neutral-500">审核、编辑并维护服务器提交内容与在线状态缓存。</p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="relative group">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-orange-500 transition-colors" />
+          <div className="group relative">
+            <Search
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors group-focus-within:text-orange-500"
+            />
             <input
               type="text"
-              placeholder="搜索名称或 IP..."
+              placeholder="搜索名称或 IP"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-64 rounded-xl border border-neutral-200 bg-white pl-10 pr-4 py-2.5 text-sm outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-64 rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
             />
           </div>
           <button
-            onClick={() => { setIsLoading(true); void fetchData(); }}
-            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:border-orange-300 hover:text-orange-600 hover:bg-orange-50"
+            onClick={() => {
+              setIsLoading(true);
+              void fetchData();
+            }}
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
           >
-            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} /> 刷新
+            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+            刷新
           </button>
         </div>
       </div>
 
+      <section className={`${cardClass} p-5`}>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 className="flex items-center gap-2 text-sm font-bold text-neutral-900">
+              <Clock3 size={16} className="text-orange-500" />
+              Server List Ping 计划任务
+            </h3>
+            <p className="mt-1 text-xs text-neutral-500">支持开关、分批抓取、TTL 过期和手动触发。</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => void handleRunPingBatch()}
+              disabled={isRunningPingJob}
+              className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
+            >
+              {isRunningPingJob ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
+              手动执行一批
+            </button>
+            <button
+              onClick={() => void handleSavePingConfig()}
+              disabled={!pingConfig || isSavingPingConfig}
+              className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {isSavingPingConfig ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+              保存计划
+            </button>
+          </div>
+        </div>
+
+        {pingConfig && (
+          <div className="mt-4 grid gap-4 sm:grid-cols-5">
+            <label className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700">
+              <input
+                type="checkbox"
+                checked={pingConfig.enabled}
+                onChange={(e) => updatePingConfigField('enabled', e.target.checked)}
+                className="h-4 w-4 accent-orange-500"
+              />
+              启用任务
+            </label>
+            <label className="text-xs text-neutral-600">
+              间隔(秒)
+              <input
+                type="number"
+                min={10}
+                value={pingConfig.intervalSeconds}
+                onChange={(e) => updatePingConfigField('intervalSeconds', Number(e.target.value))}
+                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
+              />
+            </label>
+            <label className="text-xs text-neutral-600">
+              批次大小
+              <input
+                type="number"
+                min={1}
+                value={pingConfig.batchSize}
+                onChange={(e) => updatePingConfigField('batchSize', Number(e.target.value))}
+                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
+              />
+            </label>
+            <label className="text-xs text-neutral-600">
+              超时(ms)
+              <input
+                type="number"
+                min={500}
+                value={pingConfig.timeoutMs}
+                onChange={(e) => updatePingConfigField('timeoutMs', Number(e.target.value))}
+                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
+              />
+            </label>
+            <label className="text-xs text-neutral-600">
+              TTL(秒)
+              <input
+                type="number"
+                min={10}
+                value={pingConfig.ttlSeconds}
+                onChange={(e) => updatePingConfigField('ttlSeconds', Number(e.target.value))}
+                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
+              />
+            </label>
+          </div>
+        )}
+      </section>
+
       <div className="grid gap-8 xl:grid-cols-[380px_1fr]">
-        {/* ================= 左侧：服务器列表 ================= */}
-        <section className={`${cardClass} flex flex-col h-[calc(100vh-180px)] overflow-hidden`}>
+        <section className={`${cardClass} flex h-[calc(100vh-180px)] flex-col overflow-hidden`}>
           <div className="mb-5 flex items-center justify-between">
-            <div className="flex bg-neutral-100 p-1 rounded-xl">
-              {(['all', 'pending', 'verified'] as const).map(s => (
+            <div className="flex rounded-xl bg-neutral-100 p-1">
+              {(['all', 'pending', 'verified'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setFilterStatus(s)}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${filterStatus === s ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                    filterStatus === s ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'
+                  }`}
                 >
-                  {s === 'all' ? '全部' : s === 'pending' ? '待审' : '已核'}
+                  {s === 'all' ? '全部' : s === 'pending' ? '待审' : '已审'}
                 </button>
               ))}
             </div>
             <span className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white">{filteredSubmissions.length}</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
+          <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto pr-2">
             {filteredSubmissions.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500">暂无记录</div>
             ) : (
               filteredSubmissions.map((item) => {
                 const isActive = item.id === selectedId;
+                const hasFreshStatus = !!item.statusUpdatedAt && !item.statusIsExpired;
+                const statusOnline = hasFreshStatus ? !!item.statusIsOnline : false;
+                const onlinePlayers = hasFreshStatus
+                  ? (item.statusOnlinePlayers ?? item.onlinePlayers ?? 0)
+                  : (item.onlinePlayers ?? 0);
+                const maxPlayers = hasFreshStatus
+                  ? (item.statusMaxPlayers ?? item.maxPlayers ?? 0)
+                  : (item.maxPlayers ?? 0);
+
                 return (
                   <div
                     key={item.id}
-                    className={`group relative rounded-2xl border transition-all ${isActive ? 'border-orange-300 bg-orange-50/50' : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300 hover:bg-white'}`}
+                    className={`group relative rounded-2xl border transition-all ${
+                      isActive
+                        ? 'border-orange-300 bg-orange-50/50'
+                        : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300 hover:bg-white'
+                    }`}
                   >
-                    <button
-                      onClick={() => handleSelect(item)}
-                      className="w-full px-4 py-4 text-left"
-                    >
+                    <button onClick={() => handleSelect(item)} className="w-full px-4 py-4 text-left">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex gap-3">
-                          <img src={getUploadUrl(item.icon) || '/placeholder-icon.png'} className="w-10 h-10 rounded-xl object-cover border border-neutral-200" alt="" />
+                          <img
+                            src={getUploadUrl(item.icon) || '/placeholder-icon.png'}
+                            className="h-10 w-10 rounded-xl border border-neutral-200 object-cover"
+                            alt=""
+                          />
                           <div>
-                            <div className="text-sm font-bold text-neutral-900 line-clamp-1">{item.name || '未命名'}</div>
-                            <div className="mt-1 text-xs font-mono text-neutral-500">{item.ip}:{item.port}</div>
+                            <div className="line-clamp-1 text-sm font-bold text-neutral-900">{item.name || '未命名'}</div>
+                            <div className="mt-1 font-mono text-xs text-neutral-500">{item.ip}:{item.port}</div>
+                            <div className="mt-1 flex items-center gap-2 text-[11px] text-neutral-500">
+                              <span className={`inline-block h-2 w-2 rounded-full ${statusOnline ? 'bg-emerald-500' : 'bg-neutral-300'}`} />
+                              <span>{statusOnline ? '在线' : '离线/过期'}</span>
+                              <span className="font-mono">{onlinePlayers}/{maxPlayers}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </button>
 
-                    {/* 快速操作按钮组 */}
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                       <button
-                        onClick={(e) => { e.stopPropagation(); void handleToggleVerify(item.id, item.verified); }}
-                        className={`p-2 rounded-lg transition-colors ${item.verified ? 'text-emerald-500 hover:bg-emerald-50' : 'text-neutral-400 hover:bg-neutral-100'}`}
-                        title={item.verified ? "撤销审核" : "设为已通过"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleToggleVerify(item.id, item.verified);
+                        }}
+                        className={`rounded-lg p-2 transition-colors ${
+                          item.verified ? 'text-emerald-500 hover:bg-emerald-50' : 'text-neutral-400 hover:bg-neutral-100'
+                        }`}
+                        title={item.verified ? '撤销审核' : '标记通过'}
                       >
                         {item.verified ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); void handleDelete(item.id); }}
-                        className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        title="立即删除"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDelete(item.id);
+                        }}
+                        className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                        title="删除"
                       >
                         <Trash2 size={18} />
                       </button>
                     </div>
-
-                    {!isActive && item.verified && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500" />}
                   </div>
                 );
               })
@@ -125,217 +279,407 @@ export default function ManageServerSubmissions() {
           </div>
         </section>
 
-        {/* ================= 右侧：编辑表单 ================= */}
-        <section className={`${cardClass} h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar`}>
+        <section className={`${cardClass} custom-scrollbar h-[calc(100vh-180px)] overflow-y-auto`}>
           {!formData ? (
-            <div className="flex flex-col items-center justify-center h-full space-y-4 text-neutral-400">
-              <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center">
+            <div className="flex h-full flex-col items-center justify-center space-y-4 text-neutral-400">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-100">
                 <Server size={32} />
               </div>
-              <p className="text-sm font-medium">请在左侧选择一条记录以开始编辑</p>
+              <p className="text-sm font-medium">请在左侧选择一条记录后再编辑。</p>
             </div>
           ) : (
             <div className="space-y-8">
-              {/* 管理员审核控制台 */}
-              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
+              <div className="sticky top-0 z-10 flex items-center justify-between rounded-2xl border border-orange-200 bg-orange-50 p-5 backdrop-blur-md">
                 <div>
-                  <h4 className="font-bold text-orange-800 text-sm">管理员控制台</h4>
-                  <p className="text-xs text-orange-600 mt-1">审核通过后，该服务器将正式在首页展位出现。</p>
+                  <h4 className="text-sm font-bold text-orange-800">审核控制</h4>
+                  <p className="mt-1 text-xs text-orange-600">审核通过后可在公开列表展示。</p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <button
-                    onClick={() => void handleToggleVerify(selectedId!, formData.verified)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-sm transition-all ${formData.verified ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-orange-200 text-orange-700'}`}
+                    onClick={() => {
+                      if (selectedId) {
+                        void handleToggleVerify(selectedId, formData.verified);
+                      }
+                    }}
+                    className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-all ${
+                      formData.verified
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : 'border-orange-200 bg-white text-orange-700'
+                    }`}
                   >
                     {formData.verified ? <ShieldCheck size={18} /> : <Circle size={18} />}
-                    {formData.verified ? '审核已通过' : '标记为待审'}
+                    {formData.verified ? '已通过' : '设为待审'}
                   </button>
-                  <label className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2 rounded-xl shadow-sm border border-neutral-200">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-xs font-bold text-neutral-600">
                     <input
                       type="checkbox"
                       checked={formData.verified}
-                      onChange={e => setFormData(prev => prev ? { ...prev, verified: e.target.checked } : prev)}
-                      className="w-4 h-4 accent-emerald-500"
+                      onChange={(e) =>
+                        setFormData((prev) => (prev ? { ...prev, verified: e.target.checked } : prev))
+                      }
+                      className="h-4 w-4 accent-emerald-500"
                     />
-                    <span className="text-xs font-bold text-neutral-600">手动切换状态</span>
+                    手动切换
                   </label>
                 </div>
               </div>
 
-              {/* 视觉资产 */}
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className={labelClass}>服务器 Icon (点击更换)</label>
-                  <label className="relative block h-24 w-24 rounded-3xl border-2 border-dashed border-neutral-200 bg-neutral-50 overflow-hidden cursor-pointer group hover:border-orange-500 hover:bg-white transition-all">
-                    {formData.icon ? <img src={formData.icon} className="w-full h-full object-cover" alt="icon" /> : <div className="flex h-full items-center justify-center"><ImagePlus size={24} className="text-neutral-300" /></div>}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white"><Upload size={18} /></div>
-                    <input type="file" className="hidden" onChange={e => handleUpload(e, 'icon')} disabled={!!isUploading} accept="image/*" />
+                  <label className={labelClass}>服务器图标</label>
+                  <label className="group relative block h-24 w-24 cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white">
+                    {formData.icon ? (
+                      <img src={formData.icon} className="h-full w-full object-cover" alt="icon" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <ImagePlus size={24} className="text-neutral-300" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                      <Upload size={18} />
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => handleUpload(e, 'icon')}
+                      disabled={!!isUploading}
+                      accept="image/*"
+                    />
                   </label>
                 </div>
+
                 <div>
-                  <label className={labelClass}>Hero 封面大图 (点击更换)</label>
-                  <label className="relative block h-24 w-full rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50 overflow-hidden cursor-pointer group hover:border-orange-500 hover:bg-white transition-all">
-                    {formData.hero ? <img src={formData.hero} className="w-full h-full object-cover" alt="hero" /> : <div className="flex h-full items-center justify-center"><ImagePlus size={24} className="text-neutral-300" /></div>}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white"><Upload size={18} /></div>
-                    <input type="file" className="hidden" onChange={e => handleUpload(e, 'hero')} disabled={!!isUploading} accept="image/*" />
+                  <label className={labelClass}>Hero 封面</label>
+                  <label className="group relative block h-24 w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white">
+                    {formData.hero ? (
+                      <img src={formData.hero} className="h-full w-full object-cover" alt="hero" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <ImagePlus size={24} className="text-neutral-300" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                      <Upload size={18} />
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => handleUpload(e, 'hero')}
+                      disabled={!!isUploading}
+                      accept="image/*"
+                    />
                   </label>
                 </div>
               </div>
 
-              {/* 基础信息 */}
-              <div className="grid sm:grid-cols-2 gap-6">
+              <div className="grid gap-6 sm:grid-cols-3">
                 <div>
                   <label className={labelClass}>服务器名称</label>
-                  <input placeholder="例如：我的世界生存服" value={formData.name} onChange={e => setFormData(prev => prev ? { ...prev, name: e.target.value } : prev)} className={inputClass} />
+                  <input
+                    value={formData.name}
+                    onChange={(e) => setFormData((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
+                    className={inputClass}
+                  />
                 </div>
                 <div>
                   <label className={labelClass}>服务器类型</label>
-                  <select value={formData.serverType} onChange={e => setFormData(prev => prev ? { ...prev, serverType: e.target.value } : prev)} className={inputClass}>
-                    <option value="vanilla">纯净原版</option>
-                    <option value="plugin">插件服</option>
-                    <option value="modded">模组服</option>
-                    <option value="network">群组服/跨服</option>
+                  <select
+                    value={formData.serverType}
+                    onChange={(e) =>
+                      setFormData((prev) => (prev ? { ...prev, serverType: e.target.value } : prev))
+                    }
+                    className={inputClass}
+                  >
+                    <option value="vanilla">vanilla</option>
+                    <option value="plugin">plugin</option>
+                    <option value="modded">modded</option>
+                    <option value="network">network</option>
                   </select>
                 </div>
-              </div>
-
-              {/* 富文本编辑 */}
-              <div>
-                <label className={labelClass}>详情介绍 (富文本)</label>
-                <div className="bg-white rounded-2xl overflow-hidden border border-neutral-200 focus-within:border-orange-500 transition-colors">
-                  <ReactQuill theme="snow" value={formData.description} onChange={val => setFormData(prev => prev ? { ...prev, description: val } : prev)} className="min-h-[220px] pb-12 border-0" />
+                <div>
+                  <label className={labelClass}>语言</label>
+                  <input
+                    value={formData.language}
+                    onChange={(e) =>
+                      setFormData((prev) => (prev ? { ...prev, language: e.target.value } : prev))
+                    }
+                    className={inputClass}
+                  />
                 </div>
               </div>
 
-              {/* 网络与版本 */}
-              <div className="grid sm:grid-cols-4 gap-4">
+              <div>
+                <label className={labelClass}>详情介绍</label>
+                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-colors focus-within:border-orange-500">
+                  <ReactQuill
+                    theme="snow"
+                    value={formData.description}
+                    onChange={(val) =>
+                      setFormData((prev) => (prev ? { ...prev, description: val } : prev))
+                    }
+                    className="min-h-[220px] border-0 pb-12"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-4">
                 <div className="sm:col-span-2">
-                  <label className={labelClass}>IP 地址 / 域名</label>
-                  <input placeholder="play.example.com" value={formData.ip} onChange={e => setFormData(prev => prev ? { ...prev, ip: e.target.value } : prev)} className={inputClass} />
+                  <label className={labelClass}>IP / 域名</label>
+                  <input
+                    value={formData.ip}
+                    onChange={(e) => setFormData((prev) => (prev ? { ...prev, ip: e.target.value } : prev))}
+                    className={inputClass}
+                  />
                 </div>
                 <div>
                   <label className={labelClass}>端口</label>
-                  <input type="number" value={formData.port} onChange={e => setFormData(prev => prev ? { ...prev, port: Number(e.target.value) } : prev)} className={inputClass} />
+                  <input
+                    type="number"
+                    value={formData.port}
+                    onChange={(e) =>
+                      setFormData((prev) => (prev ? { ...prev, port: Number(e.target.value) } : prev))
+                    }
+                    className={inputClass}
+                  />
                 </div>
                 <div>
-                  <label className={labelClass}>最大承载人数</label>
-                  <input type="number" value={formData.maxPlayers} onChange={e => setFormData(prev => prev ? { ...prev, maxPlayers: Number(e.target.value) } : prev)} className={inputClass} />
+                  <label className={labelClass}>最大人数</label>
+                  <input
+                    type="number"
+                    value={formData.maxPlayers}
+                    onChange={(e) =>
+                      setFormData((prev) => (prev ? { ...prev, maxPlayers: Number(e.target.value) } : prev))
+                    }
+                    className={inputClass}
+                  />
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-6">
+              <div className="grid gap-6 sm:grid-cols-2">
                 <div>
-                  <label className={labelClass}>兼容版本范围</label>
-                  <StringTagEditor tags={formData.versions} validateRegex={/^\d+\.\d+(\.\d+)?(-\w+)?$/} onChange={tags => setFormData(prev => prev ? { ...prev, versions: tags } : prev)} />
+                  <label className={labelClass}>兼容版本</label>
+                  <StringTagEditor
+                    tags={formData.versions}
+                    validateRegex={/^\d+\.\d+(\.\d+)?(-\w+)?$/}
+                    onChange={(tags) => setFormData((prev) => (prev ? { ...prev, versions: tags } : prev))}
+                  />
                 </div>
                 <div>
-                  <label className={labelClass}>SEO/查询标签</label>
-                  <StringTagEditor tags={formData.tags} onChange={tags => setFormData(prev => prev ? { ...prev, tags: tags } : prev)} />
+                  <label className={labelClass}>标签</label>
+                  <StringTagEditor
+                    tags={formData.tags}
+                    onChange={(tags) => setFormData((prev) => (prev ? { ...prev, tags } : prev))}
+                  />
                 </div>
               </div>
 
-              {/* 合规与属性 */}
-              <div className="grid sm:grid-cols-3 gap-6 items-end">
+              <div className="grid items-end gap-6 sm:grid-cols-3">
                 <div>
-                  <label className={labelClass}>适龄提示</label>
-                  <select value={formData.ageRecommendation} onChange={e => setFormData(prev => prev ? { ...prev, ageRecommendation: e.target.value } : prev)} className={inputClass}>
-                    <option value="全年龄">全年龄</option><option value="12+">12+</option><option value="16+">16+</option><option value="18+">18+</option>
+                  <label className={labelClass}>年龄建议</label>
+                  <select
+                    value={formData.ageRecommendation}
+                    onChange={(e) =>
+                      setFormData((prev) => (prev ? { ...prev, ageRecommendation: e.target.value } : prev))
+                    }
+                    className={inputClass}
+                  >
+                    <option value="全年龄">全年龄</option>
+                    <option value="12+">12+</option>
+                    <option value="16+">16+</option>
+                    <option value="18+">18+</option>
                   </select>
                 </div>
                 <div className="sm:col-span-2 pb-3">
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className={`w-5 h-5 rounded border-2 transition-all flex items-center justify-center ${formData.hasPaidContent ? 'bg-orange-500 border-orange-500' : 'border-neutral-300 group-hover:border-orange-400'}`}>
-                      {formData.hasPaidContent && <Plus size={14} className="text-white rotate-45" />}
+                  <label className="group flex cursor-pointer items-center gap-3">
+                    <div
+                      className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-all ${
+                        formData.hasPaidContent
+                          ? 'border-orange-500 bg-orange-500'
+                          : 'border-neutral-300 group-hover:border-orange-400'
+                      }`}
+                    >
+                      {formData.hasPaidContent && <Plus size={14} className="rotate-45 text-white" />}
                     </div>
-                    <input type="checkbox" className="hidden" checked={formData.hasPaidContent} onChange={e => setFormData(prev => prev ? { ...prev, hasPaidContent: e.target.checked } : prev)} />
-                    <span className="text-sm font-bold text-neutral-700">包含氪金/内购内容</span>
+                    <input
+                      type="checkbox"
+                      className="hidden"
+                      checked={formData.hasPaidContent}
+                      onChange={(e) =>
+                        setFormData((prev) => (prev ? { ...prev, hasPaidContent: e.target.checked } : prev))
+                      }
+                    />
+                    <span className="text-sm font-bold text-neutral-700">包含付费内容</span>
                   </label>
                 </div>
               </div>
 
-              {/* 链接配置 */}
-              <div className="grid sm:grid-cols-2 gap-6">
+              <div className="grid gap-6 sm:grid-cols-2">
                 <div>
                   <label className={labelClass}>官方网站</label>
-                  <input placeholder="https://..." value={formData.website} onChange={e => setFormData(prev => prev ? { ...prev, website: e.target.value } : prev)} className={inputClass} />
+                  <input
+                    value={formData.website}
+                    onChange={(e) =>
+                      setFormData((prev) => (prev ? { ...prev, website: e.target.value } : prev))
+                    }
+                    className={inputClass}
+                  />
                 </div>
                 {formData.serverType === 'modded' && (
                   <div>
-                    <label className={labelClass}>整合包下载链接</label>
-                    <input placeholder="蓝奏云/网盘/CurseForge" value={formData.modpackUrl} onChange={e => setFormData(prev => prev ? { ...prev, modpackUrl: e.target.value } : prev)} className={inputClass} />
+                    <label className={labelClass}>整合包下载</label>
+                    <input
+                      value={formData.modpackUrl}
+                      onChange={(e) =>
+                        setFormData((prev) => (prev ? { ...prev, modpackUrl: e.target.value } : prev))
+                      }
+                      className={inputClass}
+                    />
                   </div>
                 )}
               </div>
 
-              {/* 社交平台 */}
-              <div className="p-6 bg-neutral-50 rounded-3xl border border-neutral-200 space-y-5">
+              <div className="space-y-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-6">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-neutral-800 text-sm flex items-center gap-2">
-                    <Plus size={16} className="text-orange-500" /> 社交互动渠道
+                  <h4 className="flex items-center gap-2 text-sm font-bold text-neutral-800">
+                    <Plus size={16} className="text-orange-500" />
+                    社交渠道
                   </h4>
-                  <button type="button" onClick={addSocialLink} className="text-xs text-orange-600 font-bold hover:bg-orange-50 px-3 py-1.5 rounded-lg transition-colors">添加新链接</button>
-                </div>
-                <div className="space-y-3">
-                  {formData.socialLinks.map((link, idx) => (
-                    <div key={idx} className="flex gap-3 items-center animate-in fade-in slide-in-from-top-2">
-                      <select value={link.platform} onChange={e => updateSocialLink(idx, 'platform', e.target.value)} className={`${inputClass} !py-2.5 !w-32 shadow-sm`}>
-                        <option value="QQ">QQ群/号</option><option value="Discord">Discord</option><option value="B站">Bilibili</option><option value="抖音">抖音</option><option value="微信">微信公众号</option>
-                      </select>
-                      <input value={link.url} onChange={e => updateSocialLink(idx, 'url', e.target.value)} className={`${inputClass} !py-2.5 shadow-sm`} placeholder="输入群号或完整 URL" />
-                      <button type="button" onClick={() => removeSocialLink(idx)} className="p-2.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"><Trash2 size={18} /></button>
-                    </div>
-                  ))}
-                  {formData.socialLinks.length === 0 && <p className="text-xs text-neutral-400 text-center py-2">暂无社交链接</p>}
+                  <button
+                    type="button"
+                    onClick={addSocialLink}
+                    className="rounded-lg px-3 py-1.5 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-50"
+                  >
+                    添加
+                  </button>
                 </div>
 
-                <div className="pt-5 mt-5 border-t border-neutral-200">
-                  <label className="flex items-center gap-2 font-bold text-sm text-neutral-700 cursor-pointer group">
-                    <input type="checkbox" checked={formData.hasVoiceChat} onChange={e => setFormData(prev => prev ? { ...prev, hasVoiceChat: e.target.checked } : prev)} className="w-4 h-4 accent-orange-500" />
-                    官方推荐语音平台
+                <div className="space-y-3">
+                  {formData.socialLinks.map((link, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <select
+                        value={link.platform}
+                        onChange={(e) => updateSocialLink(idx, 'platform', e.target.value)}
+                        className={`${inputClass} !w-36 !py-2.5`}
+                      >
+                        <option value="QQ">QQ</option>
+                        <option value="Discord">Discord</option>
+                        <option value="Bilibili">Bilibili</option>
+                        <option value="抖音">抖音</option>
+                        <option value="微信">微信</option>
+                      </select>
+                      <input
+                        value={link.url}
+                        onChange={(e) => updateSocialLink(idx, 'url', e.target.value)}
+                        className={`${inputClass} !py-2.5`}
+                        placeholder="输入群号或 URL"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSocialLink(idx)}
+                        className="rounded-xl p-2.5 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))}
+                  {formData.socialLinks.length === 0 && (
+                    <p className="py-2 text-center text-xs text-neutral-400">暂无社交链接</p>
+                  )}
+                </div>
+
+                <div className="mt-5 border-t border-neutral-200 pt-5">
+                  <label className="group flex cursor-pointer items-center gap-2 text-sm font-bold text-neutral-700">
+                    <input
+                      type="checkbox"
+                      checked={formData.hasVoiceChat}
+                      onChange={(e) =>
+                        setFormData((prev) => (prev ? { ...prev, hasVoiceChat: e.target.checked } : prev))
+                      }
+                      className="h-4 w-4 accent-orange-500"
+                    />
+                    推荐语音平台
                   </label>
                   {formData.hasVoiceChat && (
-                    <div className="flex gap-3 mt-4 animate-in slide-in-from-top-4">
-                      <select value={formData.voicePlatform} onChange={e => setFormData(prev => prev ? { ...prev, voicePlatform: e.target.value } : prev)} className={`${inputClass} !py-2.5 !w-40`}>
-                        <option value="QQ">QQ内置语音</option><option value="Discord">Discord</option><option value="oopz">Oopz</option><option value="TeamSpeak">TeamSpeak</option><option value="KOOK">KOOK (原开黑啦)</option>
+                    <div className="mt-4 flex gap-3">
+                      <select
+                        value={formData.voicePlatform}
+                        onChange={(e) =>
+                          setFormData((prev) => (prev ? { ...prev, voicePlatform: e.target.value } : prev))
+                        }
+                        className={`${inputClass} !w-40 !py-2.5`}
+                      >
+                        <option value="QQ">QQ</option>
+                        <option value="Discord">Discord</option>
+                        <option value="KOOK">KOOK</option>
+                        <option value="TeamSpeak">TeamSpeak</option>
                       </select>
-                      <input value={formData.voiceUrl} onChange={e => setFormData(prev => prev ? { ...prev, voiceUrl: e.target.value } : prev)} className={`${inputClass} !py-2.5`} placeholder="频道 ID 或邀请链接" />
+                      <input
+                        value={formData.voiceUrl}
+                        onChange={(e) =>
+                          setFormData((prev) => (prev ? { ...prev, voiceUrl: e.target.value } : prev))
+                        }
+                        className={`${inputClass} !py-2.5`}
+                        placeholder="频道 ID 或邀请链接"
+                      />
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* 分类图文标签 */}
               <div className="space-y-6 pt-4">
                 <div className="flex items-center gap-3">
                   <div className="h-px flex-1 bg-neutral-100" />
-                  <h3 className="font-bold text-neutral-400 text-xs uppercase tracking-widest">精细化业务标签</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400">业务标签</h3>
                   <div className="h-px flex-1 bg-neutral-100" />
                 </div>
+
                 <div className="grid gap-6">
-                  <IconTagEditor title="🚀 核心特色" tags={formData.features} dictItems={tagDict.filter((t: any) => t.category === 'features')} fallbackColor="#10b981" onChange={tags => setFormData(prev => prev ? { ...prev, features: tags } : prev)} />
-                  <IconTagEditor title="⚙️ 玩法机制" tags={formData.mechanics} dictItems={tagDict.filter((t: any) => t.category === 'mechanics')} fallbackColor="#f97316" onChange={tags => setFormData(prev => prev ? { ...prev, mechanics: tags } : prev)} />
-                  <IconTagEditor title="🔮 补充元素" tags={formData.elements} dictItems={tagDict.filter((t: any) => t.category === 'elements')} fallbackColor="#8b5cf6" onChange={tags => setFormData(prev => prev ? { ...prev, elements: tags } : prev)} />
-                  <IconTagEditor title="🤝 社区生态" tags={formData.community} dictItems={tagDict.filter((t: any) => t.category === 'community')} fallbackColor="#0ea5e9" onChange={tags => setFormData(prev => prev ? { ...prev, community: tags } : prev)} />
+                  <IconTagEditor
+                    title="核心特色"
+                    tags={formData.features}
+                    dictItems={tagDict.filter((t: any) => t.category === 'features')}
+                    fallbackColor="#10b981"
+                    onChange={(tags) => setFormData((prev) => (prev ? { ...prev, features: tags } : prev))}
+                  />
+                  <IconTagEditor
+                    title="玩法机制"
+                    tags={formData.mechanics}
+                    dictItems={tagDict.filter((t: any) => t.category === 'mechanics')}
+                    fallbackColor="#f97316"
+                    onChange={(tags) => setFormData((prev) => (prev ? { ...prev, mechanics: tags } : prev))}
+                  />
+                  <IconTagEditor
+                    title="补充元素"
+                    tags={formData.elements}
+                    dictItems={tagDict.filter((t: any) => t.category === 'elements')}
+                    fallbackColor="#8b5cf6"
+                    onChange={(tags) => setFormData((prev) => (prev ? { ...prev, elements: tags } : prev))}
+                  />
+                  <IconTagEditor
+                    title="社区生态"
+                    tags={formData.community}
+                    dictItems={tagDict.filter((t: any) => t.category === 'community')}
+                    fallbackColor="#0ea5e9"
+                    onChange={(tags) => setFormData((prev) => (prev ? { ...prev, community: tags } : prev))}
+                  />
                 </div>
               </div>
 
-              {/* 底部悬浮保存按钮 */}
-              <div className="sticky bottom-0 bg-white/80 backdrop-blur-xl border-t border-neutral-100 p-6 -mx-6 -mb-6 rounded-b-[28px] flex justify-between items-center shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)]">
+              <div className="sticky bottom-0 -mx-6 -mb-6 flex items-center justify-between rounded-b-[28px] border-t border-neutral-100 bg-white/80 p-6 backdrop-blur-xl shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)]">
                 <div className="flex items-center gap-2 text-neutral-400">
-                  <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                  <span className="text-xs font-medium">上次自动保存: {new Date().toLocaleTimeString()}</span>
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
+                  <span className="text-xs font-medium">当前编辑内容尚未保存</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => void handleSave()}
                   disabled={isSaving}
-                  className="inline-flex items-center gap-3 rounded-2xl bg-neutral-900 px-10 py-4 text-sm font-bold tracking-wider text-white transition-all hover:bg-neutral-800 disabled:opacity-50 shadow-xl hover:shadow-2xl hover:-translate-y-1 active:translate-y-0"
+                  className="inline-flex items-center gap-3 rounded-2xl bg-neutral-900 px-10 py-4 text-sm font-bold tracking-wider text-white transition-all hover:-translate-y-1 hover:bg-neutral-800 hover:shadow-2xl active:translate-y-0 disabled:opacity-50"
                 >
                   {isSaving ? <RefreshCw size={20} className="animate-spin" /> : <Save size={20} />}
-                  {isSaving ? '正在同步数据...' : '确认并保存更改'}
+                  {isSaving ? '保存中...' : '保存修改'}
                 </button>
               </div>
-
             </div>
           )}
         </section>

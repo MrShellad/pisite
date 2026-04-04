@@ -429,6 +429,12 @@ pub struct ServerSubmission {
 
     pub created_at: Option<String>,
     pub verified: bool,
+    pub status_online_players: Option<i32>,
+    pub status_max_players: Option<i32>,
+    pub status_is_online: Option<bool>,
+    pub status_updated_at: Option<String>,
+    pub status_expires_at: Option<String>,
+    pub status_is_expired: Option<bool>,
 }
 
 // 3. 创建服务器的请求体
@@ -520,6 +526,60 @@ pub struct ServerTagDictPayload {
     pub icon_svg: String,
     pub color: String,
     pub priority: i32,
+}
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerStatus {
+    pub server_id: String,
+    pub online_players: i32,
+    pub max_players: i32,
+    pub is_online: bool,
+    pub updated_at: Option<String>,
+    pub expires_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerStatusHistory {
+    pub id: i64,
+    pub server_id: String,
+    pub online_players: i32,
+    pub max_players: i32,
+    pub is_online: bool,
+    pub recorded_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerPingConfig {
+    pub id: String,
+    pub enabled: bool,
+    pub interval_seconds: i32,
+    pub batch_size: i32,
+    pub timeout_ms: i32,
+    pub ttl_seconds: i32,
+    pub cursor: i64,
+    pub last_run_at: Option<String>,
+    pub last_run_status: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateServerPingConfigPayload {
+    pub enabled: bool,
+    pub interval_seconds: i32,
+    pub batch_size: i32,
+    pub timeout_ms: i32,
+    pub ttl_seconds: i32,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerPingBatchRunResult {
+    pub total_servers: i64,
+    pub processed_servers: i64,
+    pub cursor: i64,
 }
 
 // ==================== API Key 管理与访问日志 ====================
@@ -635,4 +695,3 @@ pub struct UpdateSignalingServerPayload {
     pub limits_max_connections: i32,
     pub enabled: bool,
 }
-

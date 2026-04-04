@@ -37,6 +37,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
             post(handlers::server_submissions::create_server_submission).get(handlers::server_submissions::get_public_server_submissions),
         )
         .route(
+            "/api/server-status",
+            get(handlers::server_submissions::get_public_server_statuses),
+        )
+        .route(
             "/api/server-submissions/upload-cover",
             post(handlers::server_submissions::upload_server_cover),
         )
@@ -147,6 +151,26 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/server-submissions/{id}/toggle-verify",
             put(handlers::server_submissions::toggle_verify),
+        )
+        .route(
+            "/api/admin/server-status",
+            get(handlers::server_submissions::get_server_statuses),
+        )
+        .route(
+            "/api/admin/server-status/config",
+            get(handlers::server_submissions::get_server_ping_config),
+        )
+        .route(
+            "/api/admin/server-status/config",
+            put(handlers::server_submissions::update_server_ping_config),
+        )
+        .route(
+            "/api/admin/server-status/run",
+            post(handlers::server_submissions::run_server_ping_batch_now),
+        )
+        .route(
+            "/api/admin/server-status/history/{server_id}",
+            get(handlers::server_submissions::get_server_status_history),
         )
         // 公开的获取标签字典路由 (原先已存在)
         .route(
