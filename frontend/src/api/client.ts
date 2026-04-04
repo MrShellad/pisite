@@ -12,14 +12,40 @@ import axios from 'axios';
  */
 export function getUploadUrl(path: string): string {
   if (!path) return '';
-  // 已经是完整 URL（外部链接 / blob / data URI），直接返回
-  if (/^(https?:\/\/|blob:|data:)/i.test(path)) return path;
 
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  // blob / data URI：直接返回，无需处理
+  if (/^(blob:|data:)/i.test(path)) return path;
+
   const baseURL = (import.meta as any).env?.VITE_API_BASE_URL ?? '/api';
 
+  // 如果是绝对 http(s) URL，判断是否为历史遗留的 localhost 地址
+  if (/^https?:\/\//i.test(path)) {
+    try {
+      const parsed = new URL(path);
+      const isLegacyLocalhost =
+        parsed.hostname === 'localhost' ||
+        parsed.hostname === '127.0.0.1' ||
+        parsed.hostname.endsWith('.local');
+
+      if (isLegacyLocalhost) {
+        // 历史数据：提取 pathname，用正确的 origin 重新拼接
+        const cleanPath = parsed.pathname;
+        if (/^https?:\/\//i.test(baseURL)) {
+          return `${new URL(baseURL).origin}${cleanPath}`;
+        }
+        // 同域反代模式：直接返回相对路径
+        return cleanPath;
+      }
+    } catch {
+      // 解析失败，原样返回
+    }
+    // 其它外部 URL（如 CDN 链接）：直接返回
+    return path;
+  }
+
+  // 相对路径
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   if (/^https?:\/\//i.test(baseURL)) {
-    // 绝对地址模式：取 origin 部分（去掉 /api 路径前缀）
     try {
       return `${new URL(baseURL).origin}${normalizedPath}`;
     } catch {

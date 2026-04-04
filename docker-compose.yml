@@ -18,8 +18,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+    volumes:
+      - frontend_data:/data
     ports:
       - "127.0.0.1:13000:80"
 
 volumes:
   backend_data:
+  frontend_data:

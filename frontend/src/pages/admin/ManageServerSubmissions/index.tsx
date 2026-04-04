@@ -4,6 +4,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
 import { useManageServerSubmissions } from './useManageServerSubmissions';
+import { getUploadUrl } from '@/api/client';
 import IconTagEditor from '@/pages/ServerSubmission/components/IconTagEditor';
 import StringTagEditor from '@/pages/ServerSubmission/components/StringTagEditor';
 
@@ -89,7 +90,7 @@ export default function ManageServerSubmissions() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex gap-3">
-                          <img src={item.icon || '/placeholder-icon.png'} className="w-10 h-10 rounded-xl object-cover border border-neutral-200" alt="" />
+                          <img src={getUploadUrl(item.icon) || '/placeholder-icon.png'} className="w-10 h-10 rounded-xl object-cover border border-neutral-200" alt="" />
                           <div>
                             <div className="text-sm font-bold text-neutral-900 line-clamp-1">{item.name || '未命名'}</div>
                             <div className="mt-1 text-xs font-mono text-neutral-500">{item.ip}:{item.port}</div>
