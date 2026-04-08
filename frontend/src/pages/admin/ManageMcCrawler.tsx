@@ -27,6 +27,7 @@ export default function ManageMcCrawler() {
   const [config, setConfig] = useState<McCrawlerConfig | null>(null);
   const [updates, setUpdates] = useState<McUpdate[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSyncingManifest, setIsSyncingManifest] = useState(false);
   const [newInterval, setNewInterval] = useState('');
 
   const fetchData = async () => {
@@ -60,10 +61,23 @@ export default function ManageMcCrawler() {
     try {
       await api.post('/admin/mc-crawler/force');
       await fetchData();
+      alert('已成功触发并抓取最新版本信息');
     } catch (err) {
       alert('强制抓取失败，请检查后端日志');
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleForceSyncManifest = async () => {
+    setIsSyncingManifest(true);
+    try {
+      await api.post('/admin/mc-crawler/force-manifest');
+      alert('已成功同步所有游戏版本 (Manifest V2)');
+    } catch (err) {
+      alert('同步所有版本失败，请检查后端状态');
+    } finally {
+      setIsSyncingManifest(false);
     }
   };
 
@@ -89,9 +103,14 @@ export default function ManageMcCrawler() {
         <div className="p-6 bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-2xl shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between text-neutral-500 mb-2">
             <span className="flex items-center gap-2"><RefreshCw size={18} /> 轮询周期设定</span>
-            <button onClick={handleForceCrawl} disabled={isRefreshing} className="text-xs px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full font-bold hover:bg-emerald-500/20 disabled:opacity-50">
-              {isRefreshing ? '抓取中...' : '强制抓取'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={handleForceSyncManifest} disabled={isSyncingManifest} className="text-xs px-3 py-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full font-bold hover:bg-blue-500/20 disabled:opacity-50 transition">
+                {isSyncingManifest ? '同步中...' : '同步游戏版本列表'}
+              </button>
+              <button onClick={handleForceCrawl} disabled={isRefreshing} className="text-xs px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full font-bold hover:bg-emerald-500/20 disabled:opacity-50 transition">
+                {isRefreshing ? '抓取中...' : '强制抓取'}
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <input type="number" value={newInterval} onChange={e => setNewInterval(e.target.value)} className="w-20 px-3 py-2 bg-neutral-100 dark:bg-black/40 border border-neutral-200 dark:border-white/10 rounded-lg text-center font-bold dark:text-white" />

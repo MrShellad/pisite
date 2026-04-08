@@ -1,12 +1,107 @@
 // backend/src/handlers/minecraft_api.rs
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{
+    Json,
+    extract::{Query, State},
+    http::StatusCode,
+};
 use scraper::{Html, Selector};
 use serde::Deserialize;
-use sqlx::SqlitePool;
+use std::collections::HashMap;
 use std::path::Path;
+use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 use tokio::time::{Duration, sleep};
 
 use crate::models::{Claims, McCrawlerConfig, McUpdate, UpdateMcCrawlerConfig};
+
+#[derive(Deserialize, Default)]
+pub struct McUpdatesQuery {
+    #[serde(default, alias = "q")]
+    pub search: Option<String>,
+    #[serde(default, rename = "type", alias = "vType")]
+    pub v_type: Option<String>,
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+    #[serde(default)]
+    pub offset: Option<i64>,
+}
+
+async fn record_public_update_request(pool: &SqlitePool) {
+    sqlx::query("UPDATE mc_crawler_config SET request_count = request_count + 1 WHERE id = '1'")
+        .execute(pool)
+        .await
+        .ok();
+}
+
+async fn query_cached_updates(
+    pool: &SqlitePool,
+    query: &McUpdatesQuery,
+    default_limit: Option<i64>,
+    max_limit: i64,
+) -> Result<Vec<McUpdate>, (StatusCode, String)> {
+    let mut builder = QueryBuilder::<Sqlite>::new(
+        "SELECT version, v_type, title, cover, article, wiki_en, wiki_zh, date, created_at \
+         FROM mc_updates WHERE 1 = 1",
+    );
+
+    if let Some(version) = query
+        .version
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        builder.push(" AND version = ").push_bind(version);
+    }
+
+    if let Some(v_type) = query
+        .v_type
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        builder.push(" AND v_type = ").push_bind(v_type);
+    }
+
+    if let Some(search) = query
+        .search
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        let search_like = format!("%{}%", search);
+        builder
+            .push(" AND (version LIKE ")
+            .push_bind(search_like.clone())
+            .push(" OR title LIKE ")
+            .push_bind(search_like)
+            .push(")");
+    }
+
+    builder.push(" ORDER BY date DESC, datetime(created_at) DESC");
+
+    let safe_limit = query
+        .limit
+        .or(default_limit)
+        .map(|value| value.clamp(1, max_limit));
+    let safe_offset = query.offset.unwrap_or(0).max(0);
+
+    if let Some(limit) = safe_limit {
+        builder.push(" LIMIT ").push_bind(limit);
+    } else if safe_offset > 0 {
+        builder.push(" LIMIT -1");
+    }
+
+    if safe_offset > 0 {
+        builder.push(" OFFSET ").push_bind(safe_offset);
+    }
+
+    builder
+        .build_query_as::<McUpdate>()
+        .fetch_all(pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+}
 
 // ==========================================
 // 1. 前端/客户端 公开接口 (极速响应)
@@ -17,10 +112,7 @@ pub async fn get_latest_update(
     State(pool): State<SqlitePool>,
 ) -> Result<Json<McUpdate>, (StatusCode, String)> {
     // 1. 客户端请求次数 +1
-    sqlx::query("UPDATE mc_crawler_config SET request_count = request_count + 1 WHERE id = '1'")
-        .execute(&pool)
-        .await
-        .ok();
+    record_public_update_request(&pool).await;
 
     // 2. 直接从数据库拉取最新的一条 (按日期或创建时间降序)
     let latest = sqlx::query_as::<_, McUpdate>(
@@ -42,6 +134,16 @@ pub async fn get_latest_update(
 // ==========================================
 // 2. 后台管理接口 (Admin)
 // ==========================================
+
+// Public cached MC updates for clients.
+pub async fn get_public_updates(
+    Query(query): Query<McUpdatesQuery>,
+    State(pool): State<SqlitePool>,
+) -> Result<Json<Vec<McUpdate>>, (StatusCode, String)> {
+    record_public_update_request(&pool).await;
+    let updates = query_cached_updates(&pool, &query, Some(20), 100).await?;
+    Ok(Json(updates))
+}
 
 pub async fn get_crawler_config(
     _claims: Claims,
@@ -313,4 +415,79 @@ fn build_urls(version_id: &str, v_type: &str) -> (String, String, String) {
         format!("{}_{}_{}", wiki_en_base, base_version, en_wiki_suffix),
         format!("{}{}-{}", wiki_zh_base, base_version, zh_wiki_suffix),
     )
+}
+
+// ==========================================
+// 5. Version Manifest Daemon & Search API
+// ==========================================
+
+#[derive(Deserialize)]
+struct VersionManifestV2 {
+    versions: Vec<ManifestVersion>,
+}
+
+#[derive(Deserialize)]
+struct ManifestVersion {
+    id: String,
+    #[serde(rename = "type")]
+    v_type: String,
+    #[serde(rename = "releaseTime")]
+    release_time: String,
+}
+
+pub async fn version_manifest_daemon(pool: SqlitePool) {
+    loop {
+        let _ = perform_manifest_sync(&pool).await;
+        // 每 24 小时更新一次
+        sleep(Duration::from_secs(24 * 3600)).await;
+    }
+}
+
+pub async fn perform_manifest_sync(pool: &SqlitePool) -> Result<(), String> {
+    if let Ok(resp) = reqwest::get("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json").await {
+        if let Ok(manifest) = resp.json::<VersionManifestV2>().await {
+            // 使用事务保证数据一致性
+            if let Ok(mut tx) = pool.begin().await {
+                let _ = sqlx::query("DELETE FROM mc_version_manifest").execute(&mut *tx).await;
+                for v in manifest.versions {
+                    let _ = sqlx::query("INSERT INTO mc_version_manifest (id, v_type, release_time) VALUES (?, ?, ?)")
+                        .bind(v.id)
+                        .bind(v.v_type)
+                        .bind(v.release_time)
+                        .execute(&mut *tx)
+                        .await;
+                }
+                let _ = tx.commit().await;
+            }
+            return Ok(());
+        }
+    }
+    Err("Failed to sync version manifest".to_string())
+}
+
+pub async fn force_sync_version_manifest(
+    _claims: crate::models::Claims,
+    State(pool): State<SqlitePool>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    match perform_manifest_sync(&pool).await {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+    }
+}
+
+pub async fn get_mc_versions(
+    Query(params): Query<HashMap<String, String>>,
+    State(pool): State<SqlitePool>,
+) -> Json<Vec<crate::models::McVersionManifest>> {
+    let q = params.get("search").map(|s| s.as_str()).unwrap_or("");
+    let versions = sqlx::query_as::<_, crate::models::McVersionManifest>(
+        "SELECT * FROM mc_version_manifest WHERE id LIKE ? OR v_type LIKE ? ORDER BY release_time DESC LIMIT 100",
+    )
+    .bind(format!("%{}%", q))
+    .bind(format!("%{}%", q))
+    .fetch_all(&pool)
+    .await
+    .unwrap_or_default();
+
+    Json(versions)
 }

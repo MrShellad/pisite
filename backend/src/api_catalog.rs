@@ -22,6 +22,8 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem { method: "GET", path: "/api/changelog", group: "public" },
     ApiEndpointCatalogItem { method: "GET", path: "/api/friends", group: "public" },
     ApiEndpointCatalogItem { method: "GET", path: "/api/mc/latest-update", group: "public" },
+    ApiEndpointCatalogItem { method: "GET", path: "/api/mc/updates", group: "public" },
+    ApiEndpointCatalogItem { method: "GET", path: "/api/mc/versions", group: "public" },
     ApiEndpointCatalogItem { method: "GET", path: "/api/server-submissions", group: "public" },
     ApiEndpointCatalogItem { method: "POST", path: "/api/server-submissions", group: "public" },
     ApiEndpointCatalogItem { method: "GET", path: "/api/server-status", group: "public" },
@@ -67,6 +69,7 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem { method: "PUT", path: "/api/admin/mc-crawler/config", group: "admin" },
     ApiEndpointCatalogItem { method: "GET", path: "/api/admin/mc-crawler/cached", group: "admin" },
     ApiEndpointCatalogItem { method: "POST", path: "/api/admin/mc-crawler/force", group: "admin" },
+    ApiEndpointCatalogItem { method: "POST", path: "/api/admin/mc-crawler/force-manifest", group: "admin" },
 
     ApiEndpointCatalogItem { method: "GET", path: "/api/admin/server-submissions", group: "admin" },
     ApiEndpointCatalogItem { method: "PUT", path: "/api/admin/server-submissions/{id}", group: "admin" },

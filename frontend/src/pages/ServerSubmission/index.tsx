@@ -9,6 +9,7 @@ import { styleTokens } from '@/lib/design-tokens';
 import { useServerSubmission } from './useServerSubmission';
 import IconTagEditor from './components/IconTagEditor';
 import StringTagEditor from './components/StringTagEditor';
+import VersionTagEditor from './components/VersionTagEditor';
 import type { SocialLink } from '@/types';
 
 export default function ServerSubmissionPage() {
@@ -308,12 +309,10 @@ export default function ServerSubmissionPage() {
 
                 {/* MC 版本独占一行 */}
                 <div className="w-full">
-                  <label className={labelClass}>MC 版本 (回车添加) *</label>
-                  <StringTagEditor
+                  <label className={labelClass}>MC 版本 (支持搜索最新与快照版) *</label>
+                  <VersionTagEditor
                     tags={formData.versions}
-                    placeholder="如 1.20.1，回车添加"
-                    validateRegex={/^\d+\.\d+(\.\d+)?(-\w+)?$/}
-                    errorMsg="版本格式错误，请严格输入例如 1.20.1 的数字格式"
+                    placeholder="例如 1.20.1 或 24w13a，输入数字搜索"
                     onChange={(tags) => setFormData(c => ({ ...c, versions: tags }))}
                   />
                 </div>

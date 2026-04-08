@@ -695,3 +695,14 @@ pub struct UpdateSignalingServerPayload {
     pub limits_max_connections: i32,
     pub enabled: bool,
 }
+
+// ==================== Minecraft Version Manifest Data ====================
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct McVersionManifest {
+    pub id: String,
+    pub v_type: String,
+    pub release_time: String,
+}
+

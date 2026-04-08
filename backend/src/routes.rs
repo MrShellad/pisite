@@ -33,6 +33,14 @@ pub fn create_router(pool: SqlitePool) -> Router {
             get(handlers::minecraft_api::get_latest_update),
         )
         .route(
+            "/api/mc/updates",
+            get(handlers::minecraft_api::get_public_updates),
+        )
+        .route(
+            "/api/mc/versions",
+            get(handlers::minecraft_api::get_mc_versions),
+        )
+        .route(
             "/api/server-submissions",
             post(handlers::server_submissions::create_server_submission).get(handlers::server_submissions::get_public_server_submissions),
         )
@@ -134,6 +142,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/mc-crawler/force",
             post(handlers::minecraft_api::force_crawl),
+        )
+        .route(
+            "/api/admin/mc-crawler/force-manifest",
+            post(handlers::minecraft_api::force_sync_version_manifest),
         )
         .route(
             "/api/admin/server-submissions",

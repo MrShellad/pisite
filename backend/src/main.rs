@@ -337,6 +337,20 @@ async fn main() {
     .expect("创建 mc_updates 表失败");
 
     // ==============================================
+    // 自动建表：Minecraft 所有版本清单 (mc_version_manifest)
+    // ==============================================
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS mc_version_manifest (
+            id TEXT PRIMARY KEY,
+            v_type TEXT NOT NULL,
+            release_time TEXT NOT NULL
+        );",
+    )
+    .execute(&pool)
+    .await
+    .expect("创建 mc_version_manifest 表失败");
+
+    // ==============================================
     // 自动建表：爬虫配置与统计表 (mc_crawler_config)
     // ==============================================
     sqlx::query(
@@ -629,6 +643,11 @@ async fn main() {
     let crawler_pool = pool.clone();
     tokio::spawn(async move {
         crate::handlers::minecraft_api::crawler_daemon(crawler_pool).await;
+    });
+
+    let manifest_pool = pool.clone();
+    tokio::spawn(async move {
+        crate::handlers::minecraft_api::version_manifest_daemon(manifest_pool).await;
     });
 
     let server_ping_pool = pool.clone();
