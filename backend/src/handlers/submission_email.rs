@@ -10,26 +10,25 @@ use axum::{
     extract::{Path as AxumPath, State},
     http::StatusCode,
 };
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+use lettre::{
+    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
+    message::Mailbox,
+    transport::smtp::authentication::Credentials,
+};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use rustls::{ClientConfig, RootCertStore, pki_types::ServerName};
 use sha2::{Digest, Sha256};
 use sqlx::{FromRow, SqlitePool};
-use std::{sync::Arc, time::Duration};
-use tokio::{
-    io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufStream},
-    net::TcpStream,
-    time::timeout,
-};
-use tokio_rustls::TlsConnector;
+use std::time::Duration;
 use uuid::Uuid;
 
 static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$").expect("valid email regex")
 });
 
-const SMTP_TIMEOUT_SECS: u64 = 10;
+// ---------------------------------------------------------------------------
+// Internal DB record (includes password — never exposed to frontend)
+// ---------------------------------------------------------------------------
 
 #[derive(Clone, FromRow)]
 struct SubmissionEmailConfigRecord {
@@ -72,127 +71,100 @@ struct SubmissionEmailTokenRow {
     is_expired: bool,
 }
 
-trait AsyncIoStream: AsyncRead + AsyncWrite + Unpin + Send {}
-impl<T> AsyncIoStream for T where T: AsyncRead + AsyncWrite + Unpin + Send {}
+// ---------------------------------------------------------------------------
+// lettre helpers
+// ---------------------------------------------------------------------------
 
-struct SmtpClient {
-    stream: BufStream<Box<dyn AsyncIoStream>>,
+fn build_lettre_transport(
+    config: &SubmissionEmailConfigRecord,
+) -> Result<AsyncSmtpTransport<Tokio1Executor>, String> {
+    let host = config.smtp_host.trim();
+
+    let builder = match config.smtp_security.as_str() {
+        "tls" => AsyncSmtpTransport::<Tokio1Executor>::relay(host)
+            .map_err(|e| format!("smtp relay error: {}", e))?,
+        "starttls" => AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(host)
+            .map_err(|e| format!("smtp starttls relay error: {}", e))?,
+        _ => {
+            AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(host)
+        }
+    };
+
+    let builder = builder.port(config.smtp_port as u16);
+
+    let builder = if config.smtp_auth != "none" {
+        builder.credentials(Credentials::new(
+            config.smtp_username.clone(),
+            config.smtp_password.clone(),
+        ))
+    } else {
+        builder
+    };
+
+    let builder = builder.timeout(Some(Duration::from_secs(15)));
+
+    Ok(builder.build())
 }
 
-impl SmtpClient {
-    fn new_plain(stream: TcpStream) -> Self {
-        Self {
-            stream: BufStream::new(Box::new(stream)),
-        }
+fn build_lettre_message(
+    config: &SubmissionEmailConfigRecord,
+    to_email: &str,
+    subject: &str,
+    body: &str,
+) -> Result<Message, String> {
+    let from_mailbox: Mailbox = if config.smtp_from_name.trim().is_empty() {
+        config
+            .smtp_from_email
+            .parse()
+            .map_err(|e| format!("invalid from email: {}", e))?
+    } else {
+        format!("{} <{}>", config.smtp_from_name.trim(), config.smtp_from_email.trim())
+            .parse()
+            .map_err(|e| format!("invalid from mailbox: {}", e))?
+    };
+
+    let to_mailbox: Mailbox = to_email
+        .parse()
+        .map_err(|e| format!("invalid to email: {}", e))?;
+
+    let mut builder = Message::builder()
+        .from(from_mailbox)
+        .to(to_mailbox)
+        .subject(subject);
+
+    if !config.smtp_reply_to.trim().is_empty() {
+        let reply_to: Mailbox = config
+            .smtp_reply_to
+            .trim()
+            .parse()
+            .map_err(|e| format!("invalid reply-to email: {}", e))?;
+        builder = builder.reply_to(reply_to);
     }
 
-    async fn new_tls(stream: TcpStream, host: &str) -> Result<Self, String> {
-        let tls_stream = wrap_tls(stream, host).await?;
-        Ok(Self {
-            stream: BufStream::new(Box::new(tls_stream)),
-        })
-    }
-
-    async fn upgrade_tls(self, host: &str) -> Result<Self, String> {
-        let stream = self.stream.into_inner();
-        let tls_stream = wrap_tls(stream, host).await?;
-        Ok(Self {
-            stream: BufStream::new(Box::new(tls_stream)),
-        })
-    }
-
-    async fn write_command(&mut self, command: &str) -> Result<(), String> {
-        self.stream
-            .write_all(command.as_bytes())
-            .await
-            .map_err(|e| format!("smtp write failed: {}", e))?;
-        self.stream
-            .write_all(b"\r\n")
-            .await
-            .map_err(|e| format!("smtp write failed: {}", e))?;
-        self.stream
-            .flush()
-            .await
-            .map_err(|e| format!("smtp flush failed: {}", e))?;
-        Ok(())
-    }
-
-    async fn write_raw(&mut self, raw: &str) -> Result<(), String> {
-        self.stream
-            .write_all(raw.as_bytes())
-            .await
-            .map_err(|e| format!("smtp write failed: {}", e))?;
-        self.stream
-            .flush()
-            .await
-            .map_err(|e| format!("smtp flush failed: {}", e))?;
-        Ok(())
-    }
-
-    async fn read_response(&mut self) -> Result<(u16, Vec<String>), String> {
-        let mut code: Option<u16> = None;
-        let mut lines = Vec::new();
-
-        loop {
-            let mut line = String::new();
-            let bytes = self
-                .stream
-                .read_line(&mut line)
-                .await
-                .map_err(|e| format!("smtp read failed: {}", e))?;
-            if bytes == 0 {
-                return Err("smtp connection closed unexpectedly".to_string());
-            }
-
-            let line = line.trim_end_matches(['\r', '\n']).to_string();
-            if line.len() < 3 {
-                return Err("invalid smtp response".to_string());
-            }
-
-            let current_code = line[0..3]
-                .parse::<u16>()
-                .map_err(|_| format!("invalid smtp response code: {}", line))?;
-
-            match code {
-                Some(existing) if existing != current_code => {
-                    return Err(format!("mixed smtp response codes: {}", line));
-                }
-                None => code = Some(current_code),
-                _ => {}
-            }
-
-            let is_last = line.as_bytes().get(3).copied() != Some(b'-');
-            lines.push(line);
-            if is_last {
-                break;
-            }
-        }
-
-        Ok((code.unwrap_or(0), lines))
-    }
-
-    async fn expect_codes(
-        &mut self,
-        expected: &[u16],
-        operation: &str,
-    ) -> Result<Vec<String>, String> {
-        let (code, lines) = self.read_response().await?;
-        if expected.contains(&code) {
-            Ok(lines)
-        } else {
-            Err(format!(
-                "smtp {} failed with code {}: {}",
-                operation,
-                code,
-                lines.join(" | ")
-            ))
-        }
-    }
+    builder
+        .body(body.to_string())
+        .map_err(|e| format!("failed to build email message: {}", e))
 }
 
-fn sanitize_header_value(raw: &str) -> String {
-    raw.replace(['\r', '\n'], " ").trim().to_string()
+/// Send an email via lettre and return the error string on failure.
+async fn send_email_via_lettre(
+    config: &SubmissionEmailConfigRecord,
+    to_email: &str,
+    subject: &str,
+    body: &str,
+) -> Result<(), String> {
+    let transport = build_lettre_transport(config)?;
+    let message = build_lettre_message(config, to_email, subject, body)?;
+    transport
+        .send(message)
+        .await
+        .map_err(|e| format!("smtp send failed: {}", e))?;
+    Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// Shared helpers (email, rules, verification codes …)
+// ---------------------------------------------------------------------------
 
 fn normalize_rule_pattern(pattern_type: &str, raw: &str) -> String {
     let trimmed = raw.trim().to_lowercase();
@@ -383,163 +355,6 @@ async fn enforce_submission_email_rules(
     Ok(())
 }
 
-fn build_from_header(name: &str, email: &str) -> String {
-    let safe_name = sanitize_header_value(name);
-    let safe_email = sanitize_header_value(email);
-    if safe_name.is_empty() || !safe_name.is_ascii() {
-        format!("<{}>", safe_email)
-    } else {
-        format!("{} <{}>", safe_name, safe_email)
-    }
-}
-
-fn normalize_body_for_smtp(body: &str) -> String {
-    body.replace("\r\n", "\n")
-        .replace('\r', "\n")
-        .lines()
-        .map(|line| {
-            if line.starts_with('.') {
-                format!(".{}", line)
-            } else {
-                line.to_string()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\r\n")
-}
-
-async fn authenticate_smtp(
-    client: &mut SmtpClient,
-    config: &SubmissionEmailConfigRecord,
-) -> Result<(), String> {
-    match config.smtp_auth.as_str() {
-        "plain" => {
-            let payload = format!("\0{}\0{}", config.smtp_username, config.smtp_password);
-            let encoded = BASE64_STANDARD.encode(payload.as_bytes());
-            client
-                .write_command(&format!("AUTH PLAIN {}", encoded))
-                .await?;
-            client.expect_codes(&[235], "AUTH PLAIN").await?;
-        }
-        "login" => {
-            client.write_command("AUTH LOGIN").await?;
-            client.expect_codes(&[334], "AUTH LOGIN username").await?;
-            client
-                .write_command(&BASE64_STANDARD.encode(config.smtp_username.as_bytes()))
-                .await?;
-            client.expect_codes(&[334], "AUTH LOGIN password").await?;
-            client
-                .write_command(&BASE64_STANDARD.encode(config.smtp_password.as_bytes()))
-                .await?;
-            client.expect_codes(&[235], "AUTH LOGIN").await?;
-        }
-        "none" => {}
-        _ => return Err("unsupported smtp auth mode".to_string()),
-    }
-    Ok(())
-}
-
-async fn wrap_tls<T>(stream: T, host: &str) -> Result<tokio_rustls::client::TlsStream<T>, String>
-where
-    T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
-{
-    let root_store = RootCertStore::from_iter(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-    let client_config = ClientConfig::builder()
-        .with_root_certificates(root_store)
-        .with_no_client_auth();
-    let connector = TlsConnector::from(Arc::new(client_config));
-    let server_name =
-        ServerName::try_from(host.to_string()).map_err(|_| "invalid smtp host name".to_string())?;
-    connector
-        .connect(server_name, stream)
-        .await
-        .map_err(|e| format!("smtp tls handshake failed: {}", e))
-}
-
-async fn send_smtp_message(
-    config: &SubmissionEmailConfigRecord,
-    to_email: &str,
-    subject: &str,
-    body: &str,
-) -> Result<(), String> {
-    timeout(Duration::from_secs(SMTP_TIMEOUT_SECS), async {
-        let addr = format!("{}:{}", config.smtp_host.trim(), config.smtp_port);
-        let stream = TcpStream::connect(&addr)
-            .await
-            .map_err(|e| format!("smtp connect failed: {}", e))?;
-
-        let mut client = if config.smtp_security == "tls" {
-            SmtpClient::new_tls(stream, config.smtp_host.trim()).await?
-        } else {
-            SmtpClient::new_plain(stream)
-        };
-
-        client.expect_codes(&[220], "greeting").await?;
-        client.write_command("EHLO localhost").await?;
-        client.expect_codes(&[250], "EHLO").await?;
-
-        if config.smtp_security == "starttls" {
-            client.write_command("STARTTLS").await?;
-            client.expect_codes(&[220], "STARTTLS").await?;
-            client = client.upgrade_tls(config.smtp_host.trim()).await?;
-            client.write_command("EHLO localhost").await?;
-            client.expect_codes(&[250], "EHLO after STARTTLS").await?;
-        }
-
-        if config.smtp_auth != "none" {
-            authenticate_smtp(&mut client, config).await?;
-        }
-
-        client
-            .write_command(&format!("MAIL FROM:<{}>", config.smtp_from_email))
-            .await?;
-        client.expect_codes(&[250], "MAIL FROM").await?;
-
-        client
-            .write_command(&format!("RCPT TO:<{}>", to_email))
-            .await?;
-        client.expect_codes(&[250, 251], "RCPT TO").await?;
-
-        client.write_command("DATA").await?;
-        client.expect_codes(&[354], "DATA").await?;
-
-        let from_header = build_from_header(&config.smtp_from_name, &config.smtp_from_email);
-        let reply_to_header = if config.smtp_reply_to.trim().is_empty() {
-            String::new()
-        } else {
-            format!("Reply-To: <{}>\r\n", sanitize_header_value(&config.smtp_reply_to))
-        };
-        let body = normalize_body_for_smtp(body);
-        let message = format!(
-            concat!(
-                "From: {}\r\n",
-                "To: <{}>\r\n",
-                "Subject: {}\r\n",
-                "{}",
-                "MIME-Version: 1.0\r\n",
-                "Content-Type: text/plain; charset=utf-8\r\n",
-                "Content-Transfer-Encoding: 8bit\r\n",
-                "\r\n",
-                "{}\r\n.\r\n"
-            ),
-            from_header,
-            sanitize_header_value(to_email),
-            sanitize_header_value(subject),
-            reply_to_header,
-            body,
-        );
-
-        client.write_raw(&message).await?;
-        client.expect_codes(&[250], "message body").await?;
-
-        let _ = client.write_command("QUIT").await;
-        let _ = client.expect_codes(&[221], "QUIT").await;
-        Ok(())
-    })
-    .await
-    .map_err(|_| "smtp request timed out".to_string())?
-}
-
 fn validate_rule_payload(
     payload: &SubmissionEmailRulePayload,
 ) -> Result<(String, String, String, String), (StatusCode, String)> {
@@ -569,6 +384,14 @@ fn validate_rule_payload(
         clean(&payload.description).trim().to_string(),
     ))
 }
+
+fn sanitize_header_value(raw: &str) -> String {
+    raw.replace(['\r', '\n'], " ").trim().to_string()
+}
+
+// ---------------------------------------------------------------------------
+// Admin: SMTP config CRUD
+// ---------------------------------------------------------------------------
 
 pub async fn get_submission_email_config(
     _claims: Claims,
@@ -685,6 +508,10 @@ pub async fn update_submission_email_config(
     Ok(StatusCode::OK)
 }
 
+// ---------------------------------------------------------------------------
+// Admin: test email (synchronous — admin needs immediate feedback)
+// ---------------------------------------------------------------------------
+
 pub async fn send_submission_email_test(
     _claims: Claims,
     State(pool): State<SqlitePool>,
@@ -694,17 +521,21 @@ pub async fn send_submission_email_test(
     validate_submission_email_config(&config, false)?;
 
     let to_email = normalize_submission_email(&payload.to_email)?;
-    send_smtp_message(
+    send_email_via_lettre(
         &config,
         &to_email,
         "SMTP configuration test",
         "This is a test email from the server submission verification module.",
     )
     .await
-    .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+    .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
 
     Ok(Json(serde_json::json!({ "message": "test email sent" })))
 }
+
+// ---------------------------------------------------------------------------
+// Admin: email filter rules CRUD
+// ---------------------------------------------------------------------------
 
 pub async fn list_submission_email_rules(
     _claims: Claims,
@@ -797,6 +628,10 @@ pub async fn delete_submission_email_rule(
     Ok(StatusCode::OK)
 }
 
+// ---------------------------------------------------------------------------
+// Public: send verification code (async background delivery)
+// ---------------------------------------------------------------------------
+
 pub async fn send_submission_email_code(
     State(pool): State<SqlitePool>,
     Json(payload): Json<SendSubmissionEmailCodePayload>,
@@ -807,6 +642,7 @@ pub async fn send_submission_email_code(
     enforce_submission_email_rules(&pool, &email).await?;
     cleanup_submission_email_verifications(&pool).await;
 
+    // Rate-limit check
     let last_sent_seconds_ago = sqlx::query_as::<_, (Option<i64>,)>(
         "SELECT CAST(strftime('%s', 'now') - strftime('%s', last_sent_at) AS INTEGER)
          FROM submission_email_verifications
@@ -829,6 +665,7 @@ pub async fn send_submission_email_code(
         }
     }
 
+    // Generate code + insert verification record
     let verification_id = Uuid::new_v4().to_string();
     let code = generate_verification_code(&verification_id);
     let code_hash = hash_verification_code(&verification_id, &code);
@@ -848,35 +685,50 @@ pub async fn send_submission_email_code(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let body = config.email_body_template
+    // Build email content from templates
+    let body = config
+        .email_body_template
         .replace("{code}", &code)
         .replace("{ttl}", &config.code_ttl_minutes.to_string());
 
-    let subject = config.email_subject_template
+    let subject = config
+        .email_subject_template
         .replace("{code}", &code)
         .replace("{ttl}", &config.code_ttl_minutes.to_string());
 
-    if let Err(err) = send_smtp_message(
-        &config,
-        &email,
-        &subject,
-        &body,
-    )
-    .await
-    {
-        let _ = sqlx::query("DELETE FROM submission_email_verifications WHERE id = ?")
-            .bind(&verification_id)
-            .execute(&pool)
-            .await;
-        return Err((StatusCode::BAD_GATEWAY, err));
-    }
+    // Capture values before moving config into the background task
+    let response_expires = i64::from(config.code_ttl_minutes) * 60;
+    let response_cooldown = i64::from(config.resend_cooldown_seconds);
 
+    // Fire-and-forget: send email in background task
+    let bg_verification_id = verification_id.clone();
+    let bg_email = email.clone();
+    let bg_pool = pool.clone();
+    tokio::spawn(async move {
+        if let Err(err) = send_email_via_lettre(&config, &bg_email, &subject, &body).await {
+            eprintln!(
+                "[submission_email] background send failed for {}: {}",
+                bg_email, err
+            );
+            // Clean up verification record so the user can retry
+            let _ = sqlx::query("DELETE FROM submission_email_verifications WHERE id = ?")
+                .bind(&bg_verification_id)
+                .execute(&bg_pool)
+                .await;
+        }
+    });
+
+    // Return immediately — don't wait for SMTP
     Ok(Json(SendSubmissionEmailCodeResponse {
         verification_id,
-        expires_in_seconds: i64::from(config.code_ttl_minutes) * 60,
-        cooldown_seconds: i64::from(config.resend_cooldown_seconds),
+        expires_in_seconds: response_expires,
+        cooldown_seconds: response_cooldown,
     }))
 }
+
+// ---------------------------------------------------------------------------
+// Public: verify code
+// ---------------------------------------------------------------------------
 
 pub async fn verify_submission_email_code(
     State(pool): State<SqlitePool>,
@@ -979,6 +831,10 @@ pub async fn verify_submission_email_code(
         verified_at: now.0,
     }))
 }
+
+// ---------------------------------------------------------------------------
+// Internal: consume verified token (called by server_submissions)
+// ---------------------------------------------------------------------------
 
 pub async fn consume_verified_submission_email_token(
     pool: &SqlitePool,
