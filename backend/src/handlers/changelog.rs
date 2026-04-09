@@ -33,12 +33,15 @@ pub async fn get_changelog(State(pool): State<SqlitePool>) -> Json<Vec<Changelog
         .map(|(i, row)| {
             let changes: Vec<ChangeItem> =
                 serde_json::from_str(&row.changes_json).unwrap_or_default();
+            let platforms: Option<serde_json::Value> =
+                serde_json::from_str(&row.platforms_json).ok();
             ChangelogEntry {
                 id: row.id,
                 version: row.display_version,
                 date: row.date,
-                is_latest: i == 0, // 最上面那条就是最新版
+                is_latest: i == 0,
                 changes,
+                platforms,
             }
         })
         .collect();

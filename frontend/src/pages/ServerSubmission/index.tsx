@@ -240,7 +240,7 @@ export default function ServerSubmissionPage() {
                   2. 基础信息
                 </h3>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                   <div>
                     <label className={labelClass}>服务器名称 *</label>
                     <input
@@ -256,7 +256,7 @@ export default function ServerSubmissionPage() {
                   </div>
 
                   <div>
-                    <label className={labelClass}>服务器类型</label>
+                    <label className={labelClass}>服务器类型 *</label>
                     <div className="relative">
                       <select
                         value={formData.serverType}
@@ -276,6 +276,18 @@ export default function ServerSubmissionPage() {
                       <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
                     </div>
                   </div>
+
+                  <div>
+                    <label className={labelClass}>语言</label>
+                    <input
+                      value={formData.language}
+                      onChange={(event) =>
+                        setFormData((current) => ({ ...current, language: event.target.value }))
+                      }
+                      className={fieldClass}
+                      placeholder="zh-CN"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -292,9 +304,9 @@ export default function ServerSubmissionPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-4">
                   <div className="sm:col-span-2">
-                    <label className={labelClass}>连接地址 *</label>
+                    <label className={labelClass}>连接地址 (IP / 域名) *</label>
                     <input
                       required
                       value={formData.ip}
@@ -316,6 +328,92 @@ export default function ServerSubmissionPage() {
                       }
                       className={fieldClass}
                     />
+                  </div>
+                  <div>
+                    <label className={labelClass}>最大人数 *</label>
+                    <input
+                      required
+                      type="number"
+                      min={1}
+                      value={formData.maxPlayers}
+                      onChange={(event) =>
+                        setFormData((current) => ({ ...current, maxPlayers: Number(event.target.value) }))
+                      }
+                      className={fieldClass}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className={labelClass}>官方网站</label>
+                    <input
+                      value={formData.website}
+                      onChange={(event) =>
+                        setFormData((current) => ({ ...current, website: event.target.value }))
+                      }
+                      className={fieldClass}
+                      placeholder="https://"
+                    />
+                  </div>
+                  {formData.serverType === 'modded' && (
+                    <div>
+                      <label className={labelClass}>整合包下载地址 *</label>
+                      <input
+                        required
+                        value={formData.modpackUrl}
+                        onChange={(event) =>
+                          setFormData((current) => ({ ...current, modpackUrl: event.target.value }))
+                        }
+                        className={fieldClass}
+                        placeholder="https://"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid items-end gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className={labelClass}>年龄建议</label>
+                    <div className="relative">
+                      <select
+                        value={formData.ageRecommendation}
+                        onChange={(event) =>
+                          setFormData((current) => ({ ...current, ageRecommendation: event.target.value }))
+                        }
+                        className={`${fieldClass} appearance-none pr-10`}
+                      >
+                        <option value="全年龄">全年龄</option>
+                        <option value="12+">12+</option>
+                        <option value="16+">16+</option>
+                        <option value="18+">18+</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
+                    </div>
+                  </div>
+                  <div className="pb-3 sm:col-span-2">
+                    <label className="group flex cursor-pointer items-center gap-3">
+                      <div
+                        className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-all ${
+                          formData.hasPaidContent
+                            ? 'border-orange-500 bg-orange-500'
+                            : 'border-neutral-300 group-hover:border-orange-400 dark:border-neutral-600'
+                        }`}
+                      >
+                        {formData.hasPaidContent && <Plus size={14} className="rotate-45 text-white" />}
+                      </div>
+                      <input
+                        type="checkbox"
+                        className="hidden"
+                        checked={formData.hasPaidContent}
+                        onChange={(event) =>
+                          setFormData((current) => ({ ...current, hasPaidContent: event.target.checked }))
+                        }
+                      />
+                      <span className="text-sm font-bold text-neutral-700 dark:text-neutral-200">
+                        包含付费内容 (如 VIP 等)
+                      </span>
+                    </label>
                   </div>
                 </div>
 
@@ -347,6 +445,20 @@ export default function ServerSubmissionPage() {
                   dictItems={tagDict.filter((item) => item.category === 'mechanics')}
                   fallbackColor="#f97316"
                   onChange={(tags) => setFormData((current) => ({ ...current, mechanics: tags }))}
+                />
+                <IconTagEditor
+                  title="补充元素"
+                  tags={formData.elements}
+                  dictItems={tagDict.filter((item) => item.category === 'elements')}
+                  fallbackColor="#8b5cf6"
+                  onChange={(tags) => setFormData((current) => ({ ...current, elements: tags }))}
+                />
+                <IconTagEditor
+                  title="社区生态"
+                  tags={formData.community}
+                  dictItems={tagDict.filter((item) => item.category === 'community')}
+                  fallbackColor="#0ea5e9"
+                  onChange={(tags) => setFormData((current) => ({ ...current, community: tags }))}
                 />
                 <StringTagEditor
                   tags={formData.tags}

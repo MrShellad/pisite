@@ -1,6 +1,6 @@
 // frontend/src/pages/admin/hooks/useManageHero.ts
 import { useState, useEffect } from 'react';
-import { api, getUploadUrl } from '../../../api/client';
+import { api } from '../../../api/client';
 import type { HeroFormData } from '../types/hero';
 
 export function useManageHero() {
@@ -11,12 +11,11 @@ export function useManageHero() {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUploading, setIsUploading] = useState(false); // 【新增】上传状态
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     api.get('/hero')
       .then(res => {
-        // 兼容旧数据：如果后端还没改名，把旧的 logoSvg 映射过来
         const data = res.data;
         setFormData({ ...data, logoUrl: data.logoUrl || data.logoSvg || '' });
       })
@@ -28,22 +27,20 @@ export function useManageHero() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // 【新增】图片上传逻辑
+  // 本地文件 → dataURL 预览（不依赖后端上传接口）
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    const formDataObj = new FormData();
-    formDataObj.append('file', file);
+
     setIsUploading(true);
     try {
-      const res = await api.post('/admin/upload', formDataObj, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      const imageUrl = res.data.url;
-        handleChange('logoUrl', getUploadUrl(imageUrl));
-    } catch (err) {
-      alert('图片上传失败，请检查后端服务');
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          handleChange('logoUrl', reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
     } finally {
       setIsUploading(false);
     }

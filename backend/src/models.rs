@@ -281,6 +281,8 @@ pub struct ChangelogEntry {
     pub date: String,
     pub is_latest: bool, // 后端动态计算，不需要存数据库
     pub changes: Vec<ChangeItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub platforms: Option<serde_json::Value>,
 }
 
 // 【新增】FAQ 模型
