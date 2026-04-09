@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { ChangeEvent } from 'react';
 import { api, getUploadUrl } from '@/api/client';
+import { normalizeMcVersionId } from '@/lib/minecraft';
 import type {
   ServerPingBatchRunResult,
   ServerPingConfig,
@@ -26,6 +27,7 @@ function toFormState(item: ServerSubmission): AdminServerSubmissionFormState {
     onlinePlayers: item.onlinePlayers || 0,
     icon: getUploadUrl(item.icon || ''),
     hero: getUploadUrl(item.hero || ''),
+    contactEmail: item.contactEmail || '',
     website: item.website || '',
     serverType: item.serverType || 'vanilla',
     language: item.language || 'zh-CN',
@@ -165,6 +167,8 @@ export function useManageServerSubmissions() {
         description: formData.description,
         ip: (formData.ip || '').trim(),
         port: Number(formData.port),
+        contactEmail: (formData.contactEmail || '').trim().toLowerCase(),
+        versions: (formData.versions || []).map((item) => normalizeMcVersionId(item)),
         modpackUrl: formData.serverType === 'modded' ? (formData.modpackUrl || '').trim() : '',
         socialLinks: (formData.socialLinks || []).filter(item => item.platform.trim() && item.url.trim()),
       });

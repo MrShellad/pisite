@@ -70,6 +70,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
             "/api/signaling-servers",
             get(handlers::signaling::get_public_signaling_servers),
         )
+        .route(
+            "/api/right-click-servers",
+            get(handlers::right_click_servers::list_public_right_click_servers),
+        )
         // ==========================================
         // 后台管理接口 (Admin API)
         // ==========================================
@@ -299,6 +303,20 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/signaling-servers/{id}/toggle",
             put(handlers::signaling::toggle_signaling_server),
+        )
+        .route(
+            "/api/admin/right-click-servers",
+            get(handlers::right_click_servers::list_right_click_servers)
+                .post(handlers::right_click_servers::create_right_click_server),
+        )
+        .route(
+            "/api/admin/right-click-servers/{id}",
+            put(handlers::right_click_servers::update_right_click_server)
+                .delete(handlers::right_click_servers::delete_right_click_server),
+        )
+        .route(
+            "/api/admin/right-click-servers/{id}/toggle",
+            put(handlers::right_click_servers::toggle_right_click_server),
         )
         // 将 SQLite 数据库连接池注入到整个路由树中
         .with_state(pool)

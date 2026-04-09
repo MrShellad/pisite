@@ -14,6 +14,7 @@ pub mod features;
 pub mod hero;
 pub mod minecraft_api;
 pub mod misc;
+pub mod right_click_servers;
 pub mod server_submissions;
 pub mod settings;
 pub mod signaling;

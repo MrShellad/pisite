@@ -480,6 +480,7 @@ pub struct ServerSubmission {
     pub online_players: i32,
     pub icon: String,
     pub hero: String,
+    pub contact_email: String,
     pub website: String,
     pub server_type: String, // vanilla / plugin / modded
     pub language: String,
@@ -519,6 +520,7 @@ pub struct CreateServerSubmissionPayload {
     pub online_players: i32,
     pub icon: String,
     pub hero: String,
+    pub contact_email: String,
     pub website: String,
     pub server_type: String,
     pub language: String,
@@ -549,6 +551,7 @@ pub struct UpdateServerSubmissionPayload {
     pub online_players: i32,
     pub icon: String,
     pub hero: String,
+    pub contact_email: String,
     pub website: String,
     pub server_type: String,
     pub language: String,
@@ -762,6 +765,47 @@ pub struct UpdateSignalingServerPayload {
     pub features_p2p: bool,
     pub features_relay: bool,
     pub limits_max_connections: i32,
+    pub enabled: bool,
+}
+
+// ==================== Right Click Server Config ====================
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct RightClickServer {
+    pub id: String,
+    pub name: String,
+    pub host: String,
+    pub port: i32,
+    pub version_hint: String,
+    pub icon_url: String,
+    pub priority: i32,
+    pub enabled: bool,
+    pub created_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateRightClickServerPayload {
+    pub id: String,
+    pub name: String,
+    pub host: String,
+    pub port: i32,
+    pub version_hint: String,
+    pub icon_url: String,
+    pub priority: i32,
+    pub enabled: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateRightClickServerPayload {
+    pub name: String,
+    pub host: String,
+    pub port: i32,
+    pub version_hint: String,
+    pub icon_url: String,
+    pub priority: i32,
     pub enabled: bool,
 }
 

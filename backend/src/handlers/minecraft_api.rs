@@ -483,15 +483,49 @@ pub async fn get_mc_versions(
     Query(params): Query<HashMap<String, String>>,
     State(pool): State<SqlitePool>,
 ) -> Json<Vec<crate::models::McVersionManifest>> {
-    let q = params.get("search").map(|s| s.as_str()).unwrap_or("");
-    let versions = sqlx::query_as::<_, crate::models::McVersionManifest>(
-        "SELECT * FROM mc_version_manifest WHERE id LIKE ? OR v_type LIKE ? ORDER BY release_time DESC LIMIT 100",
-    )
-    .bind(format!("%{}%", q))
-    .bind(format!("%{}%", q))
-    .fetch_all(&pool)
-    .await
-    .unwrap_or_default();
+    let search = params
+        .get("search")
+        .or_else(|| params.get("q"))
+        .map(String::as_str)
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let limit = params
+        .get("limit")
+        .and_then(|value| value.parse::<i64>().ok())
+        .unwrap_or(25)
+        .clamp(1, 100);
+    let offset = params
+        .get("offset")
+        .and_then(|value| value.parse::<i64>().ok())
+        .unwrap_or(0)
+        .max(0);
+
+    let mut builder = QueryBuilder::<Sqlite>::new(
+        "SELECT id, v_type, release_time FROM mc_version_manifest WHERE 1 = 1",
+    );
+
+    if !search.is_empty() {
+        let search_like = format!("%{}%", search);
+        builder
+            .push(" AND (id LIKE ")
+            .push_bind(search_like.clone())
+            .push(" OR v_type LIKE ")
+            .push_bind(search_like)
+            .push(")");
+    }
+
+    builder
+        .push(" ORDER BY release_time DESC LIMIT ")
+        .push_bind(limit)
+        .push(" OFFSET ")
+        .push_bind(offset);
+
+    let versions = builder
+        .build_query_as::<crate::models::McVersionManifest>()
+        .fetch_all(&pool)
+        .await
+        .unwrap_or_default();
 
     Json(versions)
 }

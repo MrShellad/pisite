@@ -17,6 +17,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
 import { getUploadUrl } from '@/api/client';
+import { MC_VERSION_INPUT_PATTERN } from '@/lib/minecraft';
 import IconTagEditor from '@/pages/ServerSubmission/components/IconTagEditor';
 import StringTagEditor from '@/pages/ServerSubmission/components/StringTagEditor';
 import { useManageServerSubmissions } from './useManageServerSubmissions';
@@ -460,7 +461,8 @@ export default function ManageServerSubmissions() {
                   <label className={labelClass}>兼容版本</label>
                   <StringTagEditor
                     tags={formData.versions}
-                    validateRegex={/^\d+\.\d+(\.\d+)?(-\w+)?$/}
+                    validateRegex={MC_VERSION_INPUT_PATTERN}
+                    errorMsg="请输入有效的 MC 版本号，例如 1.20.1、24w13a 或 1.21-rc1。"
                     onChange={(tags) => setFormData((prev) => (prev ? { ...prev, versions: tags } : prev))}
                   />
                 </div>
@@ -514,6 +516,17 @@ export default function ManageServerSubmissions() {
               </div>
 
               <div className="grid gap-6 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>联系邮箱</label>
+                  <input
+                    type="email"
+                    value={formData.contactEmail}
+                    onChange={(e) =>
+                      setFormData((prev) => (prev ? { ...prev, contactEmail: e.target.value } : prev))
+                    }
+                    className={inputClass}
+                  />
+                </div>
                 <div>
                   <label className={labelClass}>官方网站</label>
                   <input

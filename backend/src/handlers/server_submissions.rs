@@ -9,10 +9,11 @@ use axum::{
     extract::{Multipart, Path as AxumPath, Query, State},
     http::StatusCode,
 };
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Deserialize;
-use sqlx::{SqlitePool, types::Json as SqlxJson};
-use std::{io, path::Path};
+use sqlx::{QueryBuilder, Sqlite, SqlitePool, types::Json as SqlxJson};
+use std::{collections::HashSet, io, path::Path};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
@@ -21,6 +22,175 @@ use tokio::{
 use uuid::Uuid;
 
 const STATUS_PROTOCOL_VERSION: i32 = 760;
+
+static CONTACT_EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$").expect("valid contact email regex")
+});
+
+static FALLBACK_MC_VERSION_REGEXES: Lazy<[Regex; 5]> = Lazy::new(|| {
+    [
+        Regex::new(r"^\d+\.\d+(\.\d+)?$").expect("valid release regex"),
+        Regex::new(r"^\d{2}w\d{2}[a-z]$").expect("valid snapshot regex"),
+        Regex::new(r"^\d+\.\d+(\.\d+)?-(pre|pre-release)\d+$")
+            .expect("valid pre-release regex"),
+        Regex::new(r"^\d+\.\d+(\.\d+)?-rc\d+$").expect("valid rc regex"),
+        Regex::new(r"^\d+\.\d+(\.\d+)?-snapshot-\d{2}w\d{2}[a-z]$")
+            .expect("valid experimental snapshot regex"),
+    ]
+});
+
+fn normalize_contact_email(raw: &str) -> Result<String, (StatusCode, String)> {
+    let email = raw.trim().to_lowercase();
+    if email.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Contact email is required".to_string()));
+    }
+
+    if !CONTACT_EMAIL_REGEX.is_match(&email) {
+        return Err((StatusCode::BAD_REQUEST, "Invalid contact email".to_string()));
+    }
+
+    Ok(email)
+}
+
+fn sanitize_versions(raw_versions: &[String]) -> Vec<String> {
+    let mut seen = HashSet::new();
+    let mut versions = Vec::new();
+
+    for version in raw_versions
+        .iter()
+        .map(|item| item.trim().to_lowercase())
+        .filter(|item| !item.is_empty())
+    {
+        if seen.insert(version.clone()) {
+            versions.push(version);
+        }
+    }
+
+    versions
+}
+
+async fn validate_mc_versions(
+    pool: &SqlitePool,
+    raw_versions: &[String],
+) -> Result<Vec<String>, (StatusCode, String)> {
+    let versions = sanitize_versions(raw_versions);
+    if versions.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "At least one MC version is required".to_string(),
+        ));
+    }
+
+    let manifest_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM mc_version_manifest")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if manifest_count.0 > 0 {
+        let mut builder = QueryBuilder::<Sqlite>::new("SELECT id FROM mc_version_manifest WHERE id IN (");
+        let mut separated = builder.separated(", ");
+        for version in &versions {
+            separated.push_bind(version);
+        }
+        separated.push_unseparated(")");
+
+        let existing = builder
+            .build_query_as::<(String,)>()
+            .fetch_all(pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        let existing_ids: HashSet<String> = existing.into_iter().map(|(id,)| id).collect();
+
+        let invalid_versions: Vec<String> = versions
+            .iter()
+            .filter(|version| !existing_ids.contains((*version).as_str()))
+            .cloned()
+            .collect();
+
+        if invalid_versions.is_empty() {
+            return Ok(versions);
+        }
+
+        return Err((
+            StatusCode::BAD_REQUEST,
+            format!("Invalid MC version(s): {}", invalid_versions.join(", ")),
+        ));
+    }
+
+    let invalid_versions: Vec<String> = versions
+        .iter()
+        .filter(|version| {
+            !FALLBACK_MC_VERSION_REGEXES
+                .iter()
+                .any(|regex| regex.is_match(version))
+        })
+        .cloned()
+        .collect();
+
+    if invalid_versions.is_empty() {
+        Ok(versions)
+    } else {
+        Err((
+            StatusCode::BAD_REQUEST,
+            format!("Invalid MC version format: {}", invalid_versions.join(", ")),
+        ))
+    }
+}
+
+fn validate_server_submission_fields(
+    name: &str,
+    ip: &str,
+    icon: &str,
+    hero: &str,
+    port: i32,
+    max_players: i32,
+    server_type: &str,
+    modpack_url: &str,
+    has_voice_chat: bool,
+    voice_url: &str,
+    age_recommendation: &str,
+) -> Result<(), (StatusCode, String)> {
+    if name.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Server name is required".to_string()));
+    }
+    if ip.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Server IP is required".to_string()));
+    }
+    if icon.trim().is_empty() || hero.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Icon and hero image are required".to_string(),
+        ));
+    }
+    if !(1..=65_535).contains(&port) {
+        return Err((StatusCode::BAD_REQUEST, "Invalid server port".to_string()));
+    }
+    if max_players <= 0 {
+        return Err((StatusCode::BAD_REQUEST, "Max players must be positive".to_string()));
+    }
+    if server_type == "modded" && modpack_url.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Modded servers must provide a modpack URL".to_string(),
+        ));
+    }
+    if has_voice_chat && voice_url.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Voice URL is required when voice chat is enabled".to_string(),
+        ));
+    }
+
+    let valid_ages = ["全年龄", "12+", "16+", "18+"];
+    if !valid_ages.contains(&age_recommendation) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Invalid age recommendation".to_string(),
+        ));
+    }
+
+    Ok(())
+}
 
 fn server_submission_select_sql(only_verified: bool) -> &'static str {
     if only_verified {
@@ -101,52 +271,44 @@ pub async fn create_server_submission(
     let safe_description = clean(&payload.description);
     let safe_name = clean(&payload.name).trim().to_string();
     let safe_ip = payload.ip.trim().to_string();
-
-    let version_regex = Regex::new(r"^\d+\.\d+(\.\d+)?(-\w+)?$").unwrap();
-    if payload.versions.is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "At least one MC version is required".to_string(),
-        ));
-    }
-    for v in &payload.versions {
-        if !version_regex.is_match(v) {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                format!("Invalid MC version format: {}", v),
-            ));
-        }
-    }
-
-    let valid_ages = ["全年龄", "12+", "16+", "18+"];
-    if !valid_ages.contains(&payload.age_recommendation.as_str()) {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Invalid age recommendation".to_string(),
-        ));
-    }
+    let safe_contact_email = normalize_contact_email(&payload.contact_email)?;
+    let safe_versions = validate_mc_versions(&pool, &payload.versions).await?;
+    validate_server_submission_fields(
+        &safe_name,
+        &safe_ip,
+        &payload.icon,
+        &payload.hero,
+        payload.port,
+        payload.max_players,
+        payload.server_type.trim(),
+        &payload.modpack_url,
+        payload.has_voice_chat,
+        &payload.voice_url,
+        &payload.age_recommendation,
+    )?;
 
     let id = Uuid::new_v4().to_string();
 
     sqlx::query(
         "INSERT INTO server_submissions (
             id, name, description, ip, port, versions, max_players, online_players,
-            icon, hero, website, server_type, language, modpack_url,
+            icon, hero, contact_email, website, server_type, language, modpack_url,
             has_paid_content, age_recommendation,
             social_links, has_voice_chat, voice_platform, voice_url,
             features, mechanics, elements, community, tags, verified
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
     )
     .bind(&id)
     .bind(safe_name)
     .bind(safe_description)
     .bind(safe_ip)
     .bind(payload.port)
-    .bind(SqlxJson(&payload.versions))
+    .bind(SqlxJson(&safe_versions))
     .bind(payload.max_players)
     .bind(payload.online_players)
     .bind(payload.icon.trim())
     .bind(payload.hero.trim())
+    .bind(&safe_contact_email)
     .bind(payload.website.trim())
     .bind(payload.server_type.trim())
     .bind(payload.language.trim())
@@ -226,24 +388,45 @@ pub async fn update_server_submission(
     AxumPath(id): AxumPath<String>,
     Json(payload): Json<UpdateServerSubmissionPayload>,
 ) -> Result<StatusCode, (StatusCode, String)> {
+    let safe_name = clean(&payload.name).trim().to_string();
+    let safe_description = clean(&payload.description);
+    let safe_ip = payload.ip.trim().to_string();
+    let safe_contact_email = normalize_contact_email(&payload.contact_email)?;
+    let safe_versions = validate_mc_versions(&pool, &payload.versions).await?;
+
+    validate_server_submission_fields(
+        &safe_name,
+        &safe_ip,
+        &payload.icon,
+        &payload.hero,
+        payload.port,
+        payload.max_players,
+        payload.server_type.trim(),
+        &payload.modpack_url,
+        payload.has_voice_chat,
+        &payload.voice_url,
+        &payload.age_recommendation,
+    )?;
+
     let result = sqlx::query(
         "UPDATE server_submissions
          SET name = ?, description = ?, ip = ?, port = ?, versions = ?, max_players = ?, online_players = ?,
-             icon = ?, hero = ?, website = ?, server_type = ?, language = ?, modpack_url = ?,
+             icon = ?, hero = ?, contact_email = ?, website = ?, server_type = ?, language = ?, modpack_url = ?,
              has_paid_content = ?, age_recommendation = ?,
              social_links = ?, has_voice_chat = ?, voice_platform = ?, voice_url = ?,
              features = ?, mechanics = ?, elements = ?, community = ?, tags = ?, verified = ?
          WHERE id = ?",
     )
-    .bind(clean(&payload.name).trim())
-    .bind(clean(&payload.description))
-    .bind(payload.ip.trim())
+    .bind(&safe_name)
+    .bind(safe_description)
+    .bind(&safe_ip)
     .bind(payload.port)
-    .bind(SqlxJson(&payload.versions))
+    .bind(SqlxJson(&safe_versions))
     .bind(payload.max_players)
     .bind(payload.online_players)
     .bind(payload.icon.trim())
     .bind(payload.hero.trim())
+    .bind(&safe_contact_email)
     .bind(payload.website.trim())
     .bind(payload.server_type.trim())
     .bind(payload.language.trim())

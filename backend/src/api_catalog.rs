@@ -459,7 +459,37 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     },
     ApiEndpointCatalogItem {
         method: "GET",
+        path: "/api/admin/right-click-servers",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/right-click-servers",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/right-click-servers/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "DELETE",
+        path: "/api/admin/right-click-servers/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/right-click-servers/{id}/toggle",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
         path: "/api/signaling-servers",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/right-click-servers",
         group: "public",
     },
 ];

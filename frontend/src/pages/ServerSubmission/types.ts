@@ -10,7 +10,7 @@ export type { IconTag, ServerSubmissionFormState };
 export const initialFormState: ServerSubmissionFormState = {
   name: '', description: '', ip: '', port: 25565, versions: [], maxPlayers: 100, 
   onlinePlayers: 0, 
-  icon: '', hero: '', website: '', serverType: 'vanilla', 
+  icon: '', hero: '', contactEmail: '', website: '', serverType: 'vanilla', 
   language: 'zh-CN', 
   modpackUrl: '', 
   hasPaidContent: false, ageRecommendation: '全年龄',

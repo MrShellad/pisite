@@ -57,6 +57,7 @@ export interface ServerSubmission {
   onlinePlayers: number;
   icon: string;
   hero: string;
+  contactEmail: string;
   website: string;
   serverType: string; // 'vanilla' | 'plugin' | 'modded'
   language: string;
@@ -94,6 +95,7 @@ export interface ServerSubmissionFormState {
   onlinePlayers: number;
   icon: string;
   hero: string;
+  contactEmail: string;
   website: string;
   serverType: string;
   language: string;

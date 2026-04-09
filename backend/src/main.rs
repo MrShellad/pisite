@@ -488,6 +488,7 @@ async fn main() {
             online_players INTEGER NOT NULL,
             icon TEXT NOT NULL,
             hero TEXT NOT NULL,
+            contact_email TEXT NOT NULL DEFAULT '',
             website TEXT NOT NULL,
             server_type TEXT NOT NULL,
             language TEXT NOT NULL,
@@ -510,6 +511,14 @@ async fn main() {
     .execute(&pool)
     .await
     .expect("创建 servers 表失败");
+
+    ensure_column(
+        &pool,
+        "server_submissions",
+        "contact_email",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    .await;
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS server_tags_dict (
@@ -624,6 +633,23 @@ async fn main() {
     .expect("创建 signaling_servers 表失败");
 
     // 初始化一些种子数据供前端使用
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS right_click_servers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            host TEXT NOT NULL,
+            port INTEGER NOT NULL,
+            version_hint TEXT NOT NULL DEFAULT '',
+            icon_url TEXT NOT NULL DEFAULT '',
+            priority INTEGER NOT NULL DEFAULT 0,
+            enabled BOOLEAN NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+    )
+    .execute(&pool)
+    .await
+    .expect("创建 right_click_servers 表失败");
+
     let dict_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM server_tags_dict")
         .fetch_one(&pool)
         .await
