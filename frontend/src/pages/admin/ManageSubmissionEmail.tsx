@@ -67,6 +67,18 @@ export default function ManageSubmissionEmail() {
     setConfig((current) => (current ? { ...current, [key]: value } : current));
   };
 
+  const handleSecurityChange = (security: SubmissionEmailConfig['smtpSecurity']) => {
+    setConfig((current) => {
+      if (!current) return current;
+      let newPort = current.smtpPort;
+      if (security === 'starttls') newPort = 587;
+      else if (security === 'tls') newPort = 465;
+      else if (security === 'none') newPort = 25;
+      
+      return { ...current, smtpSecurity: security, smtpPort: newPort };
+    });
+  };
+
   const handleSaveConfig = async () => {
     if (!config) return;
 
@@ -89,6 +101,8 @@ export default function ManageSubmissionEmail() {
       codeTtlMinutes: Number(config.codeTtlMinutes),
       resendCooldownSeconds: Number(config.resendCooldownSeconds),
       maxVerifyAttempts: Number(config.maxVerifyAttempts),
+      emailSubjectTemplate: config.emailSubjectTemplate.trim(),
+      emailBodyTemplate: config.emailBodyTemplate.trim(),
     };
 
     try {
@@ -127,8 +141,9 @@ export default function ManageSubmissionEmail() {
         typeof (requestError as { response?: { data?: string } })?.response?.data === 'string'
           ? (requestError as { response?: { data?: string } }).response?.data
           : null;
-
-      setError(backendMessage || '测试发信失败。');
+      
+      const debugLog = backendMessage ? `\n\n日志详情：\n${backendMessage}` : '';
+      setError(`测试发信失败。请检查 SMTP 配置。${debugLog}`);
     } finally {
       setIsSendingTest(false);
     }
@@ -314,7 +329,7 @@ export default function ManageSubmissionEmail() {
           </div>
           <div>
             <label className={labelClass}>加密方式</label>
-            <select value={config.smtpSecurity} onChange={(event) => handleConfigChange('smtpSecurity', event.target.value as SubmissionEmailConfig['smtpSecurity'])} className={inputClass}>
+            <select value={config.smtpSecurity} onChange={(event) => handleSecurityChange(event.target.value as SubmissionEmailConfig['smtpSecurity'])} className={inputClass}>
               <option value="none">none</option>
               <option value="starttls">starttls</option>
               <option value="tls">tls</option>
@@ -339,6 +354,32 @@ export default function ManageSubmissionEmail() {
           <div>
             <label className={labelClass}>最大校验次数</label>
             <input type="number" value={config.maxVerifyAttempts} onChange={(event) => handleConfigChange('maxVerifyAttempts', Number(event.target.value))} className={inputClass} />
+          </div>
+          
+          <div className="sm:col-span-2 pt-4 border-t border-neutral-100">
+            <h4 className="mb-4 text-sm font-bold text-neutral-900">邮件模板</h4>
+            <div className="space-y-4">
+              <div>
+                <label className={labelClass}>邮件标题模板</label>
+                <input 
+                  value={config.emailSubjectTemplate} 
+                  onChange={(event) => handleConfigChange('emailSubjectTemplate', event.target.value)} 
+                  className={inputClass} 
+                  placeholder="例如: 您的验证码是: {code}" 
+                />
+                <p className="mt-1.5 text-xs text-neutral-500">可用变量：{`{code}`} 验证码, {`{ttl}`} 有效期(分钟)</p>
+              </div>
+              <div>
+                <label className={labelClass}>邮件正文模板 (支持 HTML)</label>
+                <textarea 
+                  value={config.emailBodyTemplate} 
+                  onChange={(event) => handleConfigChange('emailBodyTemplate', event.target.value)} 
+                  className={`${inputClass} min-h-[120px] font-mono whitespace-pre`} 
+                  placeholder={"您好！\n您的验证码是 {code} ..."}
+                />
+                <p className="mt-1.5 text-xs text-neutral-500">可用变量：{`{code}`} 验证码, {`{ttl}`} 有效期(分钟)。邮件将作为纯文本或带基本 HTML 解析的格式发送（取决于客户端），此处主要按照换行自动转译。</p>
+              </div>
+            </div>
           </div>
         </div>
 

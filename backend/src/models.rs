@@ -391,6 +391,8 @@ pub struct SubmissionEmailConfig {
     pub code_ttl_minutes: i32,
     pub resend_cooldown_seconds: i32,
     pub max_verify_attempts: i32,
+    pub email_subject_template: String,
+    pub email_body_template: String,
     pub updated_at: Option<String>,
 }
 
@@ -411,6 +413,8 @@ pub struct UpdateSubmissionEmailConfigPayload {
     pub code_ttl_minutes: i32,
     pub resend_cooldown_seconds: i32,
     pub max_verify_attempts: i32,
+    pub email_subject_template: String,
+    pub email_body_template: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, FromRow)]

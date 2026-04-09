@@ -47,6 +47,8 @@ struct SubmissionEmailConfigRecord {
     code_ttl_minutes: i32,
     resend_cooldown_seconds: i32,
     max_verify_attempts: i32,
+    email_subject_template: String,
+    email_body_template: String,
 }
 
 #[derive(FromRow)]
@@ -274,7 +276,9 @@ async fn load_submission_email_config_record(
             smtp_auth,
             code_ttl_minutes,
             resend_cooldown_seconds,
-            max_verify_attempts
+            max_verify_attempts,
+            email_subject_template,
+            email_body_template
          FROM submission_email_config
          WHERE id = '1'",
     )
@@ -586,6 +590,8 @@ pub async fn get_submission_email_config(
             code_ttl_minutes,
             resend_cooldown_seconds,
             max_verify_attempts,
+            email_subject_template,
+            email_body_template,
             updated_at
          FROM submission_email_config
          WHERE id = '1'",
@@ -631,6 +637,8 @@ pub async fn update_submission_email_config(
         code_ttl_minutes: payload.code_ttl_minutes.clamp(5, 60),
         resend_cooldown_seconds: payload.resend_cooldown_seconds.clamp(15, 600),
         max_verify_attempts: payload.max_verify_attempts.clamp(1, 10),
+        email_subject_template: payload.email_subject_template.trim().to_string(),
+        email_body_template: payload.email_body_template.trim().to_string(),
     };
 
     validate_submission_email_config(&config, false)?;
@@ -650,6 +658,8 @@ pub async fn update_submission_email_config(
              code_ttl_minutes = ?,
              resend_cooldown_seconds = ?,
              max_verify_attempts = ?,
+             email_subject_template = ?,
+             email_body_template = ?,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = '1'",
     )
@@ -666,6 +676,8 @@ pub async fn update_submission_email_config(
     .bind(config.code_ttl_minutes)
     .bind(config.resend_cooldown_seconds)
     .bind(config.max_verify_attempts)
+    .bind(&config.email_subject_template)
+    .bind(&config.email_body_template)
     .execute(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -836,15 +848,18 @@ pub async fn send_submission_email_code(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let body = format!(
-        "Your verification code is: {}\r\nThis code expires in {} minutes.\r\nIf you did not request a server submission verification, you can ignore this email.",
-        code, config.code_ttl_minutes
-    );
+    let body = config.email_body_template
+        .replace("{code}", &code)
+        .replace("{ttl}", &config.code_ttl_minutes.to_string());
+
+    let subject = config.email_subject_template
+        .replace("{code}", &code)
+        .replace("{ttl}", &config.code_ttl_minutes.to_string());
 
     if let Err(err) = send_smtp_message(
         &config,
         &email,
-        "Server submission verification code",
+        &subject,
         &body,
     )
     .await

@@ -569,12 +569,30 @@ async fn main() {
             code_ttl_minutes INTEGER NOT NULL DEFAULT 15,
             resend_cooldown_seconds INTEGER NOT NULL DEFAULT 60,
             max_verify_attempts INTEGER NOT NULL DEFAULT 5,
+            email_subject_template TEXT NOT NULL DEFAULT 'Your verification code is: {code}',
+            email_body_template TEXT NOT NULL DEFAULT 'Your verification code is: {code}\r\nThis code expires in {ttl} minutes.\r\nIf you did not request a server submission verification, you can ignore this email.',
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );",
     )
     .execute(&pool)
     .await
     .expect("failed to create submission_email_config table");
+
+    ensure_column(
+        &pool,
+        "submission_email_config",
+        "email_subject_template",
+        "TEXT NOT NULL DEFAULT 'Your verification code is: {code}'",
+    )
+    .await;
+
+    ensure_column(
+        &pool,
+        "submission_email_config",
+        "email_body_template",
+        "TEXT NOT NULL DEFAULT 'Your verification code is: {code}\r\nThis code expires in {ttl} minutes.\r\nIf you did not request a server submission verification, you can ignore this email.'",
+    )
+    .await;
 
     let submission_email_cfg_count: (i64,) =
         sqlx::query_as("SELECT COUNT(*) FROM submission_email_config")
@@ -586,11 +604,14 @@ async fn main() {
             "INSERT INTO submission_email_config (
                 id, enabled, smtp_host, smtp_port, smtp_username, smtp_password,
                 smtp_from_email, smtp_from_name, smtp_reply_to, smtp_security, smtp_auth,
-                code_ttl_minutes, resend_cooldown_seconds, max_verify_attempts
+                code_ttl_minutes, resend_cooldown_seconds, max_verify_attempts,
+                email_subject_template, email_body_template
             ) VALUES (
                 '1', 0, '', 587, '', '',
                 '', '', '', 'starttls', 'plain',
-                15, 60, 5
+                15, 60, 5,
+                '您的验证码是: {code}',
+                '您的验证码是: {code}\r\n该验证码在 {ttl} 分钟内有效。\r\n如果这不是您的操作，请忽略此邮件。'
             )",
         )
         .execute(&pool)

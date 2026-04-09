@@ -164,6 +164,8 @@ export interface SubmissionEmailConfig {
   codeTtlMinutes: number;
   resendCooldownSeconds: number;
   maxVerifyAttempts: number;
+  emailSubjectTemplate: string;
+  emailBodyTemplate: string;
   updatedAt?: string | null;
 }
 
@@ -182,6 +184,8 @@ export interface SubmissionEmailConfigUpdatePayload {
   codeTtlMinutes: number;
   resendCooldownSeconds: number;
   maxVerifyAttempts: number;
+  emailSubjectTemplate: string;
+  emailBodyTemplate: string;
 }
 
 export interface SubmissionEmailRule {
