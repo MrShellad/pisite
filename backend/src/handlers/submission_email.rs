@@ -29,7 +29,7 @@ static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$").expect("valid email regex")
 });
 
-const SMTP_TIMEOUT_SECS: u64 = 20;
+const SMTP_TIMEOUT_SECS: u64 = 10;
 
 #[derive(Clone, FromRow)]
 struct SubmissionEmailConfigRecord {

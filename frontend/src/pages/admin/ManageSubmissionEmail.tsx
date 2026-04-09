@@ -142,7 +142,15 @@ export default function ManageSubmissionEmail() {
           ? (requestError as { response?: { data?: string } }).response?.data
           : null;
       
-      const debugLog = backendMessage ? `\n\n日志详情：\n${backendMessage}` : '';
+      let debugLog = '';
+      if (backendMessage) {
+        if (backendMessage.toLowerCase().includes('<!doctype html>') || backendMessage.toLowerCase().includes('<html')) {
+          debugLog = '\n\n日志详情：\n服务器或反向代理返回了 HTML 页面（通常为 502/504 网关错误或连接超时），后端可能无法连接到目标 SMTP 服务器。';
+        } else {
+          debugLog = `\n\n日志详情：\n${backendMessage}`;
+        }
+      }
+      
       setError(`测试发信失败。请检查 SMTP 配置。${debugLog}`);
     } finally {
       setIsSendingTest(false);
