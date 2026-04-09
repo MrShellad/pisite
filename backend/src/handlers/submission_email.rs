@@ -836,11 +836,10 @@ pub async fn verify_submission_email_code(
 // Internal: consume verified token (called by server_submissions)
 // ---------------------------------------------------------------------------
 
-pub async fn consume_verified_submission_email_token(
+pub async fn check_submission_email_token(
     pool: &SqlitePool,
     email: &str,
     verification_token: &str,
-    server_submission_id: &str,
 ) -> Result<(String, String), (StatusCode, String)> {
     let row = sqlx::query_as::<_, SubmissionEmailTokenRow>(
         "SELECT
@@ -880,13 +879,21 @@ pub async fn consume_verified_submission_email_token(
         ));
     }
 
+    Ok((row.id, verified_at))
+}
+
+pub async fn consume_submission_email_token(
+    pool: &SqlitePool,
+    verification_id: &str,
+    server_submission_id: &str,
+) -> Result<(), (StatusCode, String)> {
     let result = sqlx::query(
         "UPDATE submission_email_verifications
          SET consumed_at = CURRENT_TIMESTAMP, server_submission_id = ?
          WHERE id = ? AND consumed_at IS NULL",
     )
     .bind(server_submission_id)
-    .bind(&row.id)
+    .bind(verification_id)
     .execute(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -898,5 +905,5 @@ pub async fn consume_verified_submission_email_token(
         ));
     }
 
-    Ok((row.id, verified_at))
+    Ok(())
 }

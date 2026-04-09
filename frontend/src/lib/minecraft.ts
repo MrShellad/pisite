@@ -1,8 +1,8 @@
 const RELEASE_VERSION_REGEX = /^\d+\.\d+(\.\d+)?$/;
-const SNAPSHOT_VERSION_REGEX = /^\d{2}w\d{2}[a-z]$/i;
-const PRE_RELEASE_VERSION_REGEX = /^\d+\.\d+(\.\d+)?-(pre|pre-release)\d+$/i;
-const RELEASE_CANDIDATE_VERSION_REGEX = /^\d+\.\d+(\.\d+)?-rc\d+$/i;
-const EXPERIMENTAL_SNAPSHOT_VERSION_REGEX = /^\d+\.\d+(\.\d+)?-snapshot-\d{2}w\d{2}[a-z]$/i;
+const SNAPSHOT_VERSION_REGEX = /^\d{2}w\d{2}[a-z_]+$/i;
+const PRE_RELEASE_VERSION_REGEX = /^\d+\.\d+(\.\d+)?-(pre|pre-release)[-]?\d+$/i;
+const RELEASE_CANDIDATE_VERSION_REGEX = /^\d+\.\d+(\.\d+)?-rc[-]?\d+$/i;
+const EXPERIMENTAL_SNAPSHOT_VERSION_REGEX = /^\d+\.\d+(\.\d+)?-snapshot-\d+$/i;
 
 export function normalizeMcVersionId(value: string): string {
   return value.trim().toLowerCase();
@@ -20,4 +20,4 @@ export function isLikelyMcVersion(value: string): boolean {
 }
 
 export const MC_VERSION_INPUT_PATTERN =
-  /^\d+\.\d+(\.\d+)?$|^\d{2}w\d{2}[a-z]$|^\d+\.\d+(\.\d+)?-(pre|pre-release)\d+$|^\d+\.\d+(\.\d+)?-rc\d+$|^\d+\.\d+(\.\d+)?-snapshot-\d{2}w\d{2}[a-z]$/i;
+  /^\d+\.\d+(\.\d+)?$|^\d{2}w\d{2}[a-z_]+$|^\d+\.\d+(\.\d+)?-(pre|pre-release)[-]?\d+$|^\d+\.\d+(\.\d+)?-rc[-]?\d+$|^\d+\.\d+(\.\d+)?-snapshot-\d+$/i;

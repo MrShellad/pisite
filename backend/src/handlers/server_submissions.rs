@@ -1,10 +1,10 @@
-﻿use crate::models::{
+use crate::models::{
     Claims, CreateServerSubmissionPayload, ServerPingBatchRunResult, ServerPingConfig, ServerStatus,
     ServerStatusHistory, ServerSubmission, ServerTagDictPayload, UpdateServerPingConfigPayload,
     UpdateServerSubmissionPayload,
 };
 use crate::handlers::submission_email::{
-    consume_verified_submission_email_token, normalize_submission_email,
+    check_submission_email_token, consume_submission_email_token, normalize_submission_email,
 };
 use ammonia::clean;
 use axum::{
@@ -29,11 +29,11 @@ const STATUS_PROTOCOL_VERSION: i32 = 760;
 static FALLBACK_MC_VERSION_REGEXES: Lazy<[Regex; 5]> = Lazy::new(|| {
     [
         Regex::new(r"^\d+\.\d+(\.\d+)?$").expect("valid release regex"),
-        Regex::new(r"^\d{2}w\d{2}[a-z]$").expect("valid snapshot regex"),
-        Regex::new(r"^\d+\.\d+(\.\d+)?-(pre|pre-release)\d+$")
+        Regex::new(r"^(?i)\d{2}w\d{2}[a-z_]+$").expect("valid snapshot regex"),
+        Regex::new(r"^(?i)\d+\.\d+(\.\d+)?-(pre|pre-release)[-]?\d+$")
             .expect("valid pre-release regex"),
-        Regex::new(r"^\d+\.\d+(\.\d+)?-rc\d+$").expect("valid rc regex"),
-        Regex::new(r"^\d+\.\d+(\.\d+)?-snapshot-\d{2}w\d{2}[a-z]$")
+        Regex::new(r"^(?i)\d+\.\d+(\.\d+)?-rc[-]?\d+$").expect("valid rc regex"),
+        Regex::new(r"^(?i)\d+\.\d+(\.\d+)?-snapshot-\d+$")
             .expect("valid experimental snapshot regex"),
     ]
 });
@@ -274,11 +274,10 @@ pub async fn create_server_submission(
     )?;
 
     let id = Uuid::new_v4().to_string();
-    let (email_verification_id, email_verified_at) = consume_verified_submission_email_token(
+    let (email_verification_id, email_verified_at) = check_submission_email_token(
         &pool,
         &safe_contact_email,
         &payload.email_verification_token,
-        &id,
     )
     .await?;
 
@@ -324,6 +323,16 @@ pub async fn create_server_submission(
     .execute(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // Now that the server_submission exists, we can safely consume the email verification token
+    if let Err(err) = consume_submission_email_token(&pool, &email_verification_id, &id).await {
+        // If consumption fails, rollback the server_submission
+        let _ = sqlx::query("DELETE FROM server_submissions WHERE id = ?")
+            .bind(&id)
+            .execute(&pool)
+            .await;
+        return Err(err);
+    }
 
     Ok(Json(
         serde_json::json!({ "id": id, "message": "submitted successfully" }),
