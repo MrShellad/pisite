@@ -76,6 +76,16 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
         group: "public",
     },
     ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/server-submissions/email/send-code",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/server-submissions/email/verify-code",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
         method: "GET",
         path: "/api/server-submissions",
         group: "public",
@@ -145,6 +155,41 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "PUT",
         path: "/api/admin/settings",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/submission-email/config",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/submission-email/config",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/submission-email/config/test",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/submission-email/rules",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/submission-email/rules",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/submission-email/rules/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "DELETE",
+        path: "/api/admin/submission-email/rules/{id}",
         group: "admin",
     },
     ApiEndpointCatalogItem {
@@ -459,37 +504,7 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     },
     ApiEndpointCatalogItem {
         method: "GET",
-        path: "/api/admin/right-click-servers",
-        group: "admin",
-    },
-    ApiEndpointCatalogItem {
-        method: "POST",
-        path: "/api/admin/right-click-servers",
-        group: "admin",
-    },
-    ApiEndpointCatalogItem {
-        method: "PUT",
-        path: "/api/admin/right-click-servers/{id}",
-        group: "admin",
-    },
-    ApiEndpointCatalogItem {
-        method: "DELETE",
-        path: "/api/admin/right-click-servers/{id}",
-        group: "admin",
-    },
-    ApiEndpointCatalogItem {
-        method: "PUT",
-        path: "/api/admin/right-click-servers/{id}/toggle",
-        group: "admin",
-    },
-    ApiEndpointCatalogItem {
-        method: "GET",
         path: "/api/signaling-servers",
-        group: "public",
-    },
-    ApiEndpointCatalogItem {
-        method: "GET",
-        path: "/api/right-click-servers",
         group: "public",
     },
 ];

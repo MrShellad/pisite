@@ -489,6 +489,9 @@ async fn main() {
             icon TEXT NOT NULL,
             hero TEXT NOT NULL,
             contact_email TEXT NOT NULL DEFAULT '',
+            email_verified BOOLEAN NOT NULL DEFAULT 0,
+            email_verified_at DATETIME,
+            email_verification_id TEXT,
             website TEXT NOT NULL,
             server_type TEXT NOT NULL,
             language TEXT NOT NULL,
@@ -519,6 +522,143 @@ async fn main() {
         "TEXT NOT NULL DEFAULT ''",
     )
     .await;
+
+    ensure_column(
+        &pool,
+        "server_submissions",
+        "email_verified",
+        "BOOLEAN NOT NULL DEFAULT 0",
+    )
+    .await;
+    ensure_column(
+        &pool,
+        "server_submissions",
+        "email_verified_at",
+        "DATETIME",
+    )
+    .await;
+    ensure_column(
+        &pool,
+        "server_submissions",
+        "email_verification_id",
+        "TEXT",
+    )
+    .await;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_server_submissions_contact_email
+         ON server_submissions(contact_email);",
+    )
+    .execute(&pool)
+    .await
+    .expect("failed to create server_submissions contact_email index");
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS submission_email_config (
+            id TEXT PRIMARY KEY,
+            enabled BOOLEAN NOT NULL DEFAULT 0,
+            smtp_host TEXT NOT NULL DEFAULT '',
+            smtp_port INTEGER NOT NULL DEFAULT 587,
+            smtp_username TEXT NOT NULL DEFAULT '',
+            smtp_password TEXT NOT NULL DEFAULT '',
+            smtp_from_email TEXT NOT NULL DEFAULT '',
+            smtp_from_name TEXT NOT NULL DEFAULT '',
+            smtp_reply_to TEXT NOT NULL DEFAULT '',
+            smtp_security TEXT NOT NULL DEFAULT 'starttls',
+            smtp_auth TEXT NOT NULL DEFAULT 'plain',
+            code_ttl_minutes INTEGER NOT NULL DEFAULT 15,
+            resend_cooldown_seconds INTEGER NOT NULL DEFAULT 60,
+            max_verify_attempts INTEGER NOT NULL DEFAULT 5,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+    )
+    .execute(&pool)
+    .await
+    .expect("failed to create submission_email_config table");
+
+    let submission_email_cfg_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM submission_email_config")
+            .fetch_one(&pool)
+            .await
+            .unwrap_or((0,));
+    if submission_email_cfg_count.0 == 0 {
+        sqlx::query(
+            "INSERT INTO submission_email_config (
+                id, enabled, smtp_host, smtp_port, smtp_username, smtp_password,
+                smtp_from_email, smtp_from_name, smtp_reply_to, smtp_security, smtp_auth,
+                code_ttl_minutes, resend_cooldown_seconds, max_verify_attempts
+            ) VALUES (
+                '1', 0, '', 587, '', '',
+                '', '', '', 'starttls', 'plain',
+                15, 60, 5
+            )",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+    }
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS submission_email_rules (
+            id TEXT PRIMARY KEY,
+            mode TEXT NOT NULL,
+            pattern_type TEXT NOT NULL,
+            pattern TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            priority INTEGER NOT NULL DEFAULT 0,
+            enabled BOOLEAN NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+    )
+    .execute(&pool)
+    .await
+    .expect("failed to create submission_email_rules table");
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_submission_email_rules_mode_enabled
+         ON submission_email_rules(mode, enabled, priority DESC);",
+    )
+    .execute(&pool)
+    .await
+    .expect("failed to create submission_email_rules index");
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS submission_email_verifications (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            code_hash TEXT NOT NULL,
+            verification_token TEXT,
+            expires_at DATETIME NOT NULL,
+            verified_at DATETIME,
+            consumed_at DATETIME,
+            server_submission_id TEXT,
+            last_sent_at DATETIME,
+            send_count INTEGER NOT NULL DEFAULT 1,
+            verify_attempts INTEGER NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(server_submission_id) REFERENCES server_submissions(id) ON DELETE SET NULL
+        );",
+    )
+    .execute(&pool)
+    .await
+    .expect("failed to create submission_email_verifications table");
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_submission_email_verifications_email
+         ON submission_email_verifications(email, created_at DESC);",
+    )
+    .execute(&pool)
+    .await
+    .expect("failed to create submission_email_verifications email index");
+
+    sqlx::query(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_submission_email_verifications_token
+         ON submission_email_verifications(verification_token)
+         WHERE verification_token IS NOT NULL;",
+    )
+    .execute(&pool)
+    .await
+    .expect("failed to create submission_email_verifications token index");
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS server_tags_dict (
@@ -633,22 +773,9 @@ async fn main() {
     .expect("创建 signaling_servers 表失败");
 
     // 初始化一些种子数据供前端使用
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS right_click_servers (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            host TEXT NOT NULL,
-            port INTEGER NOT NULL,
-            version_hint TEXT NOT NULL DEFAULT '',
-            icon_url TEXT NOT NULL DEFAULT '',
-            priority INTEGER NOT NULL DEFAULT 0,
-            enabled BOOLEAN NOT NULL DEFAULT 1,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );",
-    )
+    let _ = sqlx::query("SELECT 1")
     .execute(&pool)
-    .await
-    .expect("创建 right_click_servers 表失败");
+    .await;
 
     let dict_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM server_tags_dict")
         .fetch_one(&pool)
@@ -755,6 +882,18 @@ async fn main() {
     }
 
     // 主动将 /api/signaling-servers 修改/插入为 require_api_key = 1
+    let _ = sqlx::query(
+        "DELETE FROM api_endpoint_policies
+         WHERE path_template IN (
+            '/api/right-click-servers',
+            '/api/admin/right-click-servers',
+            '/api/admin/right-click-servers/{id}',
+            '/api/admin/right-click-servers/{id}/toggle'
+         )",
+    )
+    .execute(&pool)
+    .await;
+
     let _ = sqlx::query(
         "INSERT INTO api_endpoint_policies (method, path_template, group_name, public_enabled, require_api_key)
          VALUES ('GET', '/api/signaling-servers', 'public', 1, 1)

@@ -5,6 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import { api, getUploadUrl } from '@/api/client';
 import { isLikelyMcVersion, normalizeMcVersionId } from '@/lib/minecraft';
 import { isLikelyEmail, normalizeEmail } from '@/lib/validation';
+import type {
+  CreateServerSubmissionRequest,
+  SendSubmissionEmailCodeResponse,
+  VerifySubmissionEmailCodeResponse,
+} from '@/types';
 import { initialFormState, type ServerSubmissionFormState } from './types';
 
 export interface ServerTagDict {
@@ -77,9 +82,15 @@ export function useServerSubmission() {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState<ServerSubmissionFormState>(initialFormState);
-  const [confirmContactEmail, setConfirmContactEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationId, setVerificationId] = useState<string | null>(null);
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
+  const [verifiedEmail, setVerifiedEmail] = useState('');
+  const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
   const [pendingAssets, setPendingAssets] = useState<PendingAssetsState>(EMPTY_PENDING_ASSETS);
   const [isUploading, setIsUploading] = useState<AssetField | null>(null);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +109,18 @@ export function useServerSubmission() {
     };
   }, []);
 
+  useEffect(() => {
+    const normalizedEmail = normalizeEmail(formData.contactEmail);
+    if (verifiedEmail && normalizedEmail !== verifiedEmail) {
+      setVerificationCode('');
+      setVerificationId(null);
+      setVerificationToken(null);
+      setVerifiedEmail('');
+      setVerifiedAt(null);
+      setMessage(null);
+    }
+  }, [formData.contactEmail, verifiedEmail]);
+
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>, field: AssetField) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -113,7 +136,7 @@ export function useServerSubmission() {
       try {
         const { width, height } = await readImageDimensions(file);
         if (width > 512 || height > 512) {
-          setError('Icon 分辨率建议不超过 512x512。');
+          setError('Icon 建议不超过 512x512。');
           return;
         }
       } catch {
@@ -142,9 +165,90 @@ export function useServerSubmission() {
     setFormData((current) => ({ ...current, [field]: previewUrl }));
   };
 
+  const handleSendVerificationCode = async () => {
+    const normalizedEmail = normalizeEmail(formData.contactEmail);
+
+    if (!normalizedEmail) {
+      setError('请先填写联系邮箱。');
+      return;
+    }
+
+    if (!isLikelyEmail(normalizedEmail)) {
+      setError('联系邮箱格式不正确。');
+      return;
+    }
+
+    setIsSendingCode(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await api.post<SendSubmissionEmailCodeResponse>(
+        '/server-submissions/email/send-code',
+        { email: normalizedEmail },
+      );
+      setVerificationId(response.data.verificationId);
+      setVerificationCode('');
+      setVerificationToken(null);
+      setVerifiedEmail('');
+      setVerifiedAt(null);
+      setMessage(`验证码已发送，请在 ${Math.ceil(response.data.expiresInSeconds / 60)} 分钟内完成验证。`);
+    } catch (requestError) {
+      const backendMessage =
+        typeof (requestError as { response?: { data?: string } })?.response?.data === 'string'
+          ? (requestError as { response?: { data?: string } }).response?.data
+          : null;
+
+      setError(backendMessage || '验证码发送失败，请稍后重试。');
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    const normalizedEmail = normalizeEmail(formData.contactEmail);
+
+    if (!verificationId) {
+      setError('请先发送验证码。');
+      return;
+    }
+
+    if (!verificationCode.trim()) {
+      setError('请输入邮箱验证码。');
+      return;
+    }
+
+    setIsVerifyingCode(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await api.post<VerifySubmissionEmailCodeResponse>(
+        '/server-submissions/email/verify-code',
+        {
+          email: normalizedEmail,
+          verificationId,
+          code: verificationCode.trim(),
+        },
+      );
+      setVerificationToken(response.data.verificationToken);
+      setVerifiedEmail(normalizedEmail);
+      setVerifiedAt(response.data.verifiedAt);
+      setMessage('邮箱验证通过，现在可以提交服务器资料。');
+    } catch (requestError) {
+      const backendMessage =
+        typeof (requestError as { response?: { data?: string } })?.response?.data === 'string'
+          ? (requestError as { response?: { data?: string } }).response?.data
+          : null;
+
+      setError(backendMessage || '验证码校验失败，请确认后重试。');
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  };
+
   const validateBeforeSubmit = () => {
     const normalizedEmail = normalizeEmail(formData.contactEmail);
-    const normalizedConfirmEmail = normalizeEmail(confirmContactEmail);
 
     if (!formData.name.trim() || !formData.ip.trim()) {
       return '请先填写服务器名称和连接地址。';
@@ -159,7 +263,7 @@ export function useServerSubmission() {
     }
 
     if (formData.versions.length === 0) {
-      return '请至少选择一个 Minecraft 版本。';
+      return '请至少填写一个 Minecraft 版本。';
     }
 
     const invalidVersion = formData.versions.find((version) => !isLikelyMcVersion(version));
@@ -172,7 +276,7 @@ export function useServerSubmission() {
     }
 
     if (formData.hasVoiceChat && !formData.voiceUrl.trim()) {
-      return '已开启语音时，需要填写语音频道地址。';
+      return '开启语音后，需要填写语音频道地址。';
     }
 
     if (!normalizedEmail) {
@@ -183,12 +287,8 @@ export function useServerSubmission() {
       return '联系邮箱格式不正确。';
     }
 
-    if (!normalizedConfirmEmail) {
-      return '请再次输入联系邮箱完成验证。';
-    }
-
-    if (normalizedEmail !== normalizedConfirmEmail) {
-      return '两次输入的联系邮箱不一致。';
+    if (!verificationToken || verifiedEmail !== normalizedEmail) {
+      return '请先完成邮箱验证码验证。';
     }
 
     return null;
@@ -208,7 +308,7 @@ export function useServerSubmission() {
     setIsSubmitting(true);
 
     try {
-      const payload: ServerSubmissionFormState = {
+      const payload: CreateServerSubmissionRequest = {
         ...formData,
         name: formData.name.trim(),
         ip: formData.ip.trim(),
@@ -216,6 +316,7 @@ export function useServerSubmission() {
         modpackUrl: formData.serverType === 'modded' ? formData.modpackUrl.trim() : '',
         voiceUrl: formData.hasVoiceChat ? formData.voiceUrl.trim() : '',
         contactEmail: normalizeEmail(formData.contactEmail),
+        emailVerificationToken: verificationToken!,
         versions: Array.from(
           new Set(
             formData.versions
@@ -258,15 +359,23 @@ export function useServerSubmission() {
   return {
     formData,
     setFormData,
-    confirmContactEmail,
-    setConfirmContactEmail,
+    verificationCode,
+    setVerificationCode,
+    verificationId,
+    verificationToken,
+    verifiedEmail,
+    verifiedAt,
     pendingAssets,
     isUploading,
+    isSendingCode,
+    isVerifyingCode,
     isSubmitting,
     message,
     tagDict,
     error,
     handleUpload,
+    handleSendVerificationCode,
+    handleVerifyCode,
     handleSubmit,
   };
 }

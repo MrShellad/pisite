@@ -13,6 +13,8 @@ import type {
 
 export interface AdminServerSubmissionFormState extends ServerSubmissionFormState {
   verified: boolean;
+  emailVerified: boolean;
+  emailVerifiedAt?: string | null;
 }
 
 // 将后端的 ServerSubmission 实体转换为表单状态
@@ -44,6 +46,8 @@ function toFormState(item: ServerSubmission): AdminServerSubmissionFormState {
     voicePlatform: item.voicePlatform || 'QQ',
     voiceUrl: item.voiceUrl || '',
     verified: item.verified || false,
+    emailVerified: item.emailVerified || false,
+    emailVerifiedAt: item.emailVerifiedAt || null,
   };
 }
 

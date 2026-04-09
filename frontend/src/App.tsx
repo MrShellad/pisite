@@ -23,6 +23,7 @@ import ManageApiKeys from './pages/admin/ManageApiKeys';
 import ManageApiAccess from './pages/admin/ManageApiAccess';
 import ManageAdminProfile from './pages/admin/ManageAdminProfile';
 import ManageSignalingServers from './pages/admin/ManageSignalingServers';
+import ManageSubmissionEmail from './pages/admin/ManageSubmissionEmail';
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
             <Route path="api-keys" element={<ManageApiKeys />} />
             <Route path="api-access" element={<ManageApiAccess />} />
             <Route path="settings" element={<ManageSettings />} />
+            <Route path="submission-email" element={<ManageSubmissionEmail />} />
             <Route path="account" element={<ManageAdminProfile />} />
             <Route path="mccrawler" element={<ManageMcCrawler />} />
             <Route path="server-submissions" element={<ManageServerSubmissions />} />

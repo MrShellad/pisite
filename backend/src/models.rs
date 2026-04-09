@@ -374,6 +374,104 @@ pub struct SiteSettings {
     pub copyright: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct SubmissionEmailConfig {
+    pub id: String,
+    pub enabled: bool,
+    pub smtp_host: String,
+    pub smtp_port: i32,
+    pub smtp_username: String,
+    pub smtp_from_email: String,
+    pub smtp_from_name: String,
+    pub smtp_reply_to: String,
+    pub smtp_security: String,
+    pub smtp_auth: String,
+    pub has_password: bool,
+    pub code_ttl_minutes: i32,
+    pub resend_cooldown_seconds: i32,
+    pub max_verify_attempts: i32,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSubmissionEmailConfigPayload {
+    pub enabled: bool,
+    pub smtp_host: String,
+    pub smtp_port: i32,
+    pub smtp_username: String,
+    pub smtp_password: Option<String>,
+    pub clear_smtp_password: bool,
+    pub smtp_from_email: String,
+    pub smtp_from_name: String,
+    pub smtp_reply_to: String,
+    pub smtp_security: String,
+    pub smtp_auth: String,
+    pub code_ttl_minutes: i32,
+    pub resend_cooldown_seconds: i32,
+    pub max_verify_attempts: i32,
+}
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct SubmissionEmailRule {
+    pub id: String,
+    pub mode: String,
+    pub pattern_type: String,
+    pub pattern: String,
+    pub description: String,
+    pub priority: i32,
+    pub enabled: bool,
+    pub created_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubmissionEmailRulePayload {
+    pub mode: String,
+    pub pattern_type: String,
+    pub pattern: String,
+    pub description: String,
+    pub priority: i32,
+    pub enabled: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubmissionEmailConfigTestPayload {
+    pub to_email: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SendSubmissionEmailCodePayload {
+    pub email: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SendSubmissionEmailCodeResponse {
+    pub verification_id: String,
+    pub expires_in_seconds: i64,
+    pub cooldown_seconds: i64,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifySubmissionEmailCodePayload {
+    pub email: String,
+    pub verification_id: String,
+    pub code: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifySubmissionEmailCodeResponse {
+    pub verification_token: String,
+    pub verified_at: String,
+}
+
 // 1. 缓存的 MC 更新数据
 #[derive(Serialize, Deserialize, Clone, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
@@ -481,6 +579,9 @@ pub struct ServerSubmission {
     pub icon: String,
     pub hero: String,
     pub contact_email: String,
+    pub email_verified: bool,
+    pub email_verified_at: Option<String>,
+    pub email_verification_id: Option<String>,
     pub website: String,
     pub server_type: String, // vanilla / plugin / modded
     pub language: String,
@@ -521,6 +622,7 @@ pub struct CreateServerSubmissionPayload {
     pub icon: String,
     pub hero: String,
     pub contact_email: String,
+    pub email_verification_token: String,
     pub website: String,
     pub server_type: String,
     pub language: String,
@@ -765,47 +867,6 @@ pub struct UpdateSignalingServerPayload {
     pub features_p2p: bool,
     pub features_relay: bool,
     pub limits_max_connections: i32,
-    pub enabled: bool,
-}
-
-// ==================== Right Click Server Config ====================
-
-#[derive(Serialize, Deserialize, Clone, FromRow)]
-#[serde(rename_all = "camelCase")]
-pub struct RightClickServer {
-    pub id: String,
-    pub name: String,
-    pub host: String,
-    pub port: i32,
-    pub version_hint: String,
-    pub icon_url: String,
-    pub priority: i32,
-    pub enabled: bool,
-    pub created_at: Option<String>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateRightClickServerPayload {
-    pub id: String,
-    pub name: String,
-    pub host: String,
-    pub port: i32,
-    pub version_hint: String,
-    pub icon_url: String,
-    pub priority: i32,
-    pub enabled: bool,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateRightClickServerPayload {
-    pub name: String,
-    pub host: String,
-    pub port: i32,
-    pub version_hint: String,
-    pub icon_url: String,
-    pub priority: i32,
     pub enabled: bool,
 }
 

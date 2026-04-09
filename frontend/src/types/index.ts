@@ -58,6 +58,9 @@ export interface ServerSubmission {
   icon: string;
   hero: string;
   contactEmail: string;
+  emailVerified: boolean;
+  emailVerifiedAt?: string | null;
+  emailVerificationId?: string | null;
   website: string;
   serverType: string; // 'vanilla' | 'plugin' | 'modded'
   language: string;
@@ -129,4 +132,74 @@ export interface ServerPingBatchRunResult {
   totalServers: number;
   processedServers: number;
   cursor: number;
+}
+
+export interface CreateServerSubmissionRequest extends ServerSubmissionFormState {
+  emailVerificationToken: string;
+}
+
+export interface SendSubmissionEmailCodeResponse {
+  verificationId: string;
+  expiresInSeconds: number;
+  cooldownSeconds: number;
+}
+
+export interface VerifySubmissionEmailCodeResponse {
+  verificationToken: string;
+  verifiedAt: string;
+}
+
+export interface SubmissionEmailConfig {
+  id: string;
+  enabled: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUsername: string;
+  smtpFromEmail: string;
+  smtpFromName: string;
+  smtpReplyTo: string;
+  smtpSecurity: 'none' | 'starttls' | 'tls';
+  smtpAuth: 'none' | 'plain' | 'login';
+  hasPassword: boolean;
+  codeTtlMinutes: number;
+  resendCooldownSeconds: number;
+  maxVerifyAttempts: number;
+  updatedAt?: string | null;
+}
+
+export interface SubmissionEmailConfigUpdatePayload {
+  enabled: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUsername: string;
+  smtpPassword?: string | null;
+  clearSmtpPassword: boolean;
+  smtpFromEmail: string;
+  smtpFromName: string;
+  smtpReplyTo: string;
+  smtpSecurity: 'none' | 'starttls' | 'tls';
+  smtpAuth: 'none' | 'plain' | 'login';
+  codeTtlMinutes: number;
+  resendCooldownSeconds: number;
+  maxVerifyAttempts: number;
+}
+
+export interface SubmissionEmailRule {
+  id: string;
+  mode: 'whitelist' | 'blacklist';
+  patternType: 'domain_suffix' | 'exact_email' | 'contains';
+  pattern: string;
+  description: string;
+  priority: number;
+  enabled: boolean;
+  createdAt?: string | null;
+}
+
+export interface SubmissionEmailRulePayload {
+  mode: SubmissionEmailRule['mode'];
+  patternType: SubmissionEmailRule['patternType'];
+  pattern: string;
+  description: string;
+  priority: number;
+  enabled: boolean;
 }

@@ -41,6 +41,14 @@ pub fn create_router(pool: SqlitePool) -> Router {
             get(handlers::minecraft_api::get_mc_versions),
         )
         .route(
+            "/api/server-submissions/email/send-code",
+            post(handlers::submission_email::send_submission_email_code),
+        )
+        .route(
+            "/api/server-submissions/email/verify-code",
+            post(handlers::submission_email::verify_submission_email_code),
+        )
+        .route(
             "/api/server-submissions",
             post(handlers::server_submissions::create_server_submission)
                 .get(handlers::server_submissions::get_public_server_submissions),
@@ -70,10 +78,6 @@ pub fn create_router(pool: SqlitePool) -> Router {
             "/api/signaling-servers",
             get(handlers::signaling::get_public_signaling_servers),
         )
-        .route(
-            "/api/right-click-servers",
-            get(handlers::right_click_servers::list_public_right_click_servers),
-        )
         // ==========================================
         // 后台管理接口 (Admin API)
         // ==========================================
@@ -86,6 +90,25 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/settings",
             put(handlers::settings::update_settings),
+        )
+        .route(
+            "/api/admin/submission-email/config",
+            get(handlers::submission_email::get_submission_email_config)
+                .put(handlers::submission_email::update_submission_email_config),
+        )
+        .route(
+            "/api/admin/submission-email/config/test",
+            post(handlers::submission_email::send_submission_email_test),
+        )
+        .route(
+            "/api/admin/submission-email/rules",
+            get(handlers::submission_email::list_submission_email_rules)
+                .post(handlers::submission_email::create_submission_email_rule),
+        )
+        .route(
+            "/api/admin/submission-email/rules/{id}",
+            put(handlers::submission_email::update_submission_email_rule)
+                .delete(handlers::submission_email::delete_submission_email_rule),
         )
         .route("/api/admin/hero", put(handlers::hero::update_hero))
         // 3. 核心特性管理 (注意这里的 {id} 语法)
@@ -303,20 +326,6 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/signaling-servers/{id}/toggle",
             put(handlers::signaling::toggle_signaling_server),
-        )
-        .route(
-            "/api/admin/right-click-servers",
-            get(handlers::right_click_servers::list_right_click_servers)
-                .post(handlers::right_click_servers::create_right_click_server),
-        )
-        .route(
-            "/api/admin/right-click-servers/{id}",
-            put(handlers::right_click_servers::update_right_click_server)
-                .delete(handlers::right_click_servers::delete_right_click_server),
-        )
-        .route(
-            "/api/admin/right-click-servers/{id}/toggle",
-            put(handlers::right_click_servers::toggle_right_click_server),
         )
         // 将 SQLite 数据库连接池注入到整个路由树中
         .with_state(pool)

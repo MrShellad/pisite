@@ -294,6 +294,9 @@ export default function ManageServerSubmissions() {
                 <div>
                   <h4 className="text-sm font-bold text-orange-800">审核控制</h4>
                   <p className="mt-1 text-xs text-orange-600">审核通过后可在公开列表展示。</p>
+                  <p className="mt-2 text-xs text-neutral-600">
+                    邮箱验证: {formData.emailVerified ? `已验证${formData.emailVerifiedAt ? ` (${formData.emailVerifiedAt})` : ''}` : '未验证'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <button

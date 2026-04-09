@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ChevronDown,
   ImagePlus,
-  Link as LinkIcon,
   Mail,
   Mic,
   Plus,
@@ -32,14 +31,23 @@ export default function ServerSubmissionPage() {
   const {
     formData,
     setFormData,
-    confirmContactEmail,
-    setConfirmContactEmail,
+    verificationCode,
+    setVerificationCode,
+    verificationId,
+    verificationToken,
+    verifiedEmail,
+    verifiedAt,
     pendingAssets,
     isUploading,
+    isSendingCode,
+    isVerifyingCode,
     isSubmitting,
+    message,
     tagDict,
     error,
     handleUpload,
+    handleSendVerificationCode,
+    handleVerifyCode,
     handleSubmit,
   } = useServerSubmission();
 
@@ -60,14 +68,9 @@ export default function ServerSubmissionPage() {
     ],
   };
 
-  const serverTypeName = SERVER_TYPE_LABELS[formData.serverType] ?? '服务器';
   const normalizedEmail = formData.contactEmail.trim().toLowerCase();
-  const normalizedConfirmEmail = confirmContactEmail.trim().toLowerCase();
-  const hasEmailInputs = normalizedEmail.length > 0 || normalizedConfirmEmail.length > 0;
-  const isEmailVerified =
-    normalizedEmail.length > 0 &&
-    normalizedEmail === normalizedConfirmEmail &&
-    /\S+@\S+\.\S+/.test(normalizedEmail);
+  const isEmailVerified = Boolean(verificationToken && verifiedEmail === normalizedEmail);
+  const serverTypeName = SERVER_TYPE_LABELS[formData.serverType] ?? '服务器';
 
   const addSocialLink = () =>
     setFormData((current) => ({
@@ -109,16 +112,16 @@ export default function ServerSubmissionPage() {
             服务器投稿
           </div>
           <h1 className="mb-4 text-4xl font-black tracking-tight text-neutral-950 dark:text-neutral-50 md:text-5xl">
-            让更多玩家发现你的世界
+            让更多玩家发现你的服务器
           </h1>
           <p className="max-w-2xl text-base leading-7 text-neutral-600 dark:text-neutral-400">
-            完整的图文内容、准确的版本信息和可靠的联系邮箱，会显著提升管理员审核效率与玩家点击意愿。
+            完整的图文内容、准确的版本信息和真实可验证的联系邮箱，会显著提升审核效率与玩家点击意愿。
           </p>
         </div>
 
         <div className="grid items-start gap-8 lg:grid-cols-[1fr_1fr]">
-          <section className="sticky top-6 max-h-[calc(100vh-3rem)] space-y-6 overflow-y-auto pb-4 pr-2 custom-scrollbar">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-[32px] border border-neutral-200 bg-white/80 shadow-[0_30px_120px_rgba(15,23,42,0.1)] dark:border-neutral-800 dark:bg-neutral-950/70 dark:shadow-[0_40px_140px_rgba(15,23,42,0.9)]">
+          <section className="sticky top-6 max-h-[calc(100vh-3rem)] space-y-6 overflow-y-auto pb-4 pr-2">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-[32px] border border-neutral-200 bg-white/80 shadow-[0_30px_120px_rgba(15,23,42,0.1)] dark:border-neutral-800 dark:bg-neutral-950/70">
               {formData.hero ? (
                 <img src={formData.hero} alt="Hero 预览" className="h-full w-full object-cover" />
               ) : (
@@ -135,56 +138,25 @@ export default function ServerSubmissionPage() {
                 />
               )}
 
-              <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between rounded-2xl bg-black/60 px-5 py-4 text-white backdrop-blur">
-                <div>
-                  <div className="text-xl font-bold">{formData.name || '服务器名称'}</div>
-                  <div className="mt-1 flex gap-2 text-xs text-white/70">
-                    <span>{serverTypeName}</span>
-                    <span>|</span>
-                    <span>
-                      {formData.ip || 'play.example.com'}
-                      {formData.port !== 25565 ? `:${formData.port}` : ''}
-                    </span>
-                  </div>
-
-                  {(formData.socialLinks.length > 0 || formData.hasVoiceChat) && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {formData.socialLinks.map((link, index) => (
-                        <span
-                          key={`${link.platform}-${index}`}
-                          className="inline-flex items-center gap-1 rounded-md bg-white/20 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur"
-                        >
-                          <LinkIcon size={10} />
-                          {link.platform}
-                        </span>
-                      ))}
-                      {formData.hasVoiceChat && formData.voicePlatform && (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-orange-500/80 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur">
-                          <Mic size={10} />
-                          {formData.voicePlatform} 语音
-                        </span>
-                      )}
+              <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-black/60 px-5 py-4 text-white backdrop-blur">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <div className="text-xl font-bold">{formData.name || '服务器名称'}</div>
+                    <div className="mt-1 flex gap-2 text-xs text-white/70">
+                      <span>{serverTypeName}</span>
+                      <span>|</span>
+                      <span>
+                        {formData.ip || 'play.example.com'}
+                        {formData.port !== 25565 ? `:${formData.port}` : ''}
+                      </span>
                     </div>
-                  )}
-                </div>
-
-                <div className="text-right text-xs">
-                  <div className="font-bold text-green-400">
-                    {formData.onlinePlayers}/{formData.maxPlayers} 在线
                   </div>
-                  <div className="mt-1 flex flex-col items-end gap-1 text-white/50">
-                    <div>
-                      {formData.versions.length > 0
-                        ? `${formData.versions.slice(0, 2).join(', ')}${formData.versions.length > 2 ? ' 等' : ''}`
-                        : '暂无版本'}
+                  <div className="text-right text-xs">
+                    <div className="font-bold text-green-400">
+                      {formData.onlinePlayers}/{formData.maxPlayers} 在线
                     </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      {formData.hasPaidContent && (
-                        <span className="rounded border border-yellow-400/50 px-1 text-[10px] text-yellow-400">
-                          含付费内容
-                        </span>
-                      )}
-                      <span className="text-neutral-300">{formData.ageRecommendation}</span>
+                    <div className="mt-1 text-white/60">
+                      {formData.versions.length > 0 ? formData.versions.join(', ') : '暂无版本'}
                     </div>
                   </div>
                 </div>
@@ -199,16 +171,24 @@ export default function ServerSubmissionPage() {
               <div
                 className="prose prose-sm prose-orange max-w-none break-words prose-img:rounded-xl prose-a:text-orange-600 prose-headings:font-bold"
                 dangerouslySetInnerHTML={{
-                  __html: formData.description || '<p class="text-neutral-400">在这里预览服务器介绍内容。</p>',
+                  __html: formData.description || '<p class="text-neutral-400">这里会显示服务器简介预览。</p>',
                 }}
               />
             </div>
           </section>
 
           <section className={cardClass}>
-            {error && (
-              <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">
-                {error}
+            {(error || message) && (
+              <div
+                className={`mb-6 rounded-2xl border px-4 py-3 text-sm font-bold ${
+                  error
+                    ? 'border-red-200 bg-red-50 text-red-600 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300'
+                    : isEmailVerified
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300'
+                      : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300'
+                }`}
+              >
+                {error || message}
               </div>
             )}
 
@@ -222,7 +202,7 @@ export default function ServerSubmissionPage() {
                   <div>
                     <label className={labelClass}>服务器 Icon *</label>
                     <label className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-orange-300 bg-orange-50 text-sm font-semibold text-orange-600 transition hover:bg-orange-100 dark:border-orange-500/60 dark:bg-orange-500/10 dark:text-orange-300">
-                      {isUploading === 'icon' ? '正在上传 Icon...' : '选择 Icon'}
+                      {isUploading === 'icon' ? '上传中...' : '选择 Icon'}
                       <input
                         type="file"
                         accept="image/*"
@@ -232,16 +212,14 @@ export default function ServerSubmissionPage() {
                       />
                     </label>
                     <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-                      {pendingAssets.icon.fileName
-                        ? `已选择 ${pendingAssets.icon.fileName}，将在提交时上传`
-                        : '支持 PNG/JPG，建议 1:1，且不超过 1MB'}
+                      {pendingAssets.icon.fileName || '支持 PNG/JPG，建议 1:1 且不超过 1MB'}
                     </p>
                   </div>
 
                   <div>
                     <label className={labelClass}>Hero 封面 *</label>
                     <label className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-sky-300 bg-sky-50 text-sm font-semibold text-sky-600 transition hover:bg-sky-100 dark:border-sky-500/60 dark:bg-sky-500/10 dark:text-sky-300">
-                      {isUploading === 'hero' ? '正在上传封面...' : '选择封面'}
+                      {isUploading === 'hero' ? '上传中...' : '选择封面'}
                       <input
                         type="file"
                         accept="image/*"
@@ -251,9 +229,7 @@ export default function ServerSubmissionPage() {
                       />
                     </label>
                     <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-                      {pendingAssets.hero.fileName
-                        ? `已选择 ${pendingAssets.hero.fileName}，将在提交时上传`
-                        : '推荐 16:9，提交校验通过后再上传'}
+                      {pendingAssets.hero.fileName || '推荐 16:9 比例'}
                     </p>
                   </div>
                 </div>
@@ -304,30 +280,19 @@ export default function ServerSubmissionPage() {
 
                 <div>
                   <label className={labelClass}>详情介绍 *</label>
-                  <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white/85 transition focus-within:border-orange-500 focus-within:ring-4 focus-within:ring-orange-500/10 dark:border-neutral-800 dark:bg-neutral-950/60">
+                  <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white/85 transition focus-within:border-orange-500 focus-within:ring-4 focus-within:ring-orange-500/10 dark:border-neutral-800 dark:bg-neutral-950/60">
                     <ReactQuill
                       theme="snow"
                       modules={quillModules}
                       value={formData.description}
-                      onChange={(value) => {
-                        if (value.length <= 1200) {
-                          setFormData((current) => ({ ...current, description: value }));
-                        }
-                      }}
+                      onChange={(value) => setFormData((current) => ({ ...current, description: value }))}
                       className="h-[300px] border-0 pb-10 text-neutral-900 dark:text-neutral-100"
-                      placeholder="详细介绍你的服务器玩法、规则与亮点内容..."
+                      placeholder="详细介绍你的服务器玩法、规则与亮点..."
                     />
                   </div>
-                  <style>{`
-                    .ql-toolbar.ql-snow { border: none; border-bottom: 1px solid #e5e7eb; background: #fafafa; }
-                    .ql-container.ql-snow { border: none; }
-                    .dark .ql-toolbar.ql-snow { border-bottom-color: #1f2937; background: #020617; }
-                    .dark .ql-container.ql-snow { background: transparent; color: #e5e7eb; }
-                    .dark .ql-picker, .dark .ql-stroke { color: #9ca3af; stroke: #9ca3af; }
-                  `}</style>
                 </div>
 
-                <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-3">
                   <div className="sm:col-span-2">
                     <label className={labelClass}>连接地址 *</label>
                     <input
@@ -340,7 +305,6 @@ export default function ServerSubmissionPage() {
                       placeholder="play.example.com"
                     />
                   </div>
-
                   <div>
                     <label className={labelClass}>端口 *</label>
                     <input
@@ -348,10 +312,7 @@ export default function ServerSubmissionPage() {
                       type="number"
                       value={formData.port}
                       onChange={(event) =>
-                        setFormData((current) => ({
-                          ...current,
-                          port: Number(event.target.value),
-                        }))
+                        setFormData((current) => ({ ...current, port: Number(event.target.value) }))
                       }
                       className={fieldClass}
                     />
@@ -362,107 +323,17 @@ export default function ServerSubmissionPage() {
                   <label className={labelClass}>MC 版本 *</label>
                   <VersionTagEditor
                     tags={formData.versions}
-                    placeholder="支持正式版、快照版与预发布版，输入后可继续懒加载"
-                    onChange={(tags) =>
-                      setFormData((current) => ({ ...current, versions: tags }))
-                    }
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className={labelClass}>最大人数</label>
-                    <input
-                      required
-                      type="number"
-                      value={formData.maxPlayers}
-                      onChange={(event) =>
-                        setFormData((current) => ({
-                          ...current,
-                          maxPlayers: Number(event.target.value),
-                        }))
-                      }
-                      className={fieldClass}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>适龄提示</label>
-                    <div className="relative">
-                      <select
-                        value={formData.ageRecommendation}
-                        onChange={(event) =>
-                          setFormData((current) => ({
-                            ...current,
-                            ageRecommendation: event.target.value,
-                          }))
-                        }
-                        className={`${fieldClass} appearance-none pr-10`}
-                      >
-                        <option value="全年龄">全年龄</option>
-                        <option value="12+">12+</option>
-                        <option value="16+">16+</option>
-                        <option value="18+">18+</option>
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="flex items-center">
-                    <label className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4 text-sm font-medium whitespace-nowrap text-neutral-700 transition hover:border-orange-300 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-200">
-                      <input
-                        type="checkbox"
-                        checked={formData.hasPaidContent}
-                        onChange={(event) =>
-                          setFormData((current) => ({
-                            ...current,
-                            hasPaidContent: event.target.checked,
-                          }))
-                        }
-                        className="h-5 w-5 shrink-0 rounded border-neutral-300 accent-orange-500"
-                      />
-                      存在付费内容
-                    </label>
-                  </div>
-
-                  {formData.serverType === 'modded' && (
-                    <div>
-                      <label className={labelClass}>整合包下载地址 *</label>
-                      <input
-                        required
-                        value={formData.modpackUrl}
-                        onChange={(event) =>
-                          setFormData((current) => ({
-                            ...current,
-                            modpackUrl: event.target.value,
-                          }))
-                        }
-                        className={fieldClass}
-                        placeholder="百度网盘 / 123 云盘 / 官方下载页"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className={labelClass}>官网或主页</label>
-                  <input
-                    value={formData.website}
-                    onChange={(event) =>
-                      setFormData((current) => ({ ...current, website: event.target.value }))
-                    }
-                    className={fieldClass}
-                    placeholder="https://"
+                    placeholder="输入后回车，可连续添加多个版本"
+                    onChange={(tags) => setFormData((current) => ({ ...current, versions: tags }))}
                   />
                 </div>
               </div>
 
               <div className="space-y-4">
                 <h3 className="border-b border-neutral-200 pb-2 font-bold text-neutral-800 dark:border-neutral-800 dark:text-neutral-100">
-                  3. 图文标签
+                  3. 标签与社交
                 </h3>
+
                 <IconTagEditor
                   title="核心特色"
                   tags={formData.features}
@@ -477,60 +348,34 @@ export default function ServerSubmissionPage() {
                   fallbackColor="#f97316"
                   onChange={(tags) => setFormData((current) => ({ ...current, mechanics: tags }))}
                 />
-                <IconTagEditor
-                  title="补充元素"
-                  tags={formData.elements}
-                  dictItems={tagDict.filter((item) => item.category === 'elements')}
-                  fallbackColor="#8b5cf6"
-                  onChange={(tags) => setFormData((current) => ({ ...current, elements: tags }))}
-                />
-                <IconTagEditor
-                  title="社区生态"
-                  tags={formData.community}
-                  dictItems={tagDict.filter((item) => item.category === 'community')}
-                  fallbackColor="#0ea5e9"
-                  onChange={(tags) => setFormData((current) => ({ ...current, community: tags }))}
-                />
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="border-b border-neutral-200 pb-2 font-bold text-neutral-800 dark:border-neutral-800 dark:text-neutral-100">
-                  4. 文本标签
-                </h3>
                 <StringTagEditor
                   tags={formData.tags}
-                  placeholder="例如：不掉落、免费飞行、原创副本，回车添加"
+                  placeholder="例如：不掉落、原创副本、职业系统"
                   onChange={(tags) => setFormData((current) => ({ ...current, tags }))}
                 />
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-neutral-200 pb-2 dark:border-neutral-800">
-                  <h3 className="font-bold text-neutral-800 dark:text-neutral-100">5. 社交与语音</h3>
-                  <button
-                    type="button"
-                    onClick={addSocialLink}
-                    className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-orange-600 transition hover:bg-orange-50"
-                  >
-                    <Plus size={14} />
-                    添加社交链接
-                  </button>
-                </div>
 
-                <div className="space-y-3">
-                  {formData.socialLinks.map((link, index) => (
-                    <div
-                      key={`${link.platform}-${index}`}
-                      className="flex flex-col gap-2 rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900/60 sm:flex-row sm:items-center"
+                <div className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/60">
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-neutral-800 dark:text-neutral-100">社交链接</div>
+                    <button
+                      type="button"
+                      onClick={addSocialLink}
+                      className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-orange-600 transition hover:bg-orange-50"
                     >
+                      <Plus size={14} />
+                      添加
+                    </button>
+                  </div>
+
+                  {formData.socialLinks.map((link, index) => (
+                    <div key={`${link.platform}-${index}`} className="flex flex-col gap-2 sm:flex-row">
                       <div className="relative w-full sm:w-1/3">
                         <select
                           value={link.platform}
-                          onChange={(event) =>
-                            updateSocialLink(index, 'platform', event.target.value)
-                          }
+                          onChange={(event) => updateSocialLink(index, 'platform', event.target.value)}
                           className={`${fieldClass} appearance-none !py-2 pr-10`}
                         >
-                          <option value="QQ">QQ / QQ 群</option>
+                          <option value="QQ">QQ</option>
                           <option value="Discord">Discord</option>
                           <option value="Bilibili">Bilibili</option>
                           <option value="抖音">抖音</option>
@@ -538,14 +383,12 @@ export default function ServerSubmissionPage() {
                         </select>
                         <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
                       </div>
-
                       <input
                         value={link.url}
                         onChange={(event) => updateSocialLink(index, 'url', event.target.value)}
                         className={`${fieldClass} !py-2 flex-1`}
                         placeholder="输入群号、主页或邀请链接"
                       />
-
                       <button
                         type="button"
                         onClick={() => removeSocialLink(index)}
@@ -555,10 +398,8 @@ export default function ServerSubmissionPage() {
                       </button>
                     </div>
                   ))}
-                </div>
 
-                <div className="mt-6 border-t border-neutral-200 pt-6 dark:border-neutral-800">
-                  <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 transition hover:border-orange-300 dark:border-neutral-800 dark:bg-neutral-900/60">
+                  <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-4 transition hover:border-orange-300 dark:border-neutral-800 dark:bg-neutral-950/50">
                     <input
                       type="checkbox"
                       checked={formData.hasVoiceChat}
@@ -575,62 +416,53 @@ export default function ServerSubmissionPage() {
                         <Mic size={16} className="text-orange-500" />
                         提供官方语音频道
                       </span>
-                      <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                        勾选后可以补充 QQ、Discord、KOOK 等语音入口。
-                      </span>
                     </div>
                   </label>
-                </div>
 
-                {formData.hasVoiceChat && (
-                  <div className="mt-4 flex animate-in gap-4 fade-in slide-in-from-left-2 duration-300">
-                    <div className="w-1/3">
-                      <label className={labelClass}>语音平台</label>
-                      <div className="relative">
-                        <select
-                          value={formData.voicePlatform}
-                          onChange={(event) =>
-                            setFormData((current) => ({
-                              ...current,
-                              voicePlatform: event.target.value,
-                            }))
-                          }
-                          className={`${fieldClass} appearance-none pr-10`}
-                        >
-                          <option value="QQ">QQ 语音</option>
-                          <option value="Discord">Discord</option>
-                          <option value="KOOK">KOOK</option>
-                          <option value="TeamSpeak">TeamSpeak</option>
-                          <option value="Mumble">Mumble</option>
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
+                  {formData.hasVoiceChat && (
+                    <div className="flex gap-4">
+                      <div className="w-1/3">
+                        <div className="relative">
+                          <select
+                            value={formData.voicePlatform}
+                            onChange={(event) =>
+                              setFormData((current) => ({
+                                ...current,
+                                voicePlatform: event.target.value,
+                              }))
+                            }
+                            className={`${fieldClass} appearance-none pr-10`}
+                          >
+                            <option value="QQ">QQ 语音</option>
+                            <option value="Discord">Discord</option>
+                            <option value="KOOK">KOOK</option>
+                            <option value="TeamSpeak">TeamSpeak</option>
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="flex-1">
-                      <label className={labelClass}>频道地址 *</label>
                       <input
-                        required
                         value={formData.voiceUrl}
                         onChange={(event) =>
                           setFormData((current) => ({ ...current, voiceUrl: event.target.value }))
                         }
                         className={fieldClass}
-                        placeholder="输入频道链接、群号或服务器地址"
+                        placeholder="输入频道地址或邀请链接"
                       />
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-neutral-200 pb-2 dark:border-neutral-800">
-                  <h3 className="font-bold text-neutral-800 dark:text-neutral-100">6. 邮箱验证</h3>
+                  <h3 className="font-bold text-neutral-800 dark:text-neutral-100">4. 邮箱验证码</h3>
                   <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-[11px] font-semibold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400">
-                    提交前完成
+                    提交前必须完成
                   </span>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
                   <div>
                     <label className={labelClass}>联系邮箱 *</label>
                     <div className="relative">
@@ -650,34 +482,55 @@ export default function ServerSubmissionPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className={labelClass}>确认邮箱 *</label>
-                    <div className="relative">
-                      <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-                      <input
-                        type="email"
-                        value={confirmContactEmail}
-                        onChange={(event) => setConfirmContactEmail(event.target.value)}
-                        className={`${fieldClass} pl-11`}
-                        placeholder="再次输入，用于校验一致性"
-                      />
-                    </div>
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={() => void handleSendVerificationCode()}
+                      disabled={isSendingCode}
+                      className="h-12 rounded-2xl border border-orange-200 bg-orange-50 px-5 text-sm font-bold text-orange-700 transition hover:border-orange-300 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300"
+                    >
+                      {isSendingCode ? '发送中...' : verificationId ? '重新发送验证码' : '发送验证码'}
+                    </button>
                   </div>
                 </div>
 
-                {hasEmailInputs && (
-                  <div
-                    className={`rounded-2xl border px-4 py-3 text-sm font-medium ${
-                      isEmailVerified
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300'
-                        : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300'
-                    }`}
-                  >
-                    {isEmailVerified
-                      ? '邮箱验证通过，管理员后续可通过该邮箱联系你。'
-                      : '两次邮箱输入尚未完成一致性验证。'}
+                <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+                  <div>
+                    <label className={labelClass}>邮箱验证码 *</label>
+                    <input
+                      type="text"
+                      value={verificationCode}
+                      onChange={(event) => setVerificationCode(event.target.value)}
+                      className={fieldClass}
+                      placeholder="输入 6 位验证码"
+                      inputMode="numeric"
+                      maxLength={6}
+                    />
                   </div>
-                )}
+
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={() => void handleVerifyCode()}
+                      disabled={!verificationId || isVerifyingCode}
+                      className="h-12 rounded-2xl border border-sky-200 bg-sky-50 px-5 text-sm font-bold text-sky-700 transition hover:border-sky-300 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300"
+                    >
+                      {isVerifyingCode ? '验证中...' : '校验验证码'}
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  className={`rounded-2xl border px-4 py-3 text-sm font-medium ${
+                    isEmailVerified
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300'
+                      : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300'
+                  }`}
+                >
+                  {isEmailVerified
+                    ? `邮箱验证通过${verifiedAt ? `，验证时间 ${verifiedAt}` : ''}。`
+                    : '请先发送验证码并完成邮箱校验。'}
+                </div>
               </div>
 
               <button

@@ -3,6 +3,9 @@
     ServerStatusHistory, ServerSubmission, ServerTagDictPayload, UpdateServerPingConfigPayload,
     UpdateServerSubmissionPayload,
 };
+use crate::handlers::submission_email::{
+    consume_verified_submission_email_token, normalize_submission_email,
+};
 use ammonia::clean;
 use axum::{
     Json,
@@ -23,10 +26,6 @@ use uuid::Uuid;
 
 const STATUS_PROTOCOL_VERSION: i32 = 760;
 
-static CONTACT_EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?i)^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$").expect("valid contact email regex")
-});
-
 static FALLBACK_MC_VERSION_REGEXES: Lazy<[Regex; 5]> = Lazy::new(|| {
     [
         Regex::new(r"^\d+\.\d+(\.\d+)?$").expect("valid release regex"),
@@ -38,19 +37,6 @@ static FALLBACK_MC_VERSION_REGEXES: Lazy<[Regex; 5]> = Lazy::new(|| {
             .expect("valid experimental snapshot regex"),
     ]
 });
-
-fn normalize_contact_email(raw: &str) -> Result<String, (StatusCode, String)> {
-    let email = raw.trim().to_lowercase();
-    if email.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Contact email is required".to_string()));
-    }
-
-    if !CONTACT_EMAIL_REGEX.is_match(&email) {
-        return Err((StatusCode::BAD_REQUEST, "Invalid contact email".to_string()));
-    }
-
-    Ok(email)
-}
 
 fn sanitize_versions(raw_versions: &[String]) -> Vec<String> {
     let mut seen = HashSet::new();
@@ -271,7 +257,7 @@ pub async fn create_server_submission(
     let safe_description = clean(&payload.description);
     let safe_name = clean(&payload.name).trim().to_string();
     let safe_ip = payload.ip.trim().to_string();
-    let safe_contact_email = normalize_contact_email(&payload.contact_email)?;
+    let safe_contact_email = normalize_submission_email(&payload.contact_email)?;
     let safe_versions = validate_mc_versions(&pool, &payload.versions).await?;
     validate_server_submission_fields(
         &safe_name,
@@ -288,15 +274,23 @@ pub async fn create_server_submission(
     )?;
 
     let id = Uuid::new_v4().to_string();
+    let (email_verification_id, email_verified_at) = consume_verified_submission_email_token(
+        &pool,
+        &safe_contact_email,
+        &payload.email_verification_token,
+        &id,
+    )
+    .await?;
 
     sqlx::query(
         "INSERT INTO server_submissions (
             id, name, description, ip, port, versions, max_players, online_players,
-            icon, hero, contact_email, website, server_type, language, modpack_url,
+            icon, hero, contact_email, email_verified, email_verified_at, email_verification_id,
+            website, server_type, language, modpack_url,
             has_paid_content, age_recommendation,
             social_links, has_voice_chat, voice_platform, voice_url,
             features, mechanics, elements, community, tags, verified
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
     )
     .bind(&id)
     .bind(safe_name)
@@ -309,6 +303,9 @@ pub async fn create_server_submission(
     .bind(payload.icon.trim())
     .bind(payload.hero.trim())
     .bind(&safe_contact_email)
+    .bind(true)
+    .bind(&email_verified_at)
+    .bind(&email_verification_id)
     .bind(payload.website.trim())
     .bind(payload.server_type.trim())
     .bind(payload.language.trim())
@@ -391,7 +388,7 @@ pub async fn update_server_submission(
     let safe_name = clean(&payload.name).trim().to_string();
     let safe_description = clean(&payload.description);
     let safe_ip = payload.ip.trim().to_string();
-    let safe_contact_email = normalize_contact_email(&payload.contact_email)?;
+    let safe_contact_email = normalize_submission_email(&payload.contact_email)?;
     let safe_versions = validate_mc_versions(&pool, &payload.versions).await?;
 
     validate_server_submission_fields(
@@ -408,10 +405,39 @@ pub async fn update_server_submission(
         &payload.age_recommendation,
     )?;
 
-    let result = sqlx::query(
+    let current_submission: (String, bool, Option<String>, Option<String>) = sqlx::query_as(
+        "SELECT contact_email, email_verified, email_verified_at, email_verification_id
+         FROM server_submissions
+         WHERE id = ?",
+    )
+    .bind(&id)
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or((StatusCode::NOT_FOUND, "Submission not found".to_string()))?;
+
+    let email_changed = current_submission.0 != safe_contact_email;
+    let email_verified = if email_changed {
+        false
+    } else {
+        current_submission.1
+    };
+    let email_verified_at = if email_changed {
+        None
+    } else {
+        current_submission.2.clone()
+    };
+    let email_verification_id = if email_changed {
+        None
+    } else {
+        current_submission.3.clone()
+    };
+
+    sqlx::query(
         "UPDATE server_submissions
          SET name = ?, description = ?, ip = ?, port = ?, versions = ?, max_players = ?, online_players = ?,
-             icon = ?, hero = ?, contact_email = ?, website = ?, server_type = ?, language = ?, modpack_url = ?,
+             icon = ?, hero = ?, contact_email = ?, email_verified = ?, email_verified_at = ?, email_verification_id = ?,
+             website = ?, server_type = ?, language = ?, modpack_url = ?,
              has_paid_content = ?, age_recommendation = ?,
              social_links = ?, has_voice_chat = ?, voice_platform = ?, voice_url = ?,
              features = ?, mechanics = ?, elements = ?, community = ?, tags = ?, verified = ?
@@ -427,6 +453,9 @@ pub async fn update_server_submission(
     .bind(payload.icon.trim())
     .bind(payload.hero.trim())
     .bind(&safe_contact_email)
+    .bind(email_verified)
+    .bind(&email_verified_at)
+    .bind(&email_verification_id)
     .bind(payload.website.trim())
     .bind(payload.server_type.trim())
     .bind(payload.language.trim())
@@ -447,10 +476,6 @@ pub async fn update_server_submission(
     .execute(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    if result.rows_affected() == 0 {
-        return Err((StatusCode::NOT_FOUND, "Submission not found".to_string()));
-    }
 
     Ok(StatusCode::OK)
 }
