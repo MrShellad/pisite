@@ -108,6 +108,15 @@ export default function ManageApiKeys() {
         {/* 左侧：创建 & 列表 */}
         <div className="space-y-6 xl:col-span-1">
           <div className={cardClass}>
+            <h3 className="font-bold text-neutral-900 dark:text-white mb-2">客户端赞助者 API</h3>
+            <p className="text-xs leading-6 text-neutral-500">
+              新增的公开接口 <code className="font-mono">GET /api/donors/supporters</code> 默认要求
+              <code className="font-mono">X-API-Key</code>。
+              在这里创建好 key 之后，客户端即可读取历史赞助者名单。
+            </p>
+          </div>
+
+          <div className={cardClass}>
             <h3 className="font-bold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
               <Plus size={16} className="text-emerald-500" /> 新建 API Key
             </h3>

@@ -66,9 +66,15 @@ fn find_requested_platform<'a>(
     target: Option<&str>,
 ) -> Option<&'a serde_json::Value> {
     match target {
-        Some("windows") => platforms.get("windows").filter(|platform| platform_has_assets(platform)),
-        Some("darwin") => platforms.get("darwin").filter(|platform| platform_has_assets(platform)),
-        Some("linux") => platforms.get("linux").filter(|platform| platform_has_assets(platform)),
+        Some("windows") => platforms
+            .get("windows")
+            .filter(|platform| platform_has_assets(platform)),
+        Some("darwin") => platforms
+            .get("darwin")
+            .filter(|platform| platform_has_assets(platform)),
+        Some("linux") => platforms
+            .get("linux")
+            .filter(|platform| platform_has_assets(platform)),
         _ => None,
     }
 }
@@ -78,18 +84,24 @@ fn build_updater_platforms(
 ) -> serde_json::Map<String, serde_json::Value> {
     let mut mapped = serde_json::Map::new();
 
-    if let Some(platform) = platforms.get("darwin").filter(|platform| platform_has_assets(platform))
+    if let Some(platform) = platforms
+        .get("darwin")
+        .filter(|platform| platform_has_assets(platform))
     {
         mapped.insert("darwin-x86_64".to_string(), platform.clone());
         mapped.insert("darwin-aarch64".to_string(), platform.clone());
     }
 
-    if let Some(platform) = platforms.get("windows").filter(|platform| platform_has_assets(platform))
+    if let Some(platform) = platforms
+        .get("windows")
+        .filter(|platform| platform_has_assets(platform))
     {
         mapped.insert("windows-x86_64".to_string(), platform.clone());
     }
 
-    if let Some(platform) = platforms.get("linux").filter(|platform| platform_has_assets(platform))
+    if let Some(platform) = platforms
+        .get("linux")
+        .filter(|platform| platform_has_assets(platform))
     {
         mapped.insert("linux-x86_64".to_string(), platform.clone());
     }

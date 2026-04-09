@@ -42,7 +42,8 @@ pub fn create_router(pool: SqlitePool) -> Router {
         )
         .route(
             "/api/server-submissions",
-            post(handlers::server_submissions::create_server_submission).get(handlers::server_submissions::get_public_server_submissions),
+            post(handlers::server_submissions::create_server_submission)
+                .get(handlers::server_submissions::get_public_server_submissions),
         )
         .route(
             "/api/server-status",
@@ -60,8 +61,15 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route("/api/donors/login", post(handlers::donor_client::login))
         .route("/api/donors/refresh", post(handlers::donor_client::refresh))
         .route("/api/donors/me", get(handlers::donor_client::me))
+        .route(
+            "/api/donors/supporters",
+            get(handlers::donor_public::list_public_supporters),
+        )
         // 8. 信令服务器列表 (Public / Client API)
-        .route("/api/signaling-servers", get(handlers::signaling::get_public_signaling_servers))
+        .route(
+            "/api/signaling-servers",
+            get(handlers::signaling::get_public_signaling_servers),
+        )
         // ==========================================
         // 后台管理接口 (Admin API)
         // ==========================================
@@ -235,6 +243,24 @@ pub fn create_router(pool: SqlitePool) -> Router {
             "/api/admin/donor-users/{user_id}/activations",
             get(handlers::donor_admin::list_activations),
         )
+        .route(
+            "/api/admin/donor-users/{user_id}/mc-profile/sync",
+            post(handlers::donor_admin::sync_mojang_profile),
+        )
+        .route(
+            "/api/admin/donor-users/{user_id}/afdian",
+            get(handlers::donor_admin::get_afdian_binding)
+                .put(handlers::donor_admin::update_afdian_binding),
+        )
+        .route(
+            "/api/admin/donor-users/{user_id}/afdian/sync",
+            post(handlers::donor_admin::sync_afdian_binding),
+        )
+        .route(
+            "/api/admin/donation-settings/afdian",
+            get(handlers::donor_admin::get_afdian_config)
+                .put(handlers::donor_admin::update_afdian_config),
+        )
         // 9. API Key 管理与访问日志
         .route(
             "/api/admin/api-keys",
@@ -244,10 +270,7 @@ pub fn create_router(pool: SqlitePool) -> Router {
             "/api/admin/api-keys/{id}",
             put(handlers::api_keys::update_api_key).delete(handlers::api_keys::delete_api_key),
         )
-        .route(
-            "/api/admin/api-logs",
-            get(handlers::api_keys::list_logs),
-        )
+        .route("/api/admin/api-logs", get(handlers::api_keys::list_logs))
         // 管理员账号（修改邮箱/密码）
         .route(
             "/api/admin/profile",
@@ -265,11 +288,13 @@ pub fn create_router(pool: SqlitePool) -> Router {
         // 11. 信令服务器管理
         .route(
             "/api/admin/signaling-servers",
-            get(handlers::signaling::list_signaling_servers).post(handlers::signaling::add_signaling_server),
+            get(handlers::signaling::list_signaling_servers)
+                .post(handlers::signaling::add_signaling_server),
         )
         .route(
             "/api/admin/signaling-servers/{id}",
-            put(handlers::signaling::update_signaling_server).delete(handlers::signaling::delete_signaling_server),
+            put(handlers::signaling::update_signaling_server)
+                .delete(handlers::signaling::delete_signaling_server),
         )
         .route(
             "/api/admin/signaling-servers/{id}/toggle",

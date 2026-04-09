@@ -6,9 +6,9 @@ use axum::{
 };
 use scraper::{Html, Selector};
 use serde::Deserialize;
+use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 use std::collections::HashMap;
 use std::path::Path;
-use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 use tokio::time::{Duration, sleep};
 
 use crate::models::{Claims, McCrawlerConfig, McUpdate, UpdateMcCrawlerConfig};
@@ -444,11 +444,15 @@ pub async fn version_manifest_daemon(pool: SqlitePool) {
 }
 
 pub async fn perform_manifest_sync(pool: &SqlitePool) -> Result<(), String> {
-    if let Ok(resp) = reqwest::get("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json").await {
+    if let Ok(resp) =
+        reqwest::get("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json").await
+    {
         if let Ok(manifest) = resp.json::<VersionManifestV2>().await {
             // 使用事务保证数据一致性
             if let Ok(mut tx) = pool.begin().await {
-                let _ = sqlx::query("DELETE FROM mc_version_manifest").execute(&mut *tx).await;
+                let _ = sqlx::query("DELETE FROM mc_version_manifest")
+                    .execute(&mut *tx)
+                    .await;
                 for v in manifest.versions {
                     let _ = sqlx::query("INSERT INTO mc_version_manifest (id, v_type, release_time) VALUES (?, ?, ?)")
                         .bind(v.id)

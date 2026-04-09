@@ -37,11 +37,7 @@ fn match_template(template: &str, path: &str) -> bool {
     true
 }
 
-async fn get_policy(
-    pool: &SqlitePool,
-    method: &str,
-    path: &str,
-) -> Option<(bool, bool)> {
+async fn get_policy(pool: &SqlitePool, method: &str, path: &str) -> Option<(bool, bool)> {
     // returns (public_enabled, require_api_key)
     let rows: Vec<(String, i64, i64)> = sqlx::query_as(
         "SELECT path_template, public_enabled, require_api_key
@@ -97,15 +93,17 @@ pub async fn api_key_middleware(
     let path = req.uri().path().to_string();
 
     // 只处理 /api；但排除 /api/admin 和 /api/auth
-    if !path.starts_with("/api/") || path.starts_with("/api/admin") || path.starts_with("/api/auth") {
+    if !path.starts_with("/api/") || path.starts_with("/api/admin") || path.starts_with("/api/auth")
+    {
         return Ok(next.run(req).await);
     }
 
     let method = req.method().to_string();
 
     // 默认策略：允许公网访问 & 不强制 API Key
-    let (public_enabled, require_api_key) =
-        get_policy(&pool, &method, &path).await.unwrap_or((true, false));
+    let (public_enabled, require_api_key) = get_policy(&pool, &method, &path)
+        .await
+        .unwrap_or((true, false));
 
     if !public_enabled {
         // 对公网禁用时直接 404（隐藏接口）
@@ -151,7 +149,10 @@ pub async fn api_key_middleware(
     let key_str = key_str.unwrap();
 
     // 查询 API Key
-    let row: Option<(String, Option<String>, i32)> = sqlx::query_as::<_, (String, Option<String>, i32)>(
+    let row: Option<(String, Option<String>, i32)> = sqlx::query_as::<
+        _,
+        (String, Option<String>, i32),
+    >(
         "SELECT id, scopes, rate_limit_per_minute FROM api_keys WHERE key = ? AND is_active = 1",
     )
     .bind(&key_str)
@@ -188,7 +189,8 @@ pub async fn api_key_middleware(
     // 限流：基于 (key_id, 当前分钟)
     if rate_limit > 0 {
         let bucket = now_unix_minute();
-        let mut guard: std::sync::MutexGuard<'_, HashMap<(String, u64), u32>> = RATE_LIMITER.lock().unwrap();
+        let mut guard: std::sync::MutexGuard<'_, HashMap<(String, u64), u32>> =
+            RATE_LIMITER.lock().unwrap();
         let counter = guard.entry((key_id.clone(), bucket)).or_insert(0u32);
         if *counter >= rate_limit as u32 {
             let resp = Response::builder()
@@ -225,4 +227,3 @@ pub async fn api_key_middleware(
 
     Ok(response)
 }
-

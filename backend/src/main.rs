@@ -1,15 +1,20 @@
 // backend/src/main.rs
-use axum::{http::{Method, header}, middleware, Router};
+use axum::{
+    Router,
+    http::{Method, header},
+    middleware,
+};
 use sqlx::sqlite::SqlitePoolOptions;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
+mod api_catalog;
 mod auth;
+mod donor_support;
 mod handlers;
 mod models;
 mod routes;
-mod api_catalog;
 
 async fn migrate_admin_users_table(pool: &sqlx::SqlitePool) {
     // 旧版本使用 users(id,email,password_hash) 作为管理员表。
@@ -55,9 +60,28 @@ async fn migrate_admin_users_table(pool: &sqlx::SqlitePool) {
         .await;
 }
 
+async fn table_has_column(pool: &sqlx::SqlitePool, table: &str, column: &str) -> bool {
+    let pragma = format!("PRAGMA table_info({table})");
+    let cols: Vec<(i64, String, String, i64, Option<String>, i64)> = sqlx::query_as(&pragma)
+        .fetch_all(pool)
+        .await
+        .unwrap_or_default();
+    cols.iter().any(|c| c.1 == column)
+}
+
+async fn ensure_column(pool: &sqlx::SqlitePool, table: &str, column: &str, definition: &str) {
+    if table_has_column(pool, table, column).await {
+        return;
+    }
+
+    let sql = format!("ALTER TABLE {table} ADD COLUMN {column} {definition}");
+    let _ = sqlx::query(&sql).execute(pool).await;
+}
+
 #[tokio::main]
 async fn main() {
-    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://flowcore.db?mode=rwc".to_string());
+    let db_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "sqlite://flowcore.db?mode=rwc".to_string());
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
         .connect(&db_url)
@@ -107,13 +131,27 @@ async fn main() {
         "CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY,
             mc_uuid TEXT UNIQUE NOT NULL,
+            mc_name TEXT,
             email TEXT,
+            afdian_user_id TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );",
     )
     .execute(&pool)
     .await
     .expect("创建 donor users 表失败");
+
+    ensure_column(&pool, "users", "mc_name", "TEXT").await;
+    ensure_column(&pool, "users", "afdian_user_id", "TEXT").await;
+
+    sqlx::query(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_afdian_user_id
+         ON users(afdian_user_id)
+         WHERE afdian_user_id IS NOT NULL;",
+    )
+    .execute(&pool)
+    .await
+    .expect("创建 users afdian_user_id 索引失败");
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS donations (
@@ -176,6 +214,65 @@ async fn main() {
     .execute(&pool)
     .await
     .expect("创建 activations 表失败");
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS historical_donors (
+            user_id TEXT PRIMARY KEY,
+            mc_uuid TEXT NOT NULL,
+            mc_name TEXT,
+            total_amount REAL NOT NULL DEFAULT 0,
+            started_at DATETIME,
+            last_donated_at DATETIME,
+            is_visible BOOLEAN NOT NULL DEFAULT 1,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+    )
+    .execute(&pool)
+    .await
+    .expect("创建 historical_donors 表失败");
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_historical_donors_visible_last
+         ON historical_donors(is_visible, last_donated_at DESC);",
+    )
+    .execute(&pool)
+    .await
+    .expect("创建 historical_donors 索引失败");
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS afdian_sponsors (
+            user_id TEXT PRIMARY KEY,
+            all_sum_amount REAL NOT NULL DEFAULT 0,
+            first_pay_time INTEGER,
+            last_pay_time INTEGER,
+            synced_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+    )
+    .execute(&pool)
+    .await
+    .expect("创建 afdian_sponsors 表失败");
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS afdian_config (
+            id TEXT PRIMARY KEY,
+            creator_user_id TEXT,
+            token_encrypted TEXT,
+            token_preview TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+    )
+    .execute(&pool)
+    .await
+    .expect("创建 afdian_config 表失败");
+
+    if let Ok(existing_user_ids) = sqlx::query_as::<_, (String,)>("SELECT id FROM users")
+        .fetch_all(&pool)
+        .await
+    {
+        for (user_id,) in existing_user_ids {
+            let _ = crate::donor_support::refresh_historical_donor(&pool, &user_id, None).await;
+        }
+    }
 
     // 3. 自动建表：features
     sqlx::query(
@@ -640,6 +737,14 @@ async fn main() {
     .execute(&pool)
     .await;
 
+    let _ = sqlx::query(
+        "INSERT INTO api_endpoint_policies (method, path_template, group_name, public_enabled, require_api_key)
+         VALUES ('GET', '/api/donors/supporters', 'public', 1, 1)
+         ON CONFLICT(method, path_template) DO UPDATE SET require_api_key = 1;",
+    )
+    .execute(&pool)
+    .await;
+
     let crawler_pool = pool.clone();
     tokio::spawn(async move {
         crate::handlers::minecraft_api::crawler_daemon(crawler_pool).await;
@@ -693,11 +798,16 @@ async fn main() {
         .ok()
         .and_then(|v| v.parse::<u16>().ok())
         .unwrap_or(3000);
-    let addr: SocketAddr = format!("{}:{}", host, port).parse().expect("BIND_HOST/PORT 无效");
+    let addr: SocketAddr = format!("{}:{}", host, port)
+        .parse()
+        .expect("BIND_HOST/PORT 无效");
     println!("后端服务器已启动，监听在 http://{}", addr);
 
     let listener = TcpListener::bind(&addr).await.unwrap();
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
-        .await
-        .unwrap();
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }

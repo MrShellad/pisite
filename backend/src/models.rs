@@ -84,7 +84,13 @@ pub struct AdminUser {
 pub struct DonorUser {
     pub id: String,
     pub mc_uuid: String,
+    pub mc_name: Option<String>,
     pub email: Option<String>,
+    pub afdian_user_id: Option<String>,
+    pub total_sponsored_amount: f64,
+    pub first_sponsored_at: Option<String>,
+    pub last_sponsored_at: Option<String>,
+    pub is_visible: bool,
     pub created_at: Option<String>,
 }
 
@@ -137,6 +143,7 @@ pub struct Activation {
 pub struct DonorUpsertUserPayload {
     pub mc_uuid: String,
     pub email: Option<String>,
+    pub is_visible: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -181,6 +188,68 @@ pub struct DonorClientMeResponse {
     pub tier: String,
     pub is_beta_enabled: bool,
     pub status: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoricalDonor {
+    pub user_id: String,
+    pub mc_uuid: String,
+    pub mc_name: Option<String>,
+    pub total_amount: f64,
+    pub started_at: Option<String>,
+    pub last_donated_at: Option<String>,
+    pub is_visible: bool,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicHistoricalDonor {
+    pub mc_uuid: String,
+    pub mc_name: Option<String>,
+    pub total_amount: f64,
+    pub started_at: Option<String>,
+    pub last_donated_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct AfdianSponsorSnapshot {
+    pub user_id: String,
+    pub all_sum_amount: f64,
+    pub first_pay_time: Option<i64>,
+    pub last_pay_time: Option<i64>,
+    pub synced_at: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DonorAfdianBindingResponse {
+    pub afdian_user_id: Option<String>,
+    pub sponsor: Option<AfdianSponsorSnapshot>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AfdianConfigResponse {
+    pub creator_user_id: Option<String>,
+    pub has_token: bool,
+    pub token_preview: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DonorAfdianBindingPayload {
+    pub afdian_user_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AfdianConfigPayload {
+    pub creator_user_id: String,
+    pub token: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, FromRow)]
@@ -705,4 +774,3 @@ pub struct McVersionManifest {
     pub v_type: String,
     pub release_time: String,
 }
-

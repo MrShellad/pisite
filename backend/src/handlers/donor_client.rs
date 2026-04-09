@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 use crate::auth::JWT_SECRET;
+use crate::donor_support::normalize_mc_uuid;
 use crate::models::{DonorClientAuthResponse, DonorClientLoginPayload, DonorClientMeResponse};
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -57,9 +58,11 @@ pub async fn login(
     State(pool): State<SqlitePool>,
     Json(payload): Json<DonorClientLoginPayload>,
 ) -> Result<Json<DonorClientAuthResponse>, (StatusCode, String)> {
+    let mc_uuid = normalize_mc_uuid(&payload.mc_uuid).map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
     // 1) 找到用户
     let user: Option<(String,)> = sqlx::query_as("SELECT id FROM users WHERE mc_uuid = ?")
-        .bind(&payload.mc_uuid)
+        .bind(&mc_uuid)
         .fetch_optional(&pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;

@@ -1,16 +1,12 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
+use axum::{Json, extract::State, http::StatusCode};
 use sqlx::SqlitePool;
 
 use bcrypt::{DEFAULT_COST, hash, verify};
-use jsonwebtoken::{encode, Header, EncodingKey};
+use jsonwebtoken::{EncodingKey, Header, encode};
 
 use crate::{
     auth::JWT_SECRET,
-    models::{AdminProfileResponse, AuthResponse, Claims, AdminUser, UpdateAdminProfilePayload},
+    models::{AdminProfileResponse, AdminUser, AuthResponse, Claims, UpdateAdminProfilePayload},
 };
 
 pub async fn get_profile(
@@ -53,7 +49,10 @@ pub async fn update_profile(
 
     // 新密码加密
     if payload.newPassword.len() < 6 {
-        return Err((StatusCode::BAD_REQUEST, "新密码长度至少需要 6 位".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "新密码长度至少需要 6 位".to_string(),
+        ));
     }
     let new_hash = hash(&payload.newPassword, DEFAULT_COST)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -84,10 +83,9 @@ pub async fn update_profile(
     let token = encode(
         &Header::default(),
         &new_claims,
-        &EncodingKey::from_secret(JWT_SECRET.as_bytes()), 
+        &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
     )
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(AuthResponse { token }))
 }
-

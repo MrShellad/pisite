@@ -1,14 +1,12 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::models::{
-    ApiAccessLog, ApiKey, ApiKeyCreatePayload, ApiKeyUpdatePayload, Claims,
-};
+use crate::models::{ApiAccessLog, ApiKey, ApiKeyCreatePayload, ApiKeyUpdatePayload, Claims};
 
 pub async fn list_api_keys(
     _claims: Claims,
@@ -110,4 +108,3 @@ pub async fn list_logs(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(Json(rows))
 }
-

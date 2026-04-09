@@ -1,14 +1,13 @@
 // backend/src/auth.rs
 use crate::models::Claims;
-use once_cell::sync::Lazy;
-use std::env;
-use uuid::Uuid;
 use axum::{
     extract::FromRequestParts,
     http::{StatusCode, request::Parts},
 };
 use jsonwebtoken::{DecodingKey, Validation, decode};
-
+use once_cell::sync::Lazy;
+use std::env;
+use uuid::Uuid;
 
 // 使用 Lazy 确保它只在程序第一次访问时生成一次，并且在整个容器运行期间保持不变
 pub static JWT_SECRET: Lazy<String> = Lazy::new(|| {

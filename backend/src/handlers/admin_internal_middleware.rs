@@ -68,7 +68,9 @@ pub async fn admin_internal_only_middleware(
 
     let response = Response::builder()
         .status(StatusCode::FORBIDDEN)
-        .body(Body::from("Admin API is only accessible from internal networks"))
+        .body(Body::from(
+            "Admin API is only accessible from internal networks",
+        ))
         .unwrap();
 
     Ok(response)
