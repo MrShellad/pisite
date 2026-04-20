@@ -587,6 +587,7 @@ pub struct ServerSubmission {
     pub contact_email: String,
     pub email_verified: bool,
     pub email_verified_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub email_verification_id: Option<String>,
     pub website: String,
     pub server_type: String, // vanilla / plugin / modded
@@ -603,6 +604,7 @@ pub struct ServerSubmission {
     pub elements: sqlx::types::Json<Vec<IconTag>>,
     pub community: sqlx::types::Json<Vec<IconTag>>,
     pub tags: sqlx::types::Json<Vec<String>>,
+    pub sort_id: i32,
 
     pub created_at: Option<String>,
     pub verified: bool,
@@ -675,7 +677,15 @@ pub struct UpdateServerSubmissionPayload {
     pub elements: Vec<IconTag>,
     pub community: Vec<IconTag>,
     pub tags: Vec<String>,
+    pub sort_id: i32,
     pub verified: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SendSubmissionContactEmailPayload {
+    pub subject: String,
+    pub body: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, sqlx::FromRow)]

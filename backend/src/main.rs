@@ -507,6 +507,7 @@ async fn main() {
             elements TEXT NOT NULL DEFAULT '[]',
             community TEXT NOT NULL DEFAULT '[]',
             tags TEXT NOT NULL DEFAULT '[]',
+            sort_id INTEGER NOT NULL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             verified BOOLEAN NOT NULL DEFAULT 0
         );",
@@ -542,6 +543,13 @@ async fn main() {
         "server_submissions",
         "email_verification_id",
         "TEXT",
+    )
+    .await;
+    ensure_column(
+        &pool,
+        "server_submissions",
+        "sort_id",
+        "INTEGER NOT NULL DEFAULT 0",
     )
     .await;
 

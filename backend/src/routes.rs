@@ -200,6 +200,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
             put(handlers::server_submissions::toggle_verify),
         )
         .route(
+            "/api/admin/server-submissions/{id}/send-email",
+            post(handlers::server_submissions::send_submission_email_to_submitter),
+        )
+        .route(
             "/api/admin/server-status",
             get(handlers::server_submissions::get_server_statuses),
         )

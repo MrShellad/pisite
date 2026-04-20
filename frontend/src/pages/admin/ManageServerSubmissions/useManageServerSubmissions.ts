@@ -12,6 +12,7 @@ import type {
 } from '@/types';
 
 export interface AdminServerSubmissionFormState extends ServerSubmissionFormState {
+  sortId: number;
   verified: boolean;
   emailVerified: boolean;
   emailVerifiedAt?: string | null;
@@ -20,6 +21,7 @@ export interface AdminServerSubmissionFormState extends ServerSubmissionFormStat
 // 将后端的 ServerSubmission 实体转换为表单状态
 function toFormState(item: ServerSubmission): AdminServerSubmissionFormState {
   return {
+    sortId: Number(item.sortId ?? 0),
     name: item.name || '',
     description: item.description || '',
     ip: item.ip || '',
@@ -51,6 +53,18 @@ function toFormState(item: ServerSubmission): AdminServerSubmissionFormState {
   };
 }
 
+function buildSubmissionEmailDraft(item: ServerSubmission) {
+  const safeName = (item.name || '未命名服务器').trim();
+  return {
+    subject: `关于您提交的服务器「${safeName}」`,
+    body:
+      `您好，\n\n` +
+      `这里是 PiSite 管理员团队。我们正在处理您提交的服务器「${safeName}」。\n\n` +
+      `请根据需要回复此邮件补充信息，我们会尽快跟进。\n\n` +
+      `谢谢。`,
+  };
+}
+
 export function useManageServerSubmissions() {
   const [submissions, setSubmissions] = useState<ServerSubmission[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -63,6 +77,9 @@ export function useManageServerSubmissions() {
   const [isRunningPingJob, setIsRunningPingJob] = useState(false);
   const [tagDict, setTagDict] = useState<any[]>([]);
   const [pingConfig, setPingConfig] = useState<ServerPingConfig | null>(null);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   // 筛选与搜索状态
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,8 +95,12 @@ export function useManageServerSubmissions() {
       setPingConfig(pingConfigRes.data);
 
       if (response.data.length && !selectedId) {
-        setSelectedId(response.data[0].id);
-        setFormData(toFormState(response.data[0]));
+        const firstItem = response.data[0];
+        setSelectedId(firstItem.id);
+        setFormData(toFormState(firstItem));
+        const draft = buildSubmissionEmailDraft(firstItem);
+        setEmailSubject(draft.subject);
+        setEmailBody(draft.body);
       }
     } catch (err) {
       console.error('Failed to fetch submissions:', err);
@@ -138,6 +159,9 @@ export function useManageServerSubmissions() {
   const handleSelect = (item: ServerSubmission) => {
     setSelectedId(item.id);
     setFormData(toFormState(item));
+    const draft = buildSubmissionEmailDraft(item);
+    setEmailSubject(draft.subject);
+    setEmailBody(draft.body);
   };
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>, field: 'icon' | 'hero') => {
@@ -167,6 +191,7 @@ export function useManageServerSubmissions() {
     try {
       await api.put(`/admin/server-submissions/${selectedId}`, {
         ...formData,
+        sortId: Math.max(0, Number(formData.sortId || 0)),
         name: (formData.name || '').trim(),
         description: formData.description,
         ip: (formData.ip || '').trim(),
@@ -182,6 +207,30 @@ export function useManageServerSubmissions() {
       window.alert('保存失败，请检查字段后重试。');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!selectedId || !formData) return;
+    const subject = emailSubject.trim();
+    const body = emailBody.trim();
+    if (!subject || !body) {
+      window.alert('请填写邮件主题和正文。');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    try {
+      await api.post(`/admin/server-submissions/${selectedId}/send-email`, {
+        subject,
+        body,
+      });
+      window.alert(`邮件已发送到 ${formData.contactEmail || '提交者邮箱'}`);
+    } catch (err) {
+      console.error('Failed to send submission email:', err);
+      window.alert('邮件发送失败，请检查 SMTP 配置。');
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -245,6 +294,11 @@ export function useManageServerSubmissions() {
     isUploading,
     isSavingPingConfig,
     isRunningPingJob,
+    emailSubject,
+    setEmailSubject,
+    emailBody,
+    setEmailBody,
+    isSendingEmail,
     tagDict,
     pingConfig,
     updatePingConfigField,
@@ -258,6 +312,7 @@ export function useManageServerSubmissions() {
     handleSelect,
     handleUpload,
     handleSave,
+    handleSendEmail,
     handleDelete,
     handleToggleVerify,
     addSocialLink,

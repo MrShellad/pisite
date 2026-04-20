@@ -162,6 +162,33 @@ async fn send_email_via_lettre(
     Ok(())
 }
 
+pub async fn send_submission_custom_email(
+    pool: &SqlitePool,
+    to_email: &str,
+    subject: &str,
+    body: &str,
+) -> Result<(), (StatusCode, String)> {
+    let email = normalize_submission_email(to_email)?;
+    let safe_subject = sanitize_header_value(subject);
+    if safe_subject.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Email subject is required".to_string()));
+    }
+
+    let safe_body = body.trim().to_string();
+    if safe_body.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Email body is required".to_string()));
+    }
+
+    let config = load_submission_email_config_record(pool).await?;
+    validate_submission_email_config(&config, false)?;
+
+    send_email_via_lettre(&config, &email, &safe_subject, &safe_body)
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Shared helpers (email, rules, verification codes …)
 // ---------------------------------------------------------------------------

@@ -3,6 +3,7 @@
   Circle,
   Clock3,
   ImagePlus,
+  Mail,
   Play,
   Plus,
   RefreshCw,
@@ -34,6 +35,11 @@ export default function ManageServerSubmissions() {
     isUploading,
     isSavingPingConfig,
     isRunningPingJob,
+    emailSubject,
+    setEmailSubject,
+    emailBody,
+    setEmailBody,
+    isSendingEmail,
     tagDict,
     pingConfig,
     updatePingConfigField,
@@ -47,6 +53,7 @@ export default function ManageServerSubmissions() {
     handleSelect,
     handleUpload,
     handleSave,
+    handleSendEmail,
     handleDelete,
     handleToggleVerify,
     addSocialLink,
@@ -237,7 +244,12 @@ export default function ManageServerSubmissions() {
                             alt=""
                           />
                           <div>
-                            <div className="line-clamp-1 text-sm font-bold text-neutral-900">{item.name || '未命名'}</div>
+                            <div className="flex items-center gap-2">
+                              <div className="line-clamp-1 text-sm font-bold text-neutral-900">{item.name || '未命名'}</div>
+                              <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 font-mono text-[10px] text-neutral-500">
+                                #{item.sortId ?? 0}
+                              </span>
+                            </div>
                             <div className="mt-1 font-mono text-xs text-neutral-500">{item.ip}:{item.port}</div>
                             <div className="mt-1 flex items-center gap-2 text-[11px] text-neutral-500">
                               <span className={`inline-block h-2 w-2 rounded-full ${statusOnline ? 'bg-emerald-500' : 'bg-neutral-300'}`} />
@@ -376,7 +388,19 @@ export default function ManageServerSubmissions() {
                 </div>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-3">
+              <div className="grid gap-6 sm:grid-cols-4">
+                <div>
+                  <label className={labelClass}>排序 ID</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={formData.sortId}
+                    onChange={(e) =>
+                      setFormData((prev) => (prev ? { ...prev, sortId: Math.max(0, Number(e.target.value)) } : prev))
+                    }
+                    className={inputClass}
+                  />
+                </div>
                 <div>
                   <label className={labelClass}>服务器名称</label>
                   <input
@@ -552,6 +576,40 @@ export default function ManageServerSubmissions() {
                     />
                   </div>
                 )}
+              </div>
+
+              <div className="space-y-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
+                <div className="flex items-center gap-2 text-sm font-bold text-neutral-800">
+                  <Mail size={16} className="text-orange-500" />
+                  给提交者发送邮件
+                </div>
+                <div>
+                  <label className={labelClass}>邮件主题</label>
+                  <input
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    className={inputClass}
+                    placeholder="输入邮件主题"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>邮件正文</label>
+                  <textarea
+                    value={emailBody}
+                    onChange={(e) => setEmailBody(e.target.value)}
+                    className={`${inputClass} min-h-[140px] resize-y`}
+                    placeholder="输入邮件正文"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleSendEmail()}
+                  disabled={isSendingEmail}
+                  className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {isSendingEmail ? <RefreshCw size={16} className="animate-spin" /> : <Mail size={16} />}
+                  {isSendingEmail ? '发送中...' : '发送邮件'}
+                </button>
               </div>
 
               <div className="space-y-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-6">

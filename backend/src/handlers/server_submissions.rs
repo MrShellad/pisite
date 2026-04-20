@@ -1,10 +1,11 @@
 use crate::models::{
     Claims, CreateServerSubmissionPayload, ServerPingBatchRunResult, ServerPingConfig, ServerStatus,
-    ServerStatusHistory, ServerSubmission, ServerTagDictPayload, UpdateServerPingConfigPayload,
-    UpdateServerSubmissionPayload,
+    ServerStatusHistory, ServerSubmission, ServerTagDictPayload, SendSubmissionContactEmailPayload,
+    UpdateServerPingConfigPayload, UpdateServerSubmissionPayload,
 };
 use crate::handlers::submission_email::{
     check_submission_email_token, consume_submission_email_token, normalize_submission_email,
+    send_submission_custom_email,
 };
 use ammonia::clean;
 use axum::{
@@ -194,7 +195,7 @@ fn server_submission_select_sql(only_verified: bool) -> &'static str {
         FROM server_submissions s \
         LEFT JOIN server_status st ON st.server_id = s.id \
         WHERE s.verified = 1 \
-        ORDER BY datetime(s.created_at) DESC"
+        ORDER BY s.sort_id ASC, datetime(s.created_at) DESC"
     } else {
         "SELECT s.*, \
             st.online_players AS status_online_players, \
@@ -209,7 +210,7 @@ fn server_submission_select_sql(only_verified: bool) -> &'static str {
             END AS status_is_expired \
         FROM server_submissions s \
         LEFT JOIN server_status st ON st.server_id = s.id \
-        ORDER BY datetime(s.created_at) DESC"
+        ORDER BY s.sort_id ASC, datetime(s.created_at) DESC"
     }
 }
 
@@ -354,10 +355,13 @@ pub async fn get_all_server_submissions(
 pub async fn get_public_server_submissions(
     State(pool): State<SqlitePool>,
 ) -> Result<Json<Vec<ServerSubmission>>, (StatusCode, String)> {
-    let submissions = sqlx::query_as::<_, ServerSubmission>(server_submission_select_sql(true))
+    let mut submissions = sqlx::query_as::<_, ServerSubmission>(server_submission_select_sql(true))
         .fetch_all(&pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    for item in &mut submissions {
+        item.email_verification_id = None;
+    }
 
     Ok(Json(submissions))
 }
@@ -448,7 +452,7 @@ pub async fn update_server_submission(
              icon = ?, hero = ?, contact_email = ?, email_verified = ?, email_verified_at = ?, email_verification_id = ?,
              website = ?, server_type = ?, language = ?, modpack_url = ?,
              has_paid_content = ?, age_recommendation = ?,
-             social_links = ?, has_voice_chat = ?, voice_platform = ?, voice_url = ?,
+             social_links = ?, has_voice_chat = ?, voice_platform = ?, voice_url = ?, sort_id = ?,
              features = ?, mechanics = ?, elements = ?, community = ?, tags = ?, verified = ?
          WHERE id = ?",
     )
@@ -475,6 +479,7 @@ pub async fn update_server_submission(
     .bind(payload.has_voice_chat)
     .bind(payload.voice_platform.trim())
     .bind(payload.voice_url.trim())
+    .bind(payload.sort_id.max(0))
     .bind(SqlxJson(&payload.features))
     .bind(SqlxJson(&payload.mechanics))
     .bind(SqlxJson(&payload.elements))
@@ -487,6 +492,34 @@ pub async fn update_server_submission(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(StatusCode::OK)
+}
+
+pub async fn send_submission_email_to_submitter(
+    _claims: Claims,
+    State(pool): State<SqlitePool>,
+    AxumPath(id): AxumPath<String>,
+    Json(payload): Json<SendSubmissionContactEmailPayload>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let (contact_email,): (String,) = sqlx::query_as(
+        "SELECT contact_email
+         FROM server_submissions
+         WHERE id = ?",
+    )
+    .bind(&id)
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or((StatusCode::NOT_FOUND, "Submission not found".to_string()))?;
+
+    send_submission_custom_email(
+        &pool,
+        &contact_email,
+        payload.subject.as_str(),
+        payload.body.as_str(),
+    )
+    .await?;
+
+    Ok(Json(serde_json::json!({ "message": "email sent" })))
 }
 
 pub async fn toggle_verify(

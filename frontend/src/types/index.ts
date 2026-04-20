@@ -48,6 +48,7 @@ export interface IconTag {
 // 2. 数据库返回的完整服务器实体模型 (对应后端的 ServerSubmission)
 export interface ServerSubmission {
   id: string;
+  sortId: number;
   name: string;
   description: string;
   ip: string;
