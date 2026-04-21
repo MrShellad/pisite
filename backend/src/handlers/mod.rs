@@ -12,6 +12,7 @@ pub mod donor_public;
 pub mod faqs;
 pub mod features;
 pub mod hero;
+pub mod image_storage;
 pub mod minecraft_api;
 pub mod misc;
 pub mod server_submissions;

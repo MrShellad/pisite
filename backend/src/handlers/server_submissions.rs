@@ -3,6 +3,7 @@ use crate::models::{
     ServerStatusHistory, ServerSubmission, ServerTagDictPayload, SendSubmissionContactEmailPayload,
     UpdateServerPingConfigPayload, UpdateServerSubmissionPayload,
 };
+use crate::handlers::image_storage::{convert_bytes_to_webp, uuid_webp_file_name};
 use crate::handlers::submission_email::{
     check_submission_email_token, consume_submission_email_token, normalize_submission_email,
     send_submission_custom_email,
@@ -17,7 +18,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Deserialize;
 use sqlx::{QueryBuilder, Sqlite, SqlitePool, types::Json as SqlxJson};
-use std::{collections::HashSet, io, path::Path};
+use std::{collections::HashSet, io};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
@@ -225,12 +226,7 @@ pub async fn upload_server_cover(
         return Err((StatusCode::BAD_REQUEST, "No file uploaded".to_string()));
     };
 
-    let original_name = field.file_name().unwrap_or("cover.png");
-    let ext = Path::new(original_name)
-        .extension()
-        .and_then(|value| value.to_str())
-        .unwrap_or("png");
-    let file_name = format!("{}.{}", Uuid::new_v4(), ext);
+    let file_name = uuid_webp_file_name();
     let relative_path = format!("./uploads/server_covers/{}", file_name);
 
     tokio::fs::create_dir_all("./uploads/server_covers")
@@ -242,7 +238,13 @@ pub async fn upload_server_cover(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    tokio::fs::write(&relative_path, data)
+    if data.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "empty file".to_string()));
+    }
+
+    let encoded = convert_bytes_to_webp(&data).map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
+    tokio::fs::write(&relative_path, encoded)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 

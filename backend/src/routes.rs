@@ -1,5 +1,6 @@
 // backend/src/routes.rs
 use axum::{
+    extract::DefaultBodyLimit,
     Router,
     routing::{delete, get, post, put},
 };
@@ -7,6 +8,7 @@ use sqlx::SqlitePool;
 
 // 引入刚刚彻底解耦的 handlers 模块
 use crate::handlers;
+use crate::handlers::image_storage::MAX_UPLOAD_BODY_BYTES;
 
 pub fn create_router(pool: SqlitePool) -> Router {
     Router::new()
@@ -59,7 +61,8 @@ pub fn create_router(pool: SqlitePool) -> Router {
         )
         .route(
             "/api/server-submissions/upload-cover",
-            post(handlers::server_submissions::upload_server_cover),
+            post(handlers::server_submissions::upload_server_cover)
+                .layer(DefaultBodyLimit::max(MAX_UPLOAD_BODY_BYTES)),
         )
         // 6. 数据追踪与端点打点
         .route("/api/track/download", post(handlers::stats::track_download))
@@ -161,7 +164,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
             delete(handlers::changelog::delete_changelog),
         )
         // 7. 图片/文件上传中心
-        .route("/api/admin/upload", post(handlers::upload::upload_logo))
+        .route(
+            "/api/admin/upload",
+            post(handlers::upload::upload_logo).layer(DefaultBodyLimit::max(MAX_UPLOAD_BODY_BYTES)),
+        )
         .route(
             "/api/admin/mc-crawler/config",
             get(handlers::minecraft_api::get_crawler_config),

@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use tokio::time::{Duration, sleep};
 
+use crate::handlers::image_storage::convert_bytes_to_webp;
 use crate::models::{Claims, McCrawlerConfig, McUpdate, UpdateMcCrawlerConfig};
 
 #[derive(Deserialize, Default)]
@@ -321,22 +322,33 @@ async fn perform_crawl(pool: &SqlitePool) -> Result<(), String> {
                 .unwrap_or_default();
 
             // 图片下载缓存
-            let file_name = format!("{}_cover.jpg", v_id);
+            let file_name = format!("{}_cover.webp", v_id);
             let file_path = format!("./uploads/mc_covers/{}", file_name);
             let local_cover_url = format!("/uploads/mc_covers/{}", file_name);
+            let mut cover_url = if source_image.is_empty() {
+                String::new()
+            } else {
+                source_image.clone()
+            };
 
-            if !Path::new(&file_path).exists() && !source_image.is_empty() {
+            if Path::new(&file_path).exists() {
+                cover_url = local_cover_url.clone();
+            } else if !source_image.is_empty() {
                 tokio::fs::create_dir_all("./uploads/mc_covers").await.ok();
                 if let Ok(resp) = reqwest::get(&source_image).await {
                     if let Ok(bytes) = resp.bytes().await {
-                        tokio::fs::write(&file_path, bytes).await.ok();
+                        if let Ok(encoded) = convert_bytes_to_webp(&bytes) {
+                            if tokio::fs::write(&file_path, encoded).await.is_ok() {
+                                cover_url = local_cover_url.clone();
+                            }
+                        }
                     }
                 }
             }
 
             // 写入数据库
             sqlx::query("INSERT INTO mc_updates (version, v_type, title, cover, article, wiki_en, wiki_zh, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-                .bind(v_id).bind(v_type).bind(title).bind(local_cover_url).bind(article_url).bind(wiki_en).bind(wiki_zh).bind(date)
+                .bind(v_id).bind(v_type).bind(title).bind(cover_url).bind(article_url).bind(wiki_en).bind(wiki_zh).bind(date)
                 .execute(pool).await.map_err(|e| e.to_string())?;
         }
     }

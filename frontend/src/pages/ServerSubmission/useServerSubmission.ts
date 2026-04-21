@@ -43,6 +43,7 @@ const EMPTY_PENDING_ASSETS: PendingAssetsState = {
   icon: EMPTY_PENDING_ASSET,
   hero: EMPTY_PENDING_ASSET,
 };
+const MAX_IMAGE_UPLOAD_BYTES = 50 * 1024 * 1024;
 
 async function readImageDimensions(file: File): Promise<{ width: number; height: number }> {
   const objectUrl = URL.createObjectURL(file);
@@ -127,8 +128,8 @@ export function useServerSubmission() {
 
     if (!file) return;
 
-    if (file.size > 1024 * 1024) {
-      setError('图片大小不能超过 1MB。');
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      setError('图片大小不能超过 50MB。');
       return;
     }
 
