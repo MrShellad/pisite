@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api/client';
+import { useSearchParams } from 'react-router-dom';
 import {
   Coins,
   Cpu,
@@ -107,6 +108,7 @@ function formatAmount(value?: number | null) {
 }
 
 export default function ManageDonorUsers() {
+  const [searchParams] = useSearchParams();
   const [users, setUsers] = useState<DonorUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -169,10 +171,15 @@ export default function ManageDonorUsers() {
   const filteredUsers = useMemo(() => {
     const keyword = searchQuery.trim().toLowerCase();
     if (!keyword) return users;
+
+    const normalizedKeyword = keyword.replace(/-/g, '');
     return users.filter((user) =>
-      [user.mcUuid, user.mcName, user.email, user.afdianUserId]
+      [user.id, user.mcUuid, user.mcName, user.email, user.afdianUserId]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(keyword)),
+        .some((value) => {
+          const text = String(value).toLowerCase();
+          return text.includes(keyword) || text.replace(/-/g, '').includes(normalizedKeyword);
+        }),
     );
   }, [searchQuery, users]);
 
@@ -247,6 +254,12 @@ export default function ManageDonorUsers() {
   }, []);
 
   useEffect(() => {
+    const presetUuid = (searchParams.get('uuid') ?? searchParams.get('q') ?? '').trim();
+    if (!presetUuid) return;
+    setSearchQuery(presetUuid);
+  }, [searchParams]);
+
+  useEffect(() => {
     if (!selectedUserId) return;
     void fetchUserDetails(selectedUserId);
   }, [selectedUserId]);
@@ -278,6 +291,13 @@ export default function ManageDonorUsers() {
         setIsSyncingProfile(false);
       });
   }, [selectedUser, selectedUserId]);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+    if (filteredUsers.length === 0) return;
+    if (selectedUserId && filteredUsers.some((user) => user.id === selectedUserId)) return;
+    setSelectedUserId(filteredUsers[0].id);
+  }, [filteredUsers, searchQuery, selectedUserId]);
 
   const refreshSelectedUser = async () => {
     if (!selectedUserId) return;

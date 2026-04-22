@@ -273,6 +273,11 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
         group: "admin",
     },
     ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/changelog/{id}/push-hero-download",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
         method: "DELETE",
         path: "/api/admin/changelog/{id}",
         group: "admin",

@@ -51,11 +51,11 @@ function resolveOsInfo(config: HeroFormData, changelogPlatforms?: ChangelogPlatf
   // Priority: changelog platforms → hero config fallback
   let url = '';
   if (osName === 'macOS') {
-    url = changelogPlatforms?.darwin?.url || config.dlMac || '';
+    url = config.dlMac || changelogPlatforms?.darwin?.url || '';
   } else if (osName === 'Linux') {
-    url = changelogPlatforms?.linux?.url || config.dlLinux || '';
+    url = config.dlLinux || changelogPlatforms?.linux?.url || '';
   } else {
-    url = changelogPlatforms?.windows?.url || config.dlWin || '';
+    url = config.dlWin || changelogPlatforms?.windows?.url || '';
   }
 
   return { name: osName, svg, url };

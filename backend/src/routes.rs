@@ -160,6 +160,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
             post(handlers::changelog::rollback_changelog),
         )
         .route(
+            "/api/admin/changelog/{id}/push-hero-download",
+            post(handlers::changelog::push_release_download_to_hero),
+        )
+        .route(
             "/api/admin/changelog/{id}",
             delete(handlers::changelog::delete_changelog),
         )
