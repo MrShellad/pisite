@@ -223,23 +223,25 @@ export function useManageServerSubmissions() {
     }
   };
 
-  const handleSendEmail = async () => {
-    if (!selectedId || !formData) return;
+  const handleSendEmail = async (): Promise<boolean> => {
+    if (!selectedId || !formData) return false;
     const subject = emailSubject.trim();
     const body = emailBody.trim();
     if (!subject || !body) {
       window.alert('请填写邮件主题和正文。');
-      return;
+      return false;
     }
 
     setIsSendingEmail(true);
     try {
       await api.post(`/admin/server-submissions/${selectedId}/send-email`, { subject, body });
       window.alert(`邮件已发送到 ${formData.contactEmail || '提交者邮箱'}`);
+      return true;
     } catch (err) {
       console.error('Failed to send submission email:', err);
       const message = extractApiErrorMessage(err) ?? '邮件发送失败，请检查 SMTP 配置后重试。';
       window.alert(message);
+      return false;
     } finally {
       setIsSendingEmail(false);
     }

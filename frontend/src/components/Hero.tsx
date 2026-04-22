@@ -61,6 +61,10 @@ function resolveOsInfo(config: HeroFormData, changelogPlatforms?: ChangelogPlatf
   return { name: osName, svg, url };
 }
 
+function hasHtmlMarkup(text: string): boolean {
+  return /<\/?[a-z][\s\S]*>/i.test(text);
+}
+
 export default function Hero({ previewConfig }: HeroProps) {
   const [config, setConfig] = useState<HeroFormData | null>(previewConfig ?? null);
   const [latestPlatforms, setLatestPlatforms] = useState<ChangelogPlatforms | null>(null);
@@ -138,6 +142,8 @@ export default function Hero({ previewConfig }: HeroProps) {
   }
 
   const displayDate = latestDate || config.updateDate;
+  const normalizedDescription = (config.description || '').replace(/\r\n?/g, '\n');
+  const useHtmlDescription = hasHtmlMarkup(normalizedDescription);
 
   return (
     <section className="relative overflow-hidden pb-20 pt-16 md:pb-40 md:pt-28">
@@ -157,7 +163,7 @@ export default function Hero({ previewConfig }: HeroProps) {
           className="mb-8 transition-transform hover:scale-105"
           style={{ color: config.logoColor }}
         >
-          <div className="flex h-12 w-12 items-center justify-center md:h-16 md:w-16">
+          <div className="flex h-16 w-16 items-center justify-center md:h-24 md:w-24">
             {config.logoUrl ? (
               <img
                 src={config.logoUrl}
@@ -178,11 +184,20 @@ export default function Hero({ previewConfig }: HeroProps) {
           </span>
         </motion.h1>
 
-        <motion.p
-          variants={heroFadeDown}
-          className={`mb-10 max-w-2xl text-base leading-relaxed sm:text-lg md:mb-12 md:text-xl ${styleTokens.textSecondary}`}
-          dangerouslySetInnerHTML={{ __html: config.description }}
-        />
+        {useHtmlDescription ? (
+          <motion.div
+            variants={heroFadeDown}
+            className={`mb-10 max-w-2xl text-base leading-relaxed sm:text-lg md:mb-12 md:text-xl ${styleTokens.textSecondary}`}
+            dangerouslySetInnerHTML={{ __html: normalizedDescription.replace(/\n/g, '<br />') }}
+          />
+        ) : (
+          <motion.p
+            variants={heroFadeDown}
+            className={`mb-10 max-w-2xl whitespace-pre-line text-base leading-relaxed sm:text-lg md:mb-12 md:text-xl ${styleTokens.textSecondary}`}
+          >
+            {normalizedDescription}
+          </motion.p>
+        )}
 
         <motion.div variants={heroFadeDown} className="flex w-full flex-col items-center sm:w-auto">
           {hasDownload ? (

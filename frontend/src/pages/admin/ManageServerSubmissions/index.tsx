@@ -10,10 +10,13 @@
   Save,
   Search,
   Server,
+  Settings2,
   ShieldCheck,
   Trash2,
   Upload,
+  X,
 } from 'lucide-react';
+import { useState } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
@@ -61,6 +64,9 @@ export default function ManageServerSubmissions() {
     removeSocialLink,
   } = useManageServerSubmissions();
 
+  const [isPingModalOpen, setIsPingModalOpen] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+
   const inputClass =
     'w-full rounded-xl border border-neutral-200 bg-neutral-100/60 px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-orange-500 focus:bg-white';
   const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-500';
@@ -82,19 +88,13 @@ export default function ManageServerSubmissions() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="group relative">
-            <Search
-              size={16}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors group-focus-within:text-orange-500"
-            />
-            <input
-              type="text"
-              placeholder="搜索名称或 IP"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64 rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
-            />
-          </div>
+          <button
+            onClick={() => setIsPingModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
+          >
+            <Settings2 size={16} />
+            Ping 计划任务
+          </button>
           <button
             onClick={() => {
               setIsLoading(true);
@@ -108,92 +108,22 @@ export default function ManageServerSubmissions() {
         </div>
       </div>
 
-      <section className={`${cardClass} p-5`}>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h3 className="flex items-center gap-2 text-sm font-bold text-neutral-900">
-              <Clock3 size={16} className="text-orange-500" />
-              Server List Ping 计划任务
-            </h3>
-            <p className="mt-1 text-xs text-neutral-500">支持开关、分批抓取、TTL 过期和手动触发。</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => void handleRunPingBatch()}
-              disabled={isRunningPingJob}
-              className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
-            >
-              {isRunningPingJob ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
-              手动执行一批
-            </button>
-            <button
-              onClick={() => void handleSavePingConfig()}
-              disabled={!pingConfig || isSavingPingConfig}
-              className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-            >
-              {isSavingPingConfig ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-              保存计划
-            </button>
-          </div>
-        </div>
-
-        {pingConfig && (
-          <div className="mt-4 grid gap-4 sm:grid-cols-5">
-            <label className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700">
-              <input
-                type="checkbox"
-                checked={pingConfig.enabled}
-                onChange={(e) => updatePingConfigField('enabled', e.target.checked)}
-                className="h-4 w-4 accent-orange-500"
-              />
-              启用任务
-            </label>
-            <label className="text-xs text-neutral-600">
-              间隔(秒)
-              <input
-                type="number"
-                min={10}
-                value={pingConfig.intervalSeconds}
-                onChange={(e) => updatePingConfigField('intervalSeconds', Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
-              />
-            </label>
-            <label className="text-xs text-neutral-600">
-              批次大小
-              <input
-                type="number"
-                min={1}
-                value={pingConfig.batchSize}
-                onChange={(e) => updatePingConfigField('batchSize', Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
-              />
-            </label>
-            <label className="text-xs text-neutral-600">
-              超时(ms)
-              <input
-                type="number"
-                min={500}
-                value={pingConfig.timeoutMs}
-                onChange={(e) => updatePingConfigField('timeoutMs', Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
-              />
-            </label>
-            <label className="text-xs text-neutral-600">
-              TTL(秒)
-              <input
-                type="number"
-                min={10}
-                value={pingConfig.ttlSeconds}
-                onChange={(e) => updatePingConfigField('ttlSeconds', Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
-              />
-            </label>
-          </div>
-        )}
-      </section>
-
       <div className="grid gap-8 xl:grid-cols-[380px_1fr]">
         <section className={`${cardClass} flex h-[calc(100vh-180px)] flex-col overflow-hidden`}>
+          <div className="mb-4 group relative">
+            <Search
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors group-focus-within:text-orange-500"
+            />
+            <input
+              type="text"
+              placeholder="搜索名称或 IP"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
+            />
+          </div>
+
           <div className="mb-5 flex items-center justify-between">
             <div className="flex rounded-xl bg-neutral-100 p-1">
               {(['all', 'pending', 'verified'] as const).map((s) => (
@@ -208,7 +138,9 @@ export default function ManageServerSubmissions() {
                 </button>
               ))}
             </div>
-            <span className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white">{filteredSubmissions.length}</span>
+            <span className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white">
+              {filteredSubmissions.length}
+            </span>
           </div>
 
           <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto pr-2">
@@ -262,6 +194,17 @@ export default function ManageServerSubmissions() {
                     </button>
 
                     <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelect(item);
+                          setIsEmailModalOpen(true);
+                        }}
+                        className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                        title="给提交者发送邮件"
+                      >
+                        <Mail size={18} />
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -578,40 +521,6 @@ export default function ManageServerSubmissions() {
                 )}
               </div>
 
-              <div className="space-y-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
-                <div className="flex items-center gap-2 text-sm font-bold text-neutral-800">
-                  <Mail size={16} className="text-orange-500" />
-                  给提交者发送邮件
-                </div>
-                <div>
-                  <label className={labelClass}>邮件主题</label>
-                  <input
-                    value={emailSubject}
-                    onChange={(e) => setEmailSubject(e.target.value)}
-                    className={inputClass}
-                    placeholder="输入邮件主题"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>邮件正文</label>
-                  <textarea
-                    value={emailBody}
-                    onChange={(e) => setEmailBody(e.target.value)}
-                    className={`${inputClass} min-h-[140px] resize-y`}
-                    placeholder="输入邮件正文"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void handleSendEmail()}
-                  disabled={isSendingEmail}
-                  className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-                >
-                  {isSendingEmail ? <RefreshCw size={16} className="animate-spin" /> : <Mail size={16} />}
-                  {isSendingEmail ? '发送中...' : '发送邮件'}
-                </button>
-              </div>
-
               <div className="space-y-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-6">
                 <div className="flex items-center justify-between">
                   <h4 className="flex items-center gap-2 text-sm font-bold text-neutral-800">
@@ -758,6 +667,178 @@ export default function ManageServerSubmissions() {
           )}
         </section>
       </div>
+
+      {isPingModalOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-3xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
+                  <Clock3 size={18} className="text-orange-500" />
+                  Server List Ping 计划任务
+                </h3>
+                <p className="mt-1 text-sm text-neutral-500">支持开关、分批抓取、TTL 过期和手动触发。</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPingModalOpen(false)}
+                className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {pingConfig ? (
+              <>
+                <div className="grid gap-4 sm:grid-cols-5">
+                  <label className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700">
+                    <input
+                      type="checkbox"
+                      checked={pingConfig.enabled}
+                      onChange={(e) => updatePingConfigField('enabled', e.target.checked)}
+                      className="h-4 w-4 accent-orange-500"
+                    />
+                    启用任务
+                  </label>
+                  <label className="text-xs text-neutral-600">
+                    间隔(秒)
+                    <input
+                      type="number"
+                      min={10}
+                      value={pingConfig.intervalSeconds}
+                      onChange={(e) => updatePingConfigField('intervalSeconds', Number(e.target.value))}
+                      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
+                    />
+                  </label>
+                  <label className="text-xs text-neutral-600">
+                    批次大小
+                    <input
+                      type="number"
+                      min={1}
+                      value={pingConfig.batchSize}
+                      onChange={(e) => updatePingConfigField('batchSize', Number(e.target.value))}
+                      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
+                    />
+                  </label>
+                  <label className="text-xs text-neutral-600">
+                    超时(ms)
+                    <input
+                      type="number"
+                      min={500}
+                      value={pingConfig.timeoutMs}
+                      onChange={(e) => updatePingConfigField('timeoutMs', Number(e.target.value))}
+                      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
+                    />
+                  </label>
+                  <label className="text-xs text-neutral-600">
+                    TTL(秒)
+                    <input
+                      type="number"
+                      min={10}
+                      value={pingConfig.ttlSeconds}
+                      onChange={(e) => updatePingConfigField('ttlSeconds', Number(e.target.value))}
+                      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
+                    />
+                  </label>
+                </div>
+                <div className="mt-6 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => void handleRunPingBatch()}
+                    disabled={isRunningPingJob}
+                    className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
+                  >
+                    {isRunningPingJob ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
+                    手动执行一批
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleSavePingConfig()}
+                    disabled={isSavingPingConfig}
+                    className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    {isSavingPingConfig ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                    保存计划
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-dashed border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500">
+                暂无计划任务配置
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isEmailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
+                  <Mail size={18} className="text-blue-600" />
+                  给提交者发送邮件
+                </h3>
+                <p className="mt-1 text-sm text-neutral-500">
+                  {formData?.name ? `当前服务器：${formData.name}` : '未选择服务器'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEmailModalOpen(false)}
+                className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className={labelClass}>邮件主题</label>
+                <input
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  className={inputClass}
+                  placeholder="输入邮件主题"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>邮件正文</label>
+                <textarea
+                  value={emailBody}
+                  onChange={(e) => setEmailBody(e.target.value)}
+                  className={`${inputClass} min-h-[180px] resize-y`}
+                  placeholder="输入邮件正文"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsEmailModalOpen(false)}
+                  className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const sent = await handleSendEmail();
+                    if (sent) {
+                      setIsEmailModalOpen(false);
+                    }
+                  }}
+                  disabled={isSendingEmail || !selectedId}
+                  className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {isSendingEmail ? <RefreshCw size={16} className="animate-spin" /> : <Mail size={16} />}
+                  {isSendingEmail ? '发送中...' : '发送邮件'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
