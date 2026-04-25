@@ -340,7 +340,8 @@ async fn main() {
             update_date TEXT NOT NULL,
             dl_mac TEXT NOT NULL,
             dl_win TEXT NOT NULL,
-            dl_linux TEXT NOT NULL
+            dl_linux TEXT NOT NULL,
+            flatpak_script TEXT NOT NULL DEFAULT ''
         );",
     )
     .execute(&pool)
@@ -348,6 +349,14 @@ async fn main() {
     .expect("创建 hero_config 表失败");
 
     // 初始化默认 Hero 数据
+    ensure_column(
+        &pool,
+        "hero_config",
+        "flatpak_script",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    .await;
+
     let hero_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM hero_config")
         .fetch_one(&pool)
         .await

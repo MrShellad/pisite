@@ -11,3 +11,4 @@ backend/.env
 backend/target
 flowcore.db
 backend/uploads
+docs/*

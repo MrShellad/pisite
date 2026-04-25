@@ -2,7 +2,7 @@
 
 export interface HeroFormData {
   id: string;
-  logoUrl: string; // 【修改】将 logoSvg 替换为 logoUrl
+  logoUrl: string; // 銆愪慨鏀广€戝皢 logoSvg 鏇挎崲涓?logoUrl
   logoColor: string;
   title: string;
   subtitle: string;
@@ -12,4 +12,5 @@ export interface HeroFormData {
   dlMac: string;
   dlWin: string;
   dlLinux: string;
+  flatpakScript: string;
 }

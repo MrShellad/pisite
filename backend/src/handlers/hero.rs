@@ -21,7 +21,7 @@ pub async fn update_hero(
     State(pool): State<SqlitePool>,
     Json(payload): Json<HeroConfig>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    sqlx::query("UPDATE hero_config SET logo_url=?, logo_color=?, title=?, subtitle=?, description=?, button_text=?, update_date=?, dl_mac=?, dl_win=?, dl_linux=? WHERE id='1'")
+    sqlx::query("UPDATE hero_config SET logo_url=?, logo_color=?, title=?, subtitle=?, description=?, button_text=?, update_date=?, dl_mac=?, dl_win=?, dl_linux=?, flatpak_script=? WHERE id='1'")
     .bind(payload.logo_url)
     .bind(payload.logo_color)
     .bind(payload.title)
@@ -32,6 +32,7 @@ pub async fn update_hero(
     .bind(payload.dl_mac)
     .bind(payload.dl_win)
     .bind(payload.dl_linux)
+    .bind(payload.flatpak_script)
     .execute(&pool).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(StatusCode::OK)

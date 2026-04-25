@@ -106,6 +106,28 @@ export default function ManageHero() {
                   </div>
                 ))}
               </div>
+              <div className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-950 p-5 text-white shadow-inner dark:border-white/10 dark:bg-black/50">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">
+                      Flatpak Script
+                    </label>
+                    <p className="mt-1 text-xs text-neutral-300">
+                      Only shown on the Linux frontend. Users can copy and run it directly.
+                    </p>
+                  </div>
+                  <span className="inline-flex h-fit w-fit rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.28em] text-cyan-200">
+                    Linux Only
+                  </span>
+                </div>
+                <textarea
+                  value={formData.flatpakScript}
+                  onChange={event => handleChange('flatpakScript', event.target.value)}
+                  placeholder={'flatpak install flathub com.flowcore.app\nflatpak run com.flowcore.app'}
+                  spellCheck={false}
+                  className="min-h-[220px] w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-4 font-mono text-xs leading-6 text-cyan-100 outline-none transition-colors placeholder:text-neutral-500 focus:border-cyan-400/40 focus:bg-black/60"
+                />
+              </div>
             </div>
           </section>
         </div>

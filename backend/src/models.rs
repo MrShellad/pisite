@@ -313,6 +313,7 @@ pub struct HeroConfig {
     pub dl_mac: String,
     pub dl_win: String,
     pub dl_linux: String,
+    pub flatpak_script: String,
 }
 
 // 1. 接收网页下载打点的请求体
