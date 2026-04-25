@@ -1,11 +1,11 @@
 use axum::{
+    Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
-use serde::{Deserialize, Serialize};
 use semver::Version;
+use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -253,10 +253,11 @@ pub async fn get_admin_changelogs(
     _claims: Claims,
     State(pool): State<SqlitePool>,
 ) -> Json<serde_json::Value> {
-    let rows = sqlx::query_as::<_, AppReleaseRow>("SELECT * FROM app_releases ORDER BY created_at DESC")
-        .fetch_all(&pool)
-        .await
-        .unwrap_or_default();
+    let rows =
+        sqlx::query_as::<_, AppReleaseRow>("SELECT * FROM app_releases ORDER BY created_at DESC")
+            .fetch_all(&pool)
+            .await
+            .unwrap_or_default();
 
     let result: Vec<serde_json::Value> = rows
         .into_iter()
@@ -347,12 +348,13 @@ pub async fn push_release_download_to_hero(
         return Err((StatusCode::BAD_REQUEST, "Invalid platform.".to_string()));
     };
 
-    let release = sqlx::query_as::<_, AppReleaseRow>("SELECT * FROM app_releases WHERE id = ? LIMIT 1")
-        .bind(&id)
-        .fetch_optional(&pool)
-        .await
-        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?
-        .ok_or((StatusCode::NOT_FOUND, "Release not found.".to_string()))?;
+    let release =
+        sqlx::query_as::<_, AppReleaseRow>("SELECT * FROM app_releases WHERE id = ? LIMIT 1")
+            .bind(&id)
+            .fetch_optional(&pool)
+            .await
+            .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?
+            .ok_or((StatusCode::NOT_FOUND, "Release not found.".to_string()))?;
 
     if release.status != "active" {
         return Err((

@@ -95,6 +95,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
             put(handlers::settings::update_settings),
         )
         .route(
+            "/api/admin/friends",
+            get(handlers::misc::get_admin_friends).put(handlers::misc::update_admin_friends),
+        )
+        .route(
             "/api/admin/submission-email/config",
             get(handlers::submission_email::get_submission_email_config)
                 .put(handlers::submission_email::update_submission_email_config),

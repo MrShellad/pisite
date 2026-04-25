@@ -22,10 +22,23 @@ pub struct Sponsor {
     pub enabled: bool, // 独立禁用开关 (SQLite 中为 0/1)
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct FriendLink {
+    pub id: String,
     pub name: String,
     pub href: String,
+    pub sort_order: i32,
+    pub enabled: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FriendLinkPayload {
+    pub id: Option<String>,
+    pub name: String,
+    pub href: String,
+    pub enabled: bool,
 }
 
 // 1. JWT 中包含的载荷 (Payload) 结构

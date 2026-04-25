@@ -159,6 +159,16 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     },
     ApiEndpointCatalogItem {
         method: "GET",
+        path: "/api/admin/friends",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/friends",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
         path: "/api/admin/submission-email/config",
         group: "admin",
     },
