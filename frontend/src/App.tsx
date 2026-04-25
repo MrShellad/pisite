@@ -1,62 +1,77 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
-import Landing from './pages/Landing';
-import ChangelogPage from './pages/ChangelogPage';
-import ServerSubmissionPage from './pages/ServerSubmission';
-import AdminLayout from './pages/admin/AdminLayout';
-import Dashboard from './pages/admin/Dashboard';
-import Login from './pages/admin/Login';
-import ManageChangelog from './pages/admin/ManageChangelog';
-import ManageFAQ from './pages/admin/ManageFAQ';
-import ManageFeatures from './pages/admin/ManageFeatures';
-import ManageHero from './pages/admin/ManageHero';
-import ManageMcCrawler from './pages/admin/ManageMcCrawler';
-import ManageServerSubmissions from './pages/admin/ManageServerSubmissions';
-import ManageSettings from './pages/admin/ManageSettings';
-import ManageSponsors from './pages/admin/ManageSponsors';
-import RequireAuth from './pages/admin/RequireAuth';
-import Setup from './pages/admin/Setup';
-import ManageServerTags from './pages/admin/ManageServerTags';
-import ServerSuccessPreview from './pages/ServerSubmission/SuccessPreview';
-import ManageDonorUsers from './pages/admin/ManageDonorUsers';
-import ManageApiKeys from './pages/admin/ManageApiKeys';
-import ManageApiAccess from './pages/admin/ManageApiAccess';
-import ManageAdminProfile from './pages/admin/ManageAdminProfile';
-import ManageSignalingServers from './pages/admin/ManageSignalingServers';
-import ManageSubmissionEmail from './pages/admin/ManageSubmissionEmail';
+import { HomeLocaleProvider } from './lib/home-i18n';
+
+const Landing = lazy(() => import('./pages/Landing'));
+const ChangelogPage = lazy(() => import('./pages/ChangelogPage'));
+const ServerSubmissionPage = lazy(() => import('./pages/ServerSubmission'));
+const ServerSuccessPreview = lazy(() => import('./pages/ServerSubmission/SuccessPreview'));
+const Login = lazy(() => import('./pages/admin/Login'));
+const Setup = lazy(() => import('./pages/admin/Setup'));
+const RequireAuth = lazy(() => import('./pages/admin/RequireAuth'));
+const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
+const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
+const ManageHero = lazy(() => import('./pages/admin/ManageHero'));
+const ManageFeatures = lazy(() => import('./pages/admin/ManageFeatures'));
+const ManageChangelog = lazy(() => import('./pages/admin/ManageChangelog'));
+const ManageFAQ = lazy(() => import('./pages/admin/ManageFAQ'));
+const ManageSponsors = lazy(() => import('./pages/admin/ManageSponsors'));
+const ManageDonorUsers = lazy(() => import('./pages/admin/ManageDonorUsers'));
+const ManageApiKeys = lazy(() => import('./pages/admin/ManageApiKeys'));
+const ManageApiAccess = lazy(() => import('./pages/admin/ManageApiAccess'));
+const ManageSettings = lazy(() => import('./pages/admin/ManageSettings'));
+const ManageSubmissionEmail = lazy(() => import('./pages/admin/ManageSubmissionEmail'));
+const ManageAdminProfile = lazy(() => import('./pages/admin/ManageAdminProfile'));
+const ManageMcCrawler = lazy(() => import('./pages/admin/ManageMcCrawler'));
+const ManageServerSubmissions = lazy(() => import('./pages/admin/ManageServerSubmissions'));
+const ManageServerTags = lazy(() => import('./pages/admin/ManageServerTags'));
+const ManageSignalingServers = lazy(() => import('./pages/admin/ManageSignalingServers'));
+
+function RouteLoader() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-emerald-50 via-lime-50/40 to-stone-50 text-sm font-medium text-emerald-700 dark:from-[#04130a] dark:via-[#07180d] dark:to-[#050505] dark:text-emerald-300">
+      Loading page...
+    </div>
+  );
+}
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/changelog" element={<ChangelogPage />} />
-        <Route path="/servers/submit" element={<ServerSubmissionPage />} />
-        <Route path="/admin/login" element={<Login />} />
-        <Route path="/admin/setup" element={<Setup />} />
-        <Route path="/servers/submit/success" element={<ServerSuccessPreview />} />
-        <Route element={<RequireAuth />}>
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="hero" element={<ManageHero />} />
-            <Route path="features" element={<ManageFeatures />} />
-            <Route path="changelog" element={<ManageChangelog />} />
-            <Route path="faqs" element={<ManageFAQ />} />
-            <Route path="sponsors" element={<ManageSponsors />} />
-            <Route path="donors" element={<ManageDonorUsers />} />
-            <Route path="api-keys" element={<ManageApiKeys />} />
-            <Route path="api-access" element={<ManageApiAccess />} />
-            <Route path="settings" element={<ManageSettings />} />
-            <Route path="submission-email" element={<ManageSubmissionEmail />} />
-            <Route path="account" element={<ManageAdminProfile />} />
-            <Route path="mccrawler" element={<ManageMcCrawler />} />
-            <Route path="server-submissions" element={<ManageServerSubmissions />} />
-            <Route path="server-tags" element={<ManageServerTags />} />
-            <Route path="signaling" element={<ManageSignalingServers />} />
-          </Route>
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <HomeLocaleProvider>
+      <BrowserRouter>
+        <Suspense fallback={<RouteLoader />}>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/changelog" element={<ChangelogPage />} />
+            <Route path="/servers/submit" element={<ServerSubmissionPage />} />
+            <Route path="/admin/login" element={<Login />} />
+            <Route path="/admin/setup" element={<Setup />} />
+            <Route path="/servers/submit/success" element={<ServerSuccessPreview />} />
+            <Route element={<RequireAuth />}>
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="hero" element={<ManageHero />} />
+                <Route path="features" element={<ManageFeatures />} />
+                <Route path="changelog" element={<ManageChangelog />} />
+                <Route path="faqs" element={<ManageFAQ />} />
+                <Route path="sponsors" element={<ManageSponsors />} />
+                <Route path="donors" element={<ManageDonorUsers />} />
+                <Route path="api-keys" element={<ManageApiKeys />} />
+                <Route path="api-access" element={<ManageApiAccess />} />
+                <Route path="settings" element={<ManageSettings />} />
+                <Route path="submission-email" element={<ManageSubmissionEmail />} />
+                <Route path="account" element={<ManageAdminProfile />} />
+                <Route path="mccrawler" element={<ManageMcCrawler />} />
+                <Route path="server-submissions" element={<ManageServerSubmissions />} />
+                <Route path="server-tags" element={<ManageServerTags />} />
+                <Route path="signaling" element={<ManageSignalingServers />} />
+              </Route>
+            </Route>
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </HomeLocaleProvider>
   );
 }
 

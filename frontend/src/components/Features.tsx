@@ -21,7 +21,7 @@ export default function Features() {
   if (features.length === 0) return null;
 
   return (
-    <section id="features" className="py-20 relative z-10">
+    <section className="relative z-10 py-20">
       <motion.div 
         // 【核心修复2】：把数组长度作为 key，数据一旦出现，强制触发完整的入场动画
         key={features.length} 
