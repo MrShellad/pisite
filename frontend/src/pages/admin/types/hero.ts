@@ -12,5 +12,5 @@ export interface HeroFormData {
   dlMac: string;
   dlWin: string;
   dlLinux: string;
-  flatpakScript: string;
+  steamDeckSourceUrl: string;
 }

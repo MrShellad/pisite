@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { MouseEvent } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Check, Copy, Download } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Download } from 'lucide-react';
 
 import { api } from '../api/client';
 import {
@@ -68,30 +68,6 @@ function hasHtmlMarkup(text: string): boolean {
   return /<\/?[a-z][\s\S]*>/i.test(text);
 }
 
-async function copyTextToClipboard(text: string) {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.setAttribute('readonly', 'true');
-  textarea.style.position = 'fixed';
-  textarea.style.opacity = '0';
-  textarea.style.pointerEvents = 'none';
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-
-  const copied = document.execCommand('copy');
-  document.body.removeChild(textarea);
-
-  if (!copied) {
-    throw new Error('copy failed');
-  }
-}
-
 export default function Hero({ previewConfig }: HeroProps) {
   const { copy } = useHomeLocale();
   const [config, setConfig] = useState<HeroFormData | null>(previewConfig ?? null);
@@ -99,15 +75,12 @@ export default function Hero({ previewConfig }: HeroProps) {
   const [osInfo, setOsInfo] = useState<OsInfo>(defaultOsInfo);
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
   const [latestDate, setLatestDate] = useState<string | null>(null);
-  const [copyState, setCopyState] = useState<'idle' | 'success' | 'error'>('idle');
-  const [copyFeedbackId, setCopyFeedbackId] = useState(0);
 
   const hasDownload = osInfo.url.length > 0;
+  const steamDeckSourceUrl = (config?.steamDeckSourceUrl || '').trim();
+  const showSteamDeckSource = osInfo.name === 'Linux' && steamDeckSourceUrl.length > 0;
 
-  const handleDownloadClick = async (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    if (!hasDownload) return;
-
+  const trackDownload = (platform: string) => {
     let fingerprint = localStorage.getItem('flowcore_browser_id');
     if (!fingerprint) {
       fingerprint = crypto.randomUUID();
@@ -116,46 +89,37 @@ export default function Hero({ previewConfig }: HeroProps) {
 
     api
       .post('/track/download', {
-        platform: osInfo.name,
+        platform,
         fingerprint,
       })
       .catch(console.error);
+  };
 
+  const handleDownloadClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (!hasDownload) return;
+
+    trackDownload(osInfo.name);
     window.location.href = osInfo.url;
   };
 
-  const handleCopyFlatpak = async () => {
-    const script = config?.flatpakScript?.trim();
-    if (!script) return;
+  const handleSteamDeckSourceClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (!showSteamDeckSource) return;
 
-    try {
-      await copyTextToClipboard(script);
-      setCopyState('success');
-    } catch (error) {
-      console.error(error);
-      setCopyState('error');
-    } finally {
-      setCopyFeedbackId(previous => previous + 1);
-    }
+    trackDownload('SteamDeckSource');
+    window.location.href = steamDeckSourceUrl;
   };
 
   useEffect(() => {
     if (previewConfig) {
-      setConfig({
-        ...previewConfig,
-        flatpakScript: previewConfig.flatpakScript ?? '',
-      });
+      setConfig(previewConfig);
       return;
     }
 
     api
       .get<HeroFormData>('/hero')
-      .then(response => {
-        setConfig({
-          ...response.data,
-          flatpakScript: response.data.flatpakScript ?? '',
-        });
-      })
+      .then(response => setConfig(response.data))
       .catch(console.error);
   }, [previewConfig]);
 
@@ -186,16 +150,6 @@ export default function Hero({ previewConfig }: HeroProps) {
     setOsInfo(resolveOsInfo(config, previewConfig ? null : latestPlatforms));
   }, [config, latestPlatforms, previewConfig]);
 
-  useEffect(() => {
-    if (copyState === 'idle') return;
-
-    const timeout = window.setTimeout(() => {
-      setCopyState('idle');
-    }, 1800);
-
-    return () => window.clearTimeout(timeout);
-  }, [copyState, copyFeedbackId]);
-
   if (!config) {
     return null;
   }
@@ -203,14 +157,6 @@ export default function Hero({ previewConfig }: HeroProps) {
   const displayDate = latestDate || config.updateDate;
   const normalizedDescription = (config.description || '').replace(/\r\n?/g, '\n');
   const useHtmlDescription = hasHtmlMarkup(normalizedDescription);
-  const flatpakScript = (config.flatpakScript || '').trim();
-  const showFlatpakScript = osInfo.name === 'Linux' && flatpakScript.length > 0;
-  const copyButtonTone =
-    copyState === 'success'
-      ? 'border-emerald-400/40 bg-emerald-400/15 text-emerald-100'
-      : copyState === 'error'
-        ? 'border-rose-400/40 bg-rose-400/10 text-rose-100'
-        : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/15';
 
   return (
     <section className="relative overflow-hidden pb-20 pt-16 md:pb-40 md:pt-28">
@@ -290,6 +236,19 @@ export default function Hero({ previewConfig }: HeroProps) {
             </div>
           )}
 
+          {showSteamDeckSource ? (
+            <motion.a
+              href={steamDeckSourceUrl}
+              onClick={handleSteamDeckSourceClick}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-emerald-500/30 bg-white/70 px-5 py-3 text-sm font-bold text-emerald-700 shadow-sm backdrop-blur-sm transition-colors hover:border-emerald-500/60 hover:bg-emerald-50 dark:border-emerald-400/30 dark:bg-neutral-900/70 dark:text-emerald-100 dark:hover:bg-emerald-500/10 sm:w-auto sm:text-base"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
+              <Download className="h-4 w-4" strokeWidth={2.5} />
+              <span>{copy.hero.steamDeckSourceButton}</span>
+            </motion.a>
+          ) : null}
+
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3 rounded-full border border-neutral-200 bg-neutral-100/80 px-5 py-2 text-xs text-neutral-600 shadow-sm backdrop-blur-sm dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-400 sm:text-sm">
             <div className="flex items-center gap-1.5 font-medium text-neutral-800 dark:text-neutral-200">
               <div className="h-4 w-4" dangerouslySetInnerHTML={{ __html: osInfo.svg }} />
@@ -306,66 +265,6 @@ export default function Hero({ previewConfig }: HeroProps) {
               {copy.hero.lastUpdate} <span className="font-mono">{displayDate}</span>
             </span>
           </div>
-
-          {showFlatpakScript ? (
-            <motion.div variants={heroFadeDown} className="mt-6 w-full max-w-3xl">
-              <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-[#08140b]/95 text-left shadow-[0_24px_80px_rgba(34,197,94,0.12)] backdrop-blur-xl">
-                <div className="flex flex-col gap-3 border-b border-white/10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                  <div>
-                    <div className="text-[11px] font-bold uppercase tracking-[0.32em] text-emerald-300">
-                      {copy.hero.flatpakTitle}
-                    </div>
-                    <p className="mt-1 text-sm text-slate-300">{copy.hero.flatpakDescription}</p>
-                  </div>
-                  <motion.button
-                    type="button"
-                    onClick={() => void handleCopyFlatpak()}
-                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${copyButtonTone}`}
-                    animate={
-                      copyState === 'success'
-                        ? { scale: [1, 1.05, 1] }
-                        : copyState === 'error'
-                          ? { x: [0, -4, 4, -2, 2, 0] }
-                          : { scale: 1, x: 0 }
-                    }
-                    transition={{ duration: 0.35 }}
-                  >
-                    {copyState === 'success' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    <span>
-                      {copyState === 'success'
-                        ? copy.hero.copied
-                        : copyState === 'error'
-                          ? copy.hero.retryCopy
-                          : copy.hero.copyScript}
-                    </span>
-                  </motion.button>
-                </div>
-
-                <pre className="overflow-x-auto px-4 py-5 text-sm leading-7 text-slate-100 sm:px-5">
-                  <code>{flatpakScript}</code>
-                </pre>
-
-                <AnimatePresence>
-                  {copyState !== 'idle' ? (
-                    <motion.div
-                      key={`${copyState}-${copyFeedbackId}`}
-                      initial={{ opacity: 0, y: 12, scale: 0.92 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                      transition={{ duration: 0.22 }}
-                      className={`pointer-events-none absolute right-4 top-4 rounded-full px-3 py-1 text-xs font-semibold shadow-lg ${
-                        copyState === 'success'
-                          ? 'bg-emerald-400 text-emerald-950'
-                          : 'bg-rose-400 text-rose-950'
-                      }`}
-                    >
-                      {copyState === 'success' ? copy.hero.copiedToClipboard : copy.hero.copyFailed}
-                    </motion.div>
-                  ) : null}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          ) : null}
         </motion.div>
       </motion.div>
     </section>

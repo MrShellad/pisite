@@ -326,6 +326,7 @@ pub struct HeroConfig {
     pub dl_mac: String,
     pub dl_win: String,
     pub dl_linux: String,
+    #[serde(rename = "steamDeckSourceUrl", alias = "flatpakScript")]
     pub flatpak_script: String,
 }
 

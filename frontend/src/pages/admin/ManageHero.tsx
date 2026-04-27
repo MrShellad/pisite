@@ -106,26 +106,25 @@ export default function ManageHero() {
                   </div>
                 ))}
               </div>
-              <div className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-950 p-5 text-white shadow-inner dark:border-white/10 dark:bg-black/50">
+              <div className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50/50 p-5 dark:border-white/5 dark:bg-black/20">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">
-                      Flatpak Script
+                    <label className={labelClass}>
+                      SteamDeck 软件源下载地址
                     </label>
-                    <p className="mt-1 text-xs text-neutral-300">
-                      Only shown on the Linux frontend. Users can copy and run it directly.
+                    <p className="ml-1 mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                      仅在 Linux UA 首页展示，对应「部署SteamDeck软件源」按钮。
                     </p>
                   </div>
-                  <span className="inline-flex h-fit w-fit rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.28em] text-cyan-200">
-                    Linux Only
+                  <span className="inline-flex h-fit w-fit rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-600 dark:text-emerald-200">
+                    Linux UA
                   </span>
                 </div>
-                <textarea
-                  value={formData.flatpakScript}
-                  onChange={event => handleChange('flatpakScript', event.target.value)}
-                  placeholder={'flatpak install flathub com.flowcore.app\nflatpak run com.flowcore.app'}
-                  spellCheck={false}
-                  className="min-h-[220px] w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-4 font-mono text-xs leading-6 text-cyan-100 outline-none transition-colors placeholder:text-neutral-500 focus:border-cyan-400/40 focus:bg-black/60"
+                <input
+                  value={formData.steamDeckSourceUrl}
+                  onChange={event => handleChange('steamDeckSourceUrl', event.target.value)}
+                  placeholder="https://example.com/steamdeck-source"
+                  className={inputClass}
                 />
               </div>
             </div>

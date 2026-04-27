@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react';
 import { api } from '../../../api/client';
 import type { HeroFormData } from '../types/hero';
 
+type HeroApiResponse = HeroFormData & {
+  flatpakScript?: string;
+  logoSvg?: string;
+};
+
 function getTodayDate() {
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -23,7 +28,7 @@ export function useManageHero() {
     dlMac: '',
     dlWin: '',
     dlLinux: '',
-    flatpakScript: '',
+    steamDeckSourceUrl: '',
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,12 +38,13 @@ export function useManageHero() {
     api
       .get('/hero')
       .then(res => {
-        const data = res.data;
+        const data = res.data as HeroApiResponse;
+        const { flatpakScript, logoSvg, ...heroConfig } = data;
         setFormData({
-          ...data,
-          logoUrl: data.logoUrl || data.logoSvg || '',
+          ...heroConfig,
+          logoUrl: data.logoUrl || logoSvg || '',
           updateDate: getTodayDate(),
-          flatpakScript: data.flatpakScript || '',
+          steamDeckSourceUrl: data.steamDeckSourceUrl || flatpakScript || '',
         });
       })
       .catch(console.error)
