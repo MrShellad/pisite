@@ -350,6 +350,86 @@ pub struct ActivationResponse {
     pub device_uuid: String, // 给这台设备的永久唯一编号
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientInstallationReportPayload {
+    #[serde(
+        alias = "deviceInstallationId",
+        alias = "deviceInstallId",
+        alias = "deviceId"
+    )]
+    pub installation_id: String,
+    pub platform: String,
+    #[serde(default, alias = "memorySize", alias = "memory")]
+    pub memory_bytes: Option<i64>,
+    #[serde(default, alias = "graphicsCard")]
+    pub gpu: String,
+    #[serde(default)]
+    pub app_version: String,
+    #[serde(default, alias = "firstInstallTime")]
+    pub first_installed_at: Option<String>,
+}
+
+#[derive(Serialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientInstallationReportResponse {
+    pub installation_id: String,
+    pub platform: String,
+    pub memory_bytes: Option<i64>,
+    pub gpu: String,
+    pub app_version: String,
+    pub first_installed_at: String,
+    pub last_reported_at: String,
+}
+
+#[derive(Serialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientInstallationReportRow {
+    pub installation_id: String,
+    pub platform: String,
+    pub memory_bytes: Option<i64>,
+    pub gpu: String,
+    pub app_version: String,
+    pub first_installed_at: String,
+    pub last_reported_at: String,
+}
+
+#[derive(Serialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallationPlatformStat {
+    pub platform: String,
+    pub count: i64,
+}
+
+#[derive(Serialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallationVersionStat {
+    pub app_version: String,
+    pub count: i64,
+}
+
+#[derive(Serialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallationWeekComparisonPoint {
+    pub day_index: i64,
+    pub day_label: String,
+    pub this_week: i64,
+    pub last_week: i64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallationStatsResponse {
+    pub total_installs: i64,
+    pub active_this_week: i64,
+    pub new_this_week: i64,
+    pub new_last_week: i64,
+    pub platform_stats: Vec<InstallationPlatformStat>,
+    pub version_stats: Vec<InstallationVersionStat>,
+    pub week_comparison: Vec<InstallationWeekComparisonPoint>,
+    pub recent_reports: Vec<ClientInstallationReportRow>,
+}
+
 // Dashboard 统计数据返回模型
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -381,6 +461,7 @@ pub struct DailyStat {
 pub struct SiteSettings {
     pub id: String,
     pub site_name: String,
+    pub site_domain: String,
     pub seo_title: String,
     pub seo_description: String,
     pub seo_keywords: String,
@@ -703,6 +784,42 @@ pub struct SendSubmissionContactEmailPayload {
     pub body: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerSubmissionOwnerAuthPayload {
+    pub contact_email: String,
+    pub code: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OwnerUpdateServerSubmissionPayload {
+    pub name: String,
+    pub description: String,
+    pub ip: String,
+    pub port: i32,
+    pub versions: Vec<String>,
+    pub max_players: i32,
+    pub online_players: i32,
+    pub icon: String,
+    pub hero: String,
+    pub website: String,
+    pub server_type: String,
+    pub language: String,
+    pub modpack_url: String,
+    pub has_paid_content: bool,
+    pub age_recommendation: String,
+    pub social_links: sqlx::types::Json<Vec<SocialLink>>,
+    pub has_voice_chat: bool,
+    pub voice_platform: String,
+    pub voice_url: String,
+    pub features: Vec<IconTag>,
+    pub mechanics: Vec<IconTag>,
+    pub elements: Vec<IconTag>,
+    pub community: Vec<IconTag>,
+    pub tags: Vec<String>,
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Clone, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerTagDict {
@@ -829,6 +946,18 @@ pub struct ApiAccessLog {
     pub status: i32,
     pub ip: Option<String>,
     pub created_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiWarningItem {
+    pub path: String,
+    pub method: String,
+    pub latest_status: i32,
+    pub error_count: i64,
+    pub client_error_count: i64,
+    pub server_error_count: i64,
+    pub last_seen_at: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, FromRow)]

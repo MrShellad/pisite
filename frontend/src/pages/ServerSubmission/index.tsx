@@ -4,9 +4,13 @@ import {
   ArrowLeft,
   ChevronDown,
   ImagePlus,
+  KeyRound,
   Mail,
   Mic,
+  Pencil,
   Plus,
+  Power,
+  RotateCcw,
   Server,
   X,
 } from 'lucide-react';
@@ -27,6 +31,15 @@ const SERVER_TYPE_LABELS: Record<string, string> = {
   modded: '模组服',
 };
 
+const LANGUAGE_OPTIONS = [
+  { value: 'zh-CN', label: '简体中文' },
+  { value: 'zh-TW', label: '繁体中文' },
+  { value: 'en-US', label: 'English' },
+  { value: 'ja-JP', label: '日本語' },
+  { value: 'ko-KR', label: '한국어' },
+  { value: 'multi', label: '多语言' },
+];
+
 export default function ServerSubmissionPage() {
   const {
     formData,
@@ -37,6 +50,13 @@ export default function ServerSubmissionPage() {
     verificationToken,
     verifiedEmail,
     verifiedAt,
+    ownerEmail,
+    setOwnerEmail,
+    ownerCode,
+    setOwnerCode,
+    isOwnerMode,
+    isOwnerLoading,
+    isOwnerOfflining,
     pendingAssets,
     isUploading,
     isSendingCode,
@@ -48,6 +68,9 @@ export default function ServerSubmissionPage() {
     handleUpload,
     handleSendVerificationCode,
     handleVerifyCode,
+    handleLoadOwnerSubmission,
+    handleResetOwnerMode,
+    handleOwnerOffline,
     handleSubmit,
   } = useServerSubmission();
 
@@ -178,12 +201,83 @@ export default function ServerSubmissionPage() {
           </section>
 
           <section className={cardClass}>
+            <div className="mb-6 rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/60">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="flex items-center gap-2 font-bold text-neutral-900 dark:text-neutral-100">
+                    <Pencil size={18} className="text-orange-500" />
+                    修改服务器信息
+                  </h3>
+                  <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                    使用审核通过邮件中的 Code 管理已上线服务器。
+                  </p>
+                </div>
+                {isOwnerMode && (
+                  <button
+                    type="button"
+                    onClick={handleResetOwnerMode}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-bold text-neutral-700 transition hover:border-orange-300 hover:text-orange-600 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200"
+                  >
+                    <RotateCcw size={16} />
+                    新投稿
+                  </button>
+                )}
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                  <input
+                    type="email"
+                    value={ownerEmail}
+                    onChange={(event) => setOwnerEmail(event.target.value)}
+                    className={`${fieldClass} pl-11`}
+                    placeholder="原始邮箱地址"
+                    disabled={isOwnerMode}
+                  />
+                </div>
+                <div className="relative">
+                  <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                  <input
+                    value={ownerCode}
+                    onChange={(event) => setOwnerCode(event.target.value)}
+                    className={`${fieldClass} pl-11`}
+                    placeholder="管理 Code"
+                    disabled={isOwnerMode}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleLoadOwnerSubmission()}
+                  disabled={isOwnerLoading || isOwnerMode}
+                  className="h-12 rounded-2xl bg-neutral-900 px-5 text-sm font-bold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-50 dark:text-neutral-950"
+                >
+                  {isOwnerLoading ? '载入中...' : isOwnerMode ? '已载入' : '载入'}
+                </button>
+              </div>
+
+              {isOwnerMode && (
+                <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="font-semibold">当前正在编辑已通过审核的服务器资料。</span>
+                  <button
+                    type="button"
+                    onClick={() => void handleOwnerOffline()}
+                    disabled={isOwnerOfflining || isSubmitting}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 font-bold text-red-600 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300"
+                  >
+                    <Power size={16} />
+                    {isOwnerOfflining ? '下线中...' : '下线服务器'}
+                  </button>
+                </div>
+              )}
+            </div>
+
             {(error || message) && (
               <div
                 className={`mb-6 rounded-2xl border px-4 py-3 text-sm font-bold ${
                   error
                     ? 'border-red-200 bg-red-50 text-red-600 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300'
-                    : isEmailVerified
+                    : isOwnerMode || isEmailVerified
                       ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300'
                       : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300'
                 }`}
@@ -205,14 +299,14 @@ export default function ServerSubmissionPage() {
                       {isUploading === 'icon' ? '上传中...' : '选择 Icon'}
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/webp,.webp"
                         className="hidden"
                         onChange={(event) => void handleUpload(event, 'icon')}
                         disabled={isSubmitting}
                       />
                     </label>
                     <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-                      {pendingAssets.icon.fileName || '支持 PNG/JPG，建议 1:1 且不超过 1MB'}
+                      {pendingAssets.icon.fileName || '仅支持 WebP，建议 1:1 且不超过 1MB'}
                     </p>
                   </div>
 
@@ -222,14 +316,14 @@ export default function ServerSubmissionPage() {
                       {isUploading === 'hero' ? '上传中...' : '选择封面'}
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/webp,.webp"
                         className="hidden"
                         onChange={(event) => void handleUpload(event, 'hero')}
                         disabled={isSubmitting}
                       />
                     </label>
                     <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-                      {pendingAssets.hero.fileName || '推荐 16:9 比例'}
+                      {pendingAssets.hero.fileName || '仅支持 WebP，推荐 16:9 且不超过 1MB'}
                     </p>
                   </div>
                 </div>
@@ -279,14 +373,22 @@ export default function ServerSubmissionPage() {
 
                   <div>
                     <label className={labelClass}>语言</label>
-                    <input
-                      value={formData.language}
-                      onChange={(event) =>
-                        setFormData((current) => ({ ...current, language: event.target.value }))
-                      }
-                      className={fieldClass}
-                      placeholder="zh-CN"
-                    />
+                    <div className="relative">
+                      <select
+                        value={formData.language}
+                        onChange={(event) =>
+                          setFormData((current) => ({ ...current, language: event.target.value }))
+                        }
+                        className={`${fieldClass} appearance-none pr-10`}
+                      >
+                        {LANGUAGE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
+                    </div>
                   </div>
                 </div>
 
@@ -344,7 +446,7 @@ export default function ServerSubmissionPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-4">
                   <div>
                     <label className={labelClass}>官方网站</label>
                     <input
@@ -368,6 +470,9 @@ export default function ServerSubmissionPage() {
                         className={fieldClass}
                         placeholder="https://"
                       />
+                      <p className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                        务必提供下载直链，避免填写需要二次跳转、预览页或权限确认的页面。
+                      </p>
                     </div>
                   )}
                 </div>
@@ -568,9 +673,11 @@ export default function ServerSubmissionPage() {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-neutral-200 pb-2 dark:border-neutral-800">
-                  <h3 className="font-bold text-neutral-800 dark:text-neutral-100">4. 邮箱验证码</h3>
+                  <h3 className="font-bold text-neutral-800 dark:text-neutral-100">
+                    {isOwnerMode ? '4. 作者身份' : '4. 邮箱验证码'}
+                  </h3>
                   <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-[11px] font-semibold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400">
-                    提交前必须完成
+                    {isOwnerMode ? 'Code 已校验' : '提交前必须完成'}
                   </span>
                 </div>
 
@@ -590,11 +697,13 @@ export default function ServerSubmissionPage() {
                         }
                         className={`${fieldClass} pl-11`}
                         placeholder="审核通知会发送到此邮箱"
+                        disabled={isOwnerMode}
                       />
                     </div>
                   </div>
 
-                  <div className="flex items-end">
+                  {!isOwnerMode && (
+                    <div className="flex items-end">
                     <button
                       type="button"
                       onClick={() => void handleSendVerificationCode()}
@@ -603,10 +712,12 @@ export default function ServerSubmissionPage() {
                     >
                       {isSendingCode ? '发送中...' : verificationId ? '重新发送验证码' : '发送验证码'}
                     </button>
-                  </div>
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+                {!isOwnerMode && (
+                  <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
                   <div>
                     <label className={labelClass}>邮箱验证码 *</label>
                     <input
@@ -630,16 +741,19 @@ export default function ServerSubmissionPage() {
                       {isVerifyingCode ? '验证中...' : '校验验证码'}
                     </button>
                   </div>
-                </div>
+                  </div>
+                )}
 
                 <div
                   className={`rounded-2xl border px-4 py-3 text-sm font-medium ${
-                    isEmailVerified
+                    isOwnerMode || isEmailVerified
                       ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300'
                       : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300'
                   }`}
                 >
-                  {isEmailVerified
+                  {isOwnerMode
+                    ? '已通过原始邮箱和管理 Code 校验，保存修改无需再次发送邮箱验证码。'
+                    : isEmailVerified
                     ? `邮箱验证通过${verifiedAt ? `，验证时间 ${verifiedAt}` : ''}。`
                     : '请先发送验证码并完成邮箱校验。'}
                 </div>
@@ -650,7 +764,13 @@ export default function ServerSubmissionPage() {
                 disabled={isSubmitting}
                 className={`mt-8 w-full rounded-2xl bg-neutral-900 px-6 py-4 text-base font-bold tracking-wider text-white shadow-xl transition hover:-translate-y-1 hover:bg-neutral-800 disabled:opacity-60 dark:bg-gradient-to-r dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-500 dark:hover:to-indigo-500 ${styleTokens.focusRing}`}
               >
-                {isSubmitting ? '正在验证并提交...' : '确认提交服务器资料'}
+                {isSubmitting
+                  ? isOwnerMode
+                    ? '正在保存修改...'
+                    : '正在验证并提交...'
+                  : isOwnerMode
+                    ? '保存服务器资料'
+                    : '确认提交服务器资料'}
               </button>
             </form>
           </section>

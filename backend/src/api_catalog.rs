@@ -96,6 +96,21 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
         group: "public",
     },
     ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/server-submissions/owner/lookup",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/server-submissions/owner/update",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/server-submissions/owner/offline",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
         method: "GET",
         path: "/api/server-status",
         group: "public",
@@ -113,6 +128,11 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "POST",
         path: "/api/track/activate",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/track/client-installation",
         group: "public",
     },
     ApiEndpointCatalogItem {
@@ -150,6 +170,11 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "GET",
         path: "/api/admin/dashboard",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/installations",
         group: "admin",
     },
     ApiEndpointCatalogItem {
@@ -290,6 +315,26 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "DELETE",
         path: "/api/admin/changelog/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/package-assets",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/package-assets/upload",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/package-assets/{date}/{file_name}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "DELETE",
+        path: "/api/admin/package-assets/{date}/{file_name}",
         group: "admin",
     },
     ApiEndpointCatalogItem {
@@ -495,6 +540,11 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "GET",
         path: "/api/admin/api-logs",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/api-warnings",
         group: "admin",
     },
     ApiEndpointCatalogItem {

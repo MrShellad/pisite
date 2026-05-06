@@ -3,6 +3,9 @@ use std::path::Path;
 use uuid::Uuid;
 
 pub const MAX_UPLOAD_BODY_BYTES: usize = 50 * 1024 * 1024;
+pub const MAX_SERVER_SUBMISSION_IMAGE_BYTES: usize = 1024 * 1024;
+pub const MAX_SERVER_SUBMISSION_UPLOAD_BODY_BYTES: usize =
+    MAX_SERVER_SUBMISSION_IMAGE_BYTES + 16 * 1024;
 
 pub fn convert_bytes_to_webp(bytes: &[u8]) -> Result<Vec<u8>, String> {
     let decoded =

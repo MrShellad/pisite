@@ -1,14 +1,16 @@
 // backend/src/routes.rs
 use axum::{
-    extract::DefaultBodyLimit,
     Router,
+    extract::DefaultBodyLimit,
     routing::{delete, get, post, put},
 };
 use sqlx::SqlitePool;
 
 // 引入刚刚彻底解耦的 handlers 模块
 use crate::handlers;
-use crate::handlers::image_storage::MAX_UPLOAD_BODY_BYTES;
+use crate::handlers::image_storage::{
+    MAX_SERVER_SUBMISSION_UPLOAD_BODY_BYTES, MAX_UPLOAD_BODY_BYTES,
+};
 
 pub fn create_router(pool: SqlitePool) -> Router {
     Router::new()
@@ -56,17 +58,34 @@ pub fn create_router(pool: SqlitePool) -> Router {
                 .get(handlers::server_submissions::get_public_server_submissions),
         )
         .route(
+            "/api/server-submissions/owner/lookup",
+            post(handlers::server_submissions::get_owner_server_submission),
+        )
+        .route(
+            "/api/server-submissions/owner/update",
+            put(handlers::server_submissions::update_owner_server_submission),
+        )
+        .route(
+            "/api/server-submissions/owner/offline",
+            post(handlers::server_submissions::offline_owner_server_submission),
+        )
+        .route(
             "/api/server-status",
             get(handlers::server_submissions::get_public_server_statuses),
         )
         .route(
             "/api/server-submissions/upload-cover",
-            post(handlers::server_submissions::upload_server_cover)
-                .layer(DefaultBodyLimit::max(MAX_UPLOAD_BODY_BYTES)),
+            post(handlers::server_submissions::upload_server_cover).layer(DefaultBodyLimit::max(
+                MAX_SERVER_SUBMISSION_UPLOAD_BODY_BYTES,
+            )),
         )
         // 6. 数据追踪与端点打点
         .route("/api/track/download", post(handlers::stats::track_download))
         .route("/api/track/activate", post(handlers::stats::activate_app))
+        .route(
+            "/api/track/client-installation",
+            post(handlers::stats::report_client_installation),
+        )
         .route("/api/updater", get(handlers::changelog::tauri_updater))
         // 7. 捐赠玩家授权系统 (Public)
         .route("/api/donors/login", post(handlers::donor_client::login))
@@ -88,6 +107,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/dashboard",
             get(handlers::stats::get_dashboard_stats),
+        )
+        .route(
+            "/api/admin/installations",
+            get(handlers::stats::get_installation_stats),
         )
         // 2. 全局设置与首屏管理
         .route(
@@ -170,6 +193,19 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/changelog/{id}",
             delete(handlers::changelog::delete_changelog),
+        )
+        .route(
+            "/api/admin/package-assets",
+            get(handlers::package_assets::list_package_assets),
+        )
+        .route(
+            "/api/admin/package-assets/upload",
+            post(handlers::package_assets::upload_package_asset).layer(DefaultBodyLimit::disable()),
+        )
+        .route(
+            "/api/admin/package-assets/{date}/{file_name}",
+            put(handlers::package_assets::rename_package_asset)
+                .delete(handlers::package_assets::delete_package_asset),
         )
         // 7. 图片/文件上传中心
         .route(
@@ -316,6 +352,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
             put(handlers::api_keys::update_api_key).delete(handlers::api_keys::delete_api_key),
         )
         .route("/api/admin/api-logs", get(handlers::api_keys::list_logs))
+        .route(
+            "/api/admin/api-warnings",
+            get(handlers::api_keys::list_warnings),
+        )
         // 管理员账号（修改邮箱/密码）
         .route(
             "/api/admin/profile",

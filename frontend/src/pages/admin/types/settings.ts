@@ -1,6 +1,7 @@
 export interface SiteSettings {
   id: string;
   siteName: string;
+  siteDomain: string;
   seoTitle: string;
   seoDescription: string;
   seoKeywords: string;

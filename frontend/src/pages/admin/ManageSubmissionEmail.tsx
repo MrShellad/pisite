@@ -74,8 +74,23 @@ export default function ManageSubmissionEmail() {
       if (security === 'starttls') newPort = 587;
       else if (security === 'tls') newPort = 465;
       else if (security === 'none') newPort = 25;
-      
-      return { ...current, smtpSecurity: security, smtpPort: newPort };
+
+      return {
+        ...current,
+        smtpSecurity: security,
+        smtpPort: newPort,
+        smtpAuth: security === 'none' ? 'none' : current.smtpAuth,
+      };
+    });
+  };
+
+  const handleAuthChange = (auth: SubmissionEmailConfig['smtpAuth']) => {
+    setConfig((current) => {
+      if (!current) return current;
+      if (auth !== 'none' && current.smtpSecurity === 'none') {
+        return { ...current, smtpAuth: auth, smtpSecurity: 'starttls', smtpPort: 587 };
+      }
+      return { ...current, smtpAuth: auth };
     });
   };
 
@@ -97,7 +112,7 @@ export default function ManageSubmissionEmail() {
       smtpFromName: config.smtpFromName.trim(),
       smtpReplyTo: config.smtpReplyTo.trim(),
       smtpSecurity: config.smtpSecurity,
-      smtpAuth: config.smtpAuth,
+      smtpAuth: config.smtpSecurity === 'none' ? 'none' : config.smtpAuth,
       codeTtlMinutes: Number(config.codeTtlMinutes),
       resendCooldownSeconds: Number(config.resendCooldownSeconds),
       maxVerifyAttempts: Number(config.maxVerifyAttempts),
@@ -345,11 +360,12 @@ export default function ManageSubmissionEmail() {
           </div>
           <div>
             <label className={labelClass}>认证方式</label>
-            <select value={config.smtpAuth} onChange={(event) => handleConfigChange('smtpAuth', event.target.value as SubmissionEmailConfig['smtpAuth'])} className={inputClass}>
+            <select value={config.smtpAuth} onChange={(event) => handleAuthChange(event.target.value as SubmissionEmailConfig['smtpAuth'])} className={inputClass}>
               <option value="none">none</option>
               <option value="plain">plain</option>
               <option value="login">login</option>
             </select>
+            <p className="mt-1.5 text-xs text-neutral-500">使用认证时会自动要求 TLS 或 STARTTLS，避免 SMTP 凭据明文传输。</p>
           </div>
           <div>
             <label className={labelClass}>验证码有效期(分钟)</label>

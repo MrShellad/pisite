@@ -12,6 +12,9 @@ import {
 } from 'lucide-react';
 
 import { api } from '../../api/client';
+import { useVirtualList } from '../../hooks/useVirtualList';
+import { ApiWarningsModal } from './components/ApiWarningsModal';
+import type { ApiWarningItem } from './components/ApiWarningsModal';
 
 type ApiEndpointPolicy = {
   id: number;
@@ -46,11 +49,15 @@ export default function ManageApiAccess() {
   const [query, setQuery] = useState('');
   const [savingIds, setSavingIds] = useState<number[]>([]);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [warnings, setWarnings] = useState<ApiWarningItem[]>([]);
+  const [isWarningsOpen, setIsWarningsOpen] = useState(false);
+  const [isWarningsLoading, setIsWarningsLoading] = useState(false);
   const toastTimersRef = useRef<number[]>([]);
 
   useEffect(() => {
+    const timers = toastTimersRef.current;
     return () => {
-      toastTimersRef.current.forEach(timerId => window.clearTimeout(timerId));
+      timers.forEach(timerId => window.clearTimeout(timerId));
     };
   }, []);
 
@@ -71,10 +78,25 @@ export default function ManageApiAccess() {
   const fetchAll = async () => {
     setIsLoading(true);
     try {
-      const response = await api.get<ApiEndpointPolicy[]>('/admin/api-endpoints');
+      const [response, warningResponse] = await Promise.all([
+        api.get<ApiEndpointPolicy[]>('/admin/api-endpoints'),
+        api.get<ApiWarningItem[]>('/admin/api-warnings'),
+      ]);
       setItems(response.data);
+      setWarnings(warningResponse.data);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchWarnings = async () => {
+    setIsWarningsLoading(true);
+    try {
+      const response = await api.get<ApiWarningItem[]>('/admin/api-warnings');
+      setWarnings(response.data);
+      setIsWarningsOpen(true);
+    } finally {
+      setIsWarningsLoading(false);
     }
   };
 
@@ -105,6 +127,7 @@ export default function ManageApiAccess() {
       );
     });
   }, [items, query]);
+  const virtualRows = useVirtualList(filtered, 66, 8);
 
   const protectedCount = useMemo(
     () => filtered.filter(item => item.groupName === 'public' && item.requireApiKey).length,
@@ -133,13 +156,14 @@ export default function ManageApiAccess() {
         requireApiKey: next.requireApiKey,
       });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       setItems(prev => prev.map(row => (row.id === item.id ? item : row)));
-      pushToast(
-        '保存失败',
-        error?.response?.data ?? `${item.method} ${item.pathTemplate} 的访问策略保存失败。`,
-        'error',
-      );
+      const responseData = (error as { response?: { data?: unknown } })?.response?.data;
+      const message =
+        typeof responseData === 'string'
+          ? responseData
+          : `${item.method} ${item.pathTemplate} 的访问策略保存失败。`;
+      pushToast('保存失败', message, 'error');
       return false;
     } finally {
       setSavingIds(prev => prev.filter(id => id !== item.id));
@@ -172,12 +196,24 @@ export default function ManageApiAccess() {
             已按风险优先级排序，优先展示需要 Token 授权的 public 接口。
           </p>
         </div>
-        <button
-          onClick={() => void fetchAll()}
-          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white/70 px-4 py-2 text-sm font-bold text-neutral-700 transition-all hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
-        >
-          <RefreshCw size={16} /> 刷新
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            onClick={() => void fetchWarnings()}
+            className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-all ${
+              warnings.length > 0
+                ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
+                : 'border-neutral-200 bg-white/70 text-neutral-700 hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10'
+            }`}
+          >
+            <CircleAlert size={16} /> 预警 {warnings.length}
+          </button>
+          <button
+            onClick={() => void fetchAll()}
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white/70 px-4 py-2 text-sm font-bold text-neutral-700 transition-all hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+          >
+            <RefreshCw size={16} /> 刷新
+          </button>
+        </div>
       </div>
 
       <section className={`${cardClass} space-y-4`}>
@@ -213,7 +249,11 @@ export default function ManageApiAccess() {
           </div>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-neutral-200/80 dark:border-white/10">
-            <div className="max-h-[620px] overflow-auto">
+            <div
+              ref={virtualRows.containerRef}
+              onScroll={virtualRows.handleScroll}
+              className="max-h-[620px] overflow-auto"
+            >
               <table className="w-full min-w-[980px] table-fixed border-separate border-spacing-0 text-left">
                 <thead>
                   <tr>
@@ -240,7 +280,13 @@ export default function ManageApiAccess() {
                       </td>
                     </tr>
                   ) : (
-                    filtered.map(item => {
+                    <>
+                      {virtualRows.paddingTop > 0 && (
+                        <tr aria-hidden="true">
+                          <td colSpan={6} className="border-0 p-0" style={{ height: virtualRows.paddingTop }} />
+                        </tr>
+                      )}
+                      {virtualRows.virtualItems.map(item => {
                       const isPublicGroup = item.groupName === 'public';
                       const isSaving = savingIds.includes(item.id);
 
@@ -311,7 +357,13 @@ export default function ManageApiAccess() {
                           </td>
                         </tr>
                       );
-                    })
+                    })}
+                      {virtualRows.paddingBottom > 0 && (
+                        <tr aria-hidden="true">
+                          <td colSpan={6} className="border-0 p-0" style={{ height: virtualRows.paddingBottom }} />
+                        </tr>
+                      )}
+                    </>
                   )}
                 </tbody>
               </table>
@@ -353,6 +405,12 @@ export default function ManageApiAccess() {
           );
         })}
       </div>
+      <ApiWarningsModal
+        open={isWarningsOpen}
+        warnings={warnings}
+        isLoading={isWarningsLoading}
+        onClose={() => setIsWarningsOpen(false)}
+      />
     </div>
   );
 }

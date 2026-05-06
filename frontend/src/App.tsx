@@ -15,6 +15,7 @@ const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const ManageHero = lazy(() => import('./pages/admin/ManageHero'));
 const ManageFeatures = lazy(() => import('./pages/admin/ManageFeatures'));
 const ManageChangelog = lazy(() => import('./pages/admin/ManageChangelog'));
+const ManageInstallations = lazy(() => import('./pages/admin/ManageInstallations'));
 const ManageFAQ = lazy(() => import('./pages/admin/ManageFAQ'));
 const ManageSponsors = lazy(() => import('./pages/admin/ManageSponsors'));
 const ManageDonorUsers = lazy(() => import('./pages/admin/ManageDonorUsers'));
@@ -54,6 +55,7 @@ function App() {
                 <Route path="hero" element={<ManageHero />} />
                 <Route path="features" element={<ManageFeatures />} />
                 <Route path="changelog" element={<ManageChangelog />} />
+                <Route path="installations" element={<ManageInstallations />} />
                 <Route path="faqs" element={<ManageFAQ />} />
                 <Route path="sponsors" element={<ManageSponsors />} />
                 <Route path="donors" element={<ManageDonorUsers />} />

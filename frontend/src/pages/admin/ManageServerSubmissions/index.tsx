@@ -24,6 +24,7 @@ import { getUploadUrl } from '@/api/client';
 import { MC_VERSION_INPUT_PATTERN } from '@/lib/minecraft';
 import IconTagEditor from '@/pages/ServerSubmission/components/IconTagEditor';
 import StringTagEditor from '@/pages/ServerSubmission/components/StringTagEditor';
+import type { ServerTagDict } from '@/pages/ServerSubmission/useServerSubmission';
 import { useManageServerSubmissions } from './useManageServerSubmissions';
 
 export default function ManageServerSubmissions() {
@@ -108,8 +109,8 @@ export default function ManageServerSubmissions() {
         </div>
       </div>
 
-      <div className="grid gap-8 xl:grid-cols-[380px_1fr]">
-        <section className={`${cardClass} flex h-[calc(100vh-180px)] flex-col overflow-hidden`}>
+      <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)] 2xl:grid-cols-[420px_minmax(0,1fr)]">
+        <section className={`${cardClass} flex max-h-[70vh] flex-col overflow-hidden xl:h-[calc(100vh-180px)] xl:max-h-none`}>
           <div className="mb-4 group relative">
             <Search
               size={16}
@@ -235,7 +236,7 @@ export default function ManageServerSubmissions() {
           </div>
         </section>
 
-        <section className={`${cardClass} custom-scrollbar h-[calc(100vh-180px)] overflow-y-auto`}>
+        <section className={`${cardClass} custom-scrollbar overflow-y-visible xl:h-[calc(100vh-180px)] xl:overflow-y-auto`}>
           {!formData ? (
             <div className="flex h-full flex-col items-center justify-center space-y-4 text-neutral-400">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-100">
@@ -620,28 +621,28 @@ export default function ManageServerSubmissions() {
                   <IconTagEditor
                     title="核心特色"
                     tags={formData.features}
-                    dictItems={tagDict.filter((t: any) => t.category === 'features')}
+                    dictItems={tagDict.filter((t: ServerTagDict) => t.category === 'features')}
                     fallbackColor="#10b981"
                     onChange={(tags) => setFormData((prev) => (prev ? { ...prev, features: tags } : prev))}
                   />
                   <IconTagEditor
                     title="玩法机制"
                     tags={formData.mechanics}
-                    dictItems={tagDict.filter((t: any) => t.category === 'mechanics')}
+                    dictItems={tagDict.filter((t: ServerTagDict) => t.category === 'mechanics')}
                     fallbackColor="#f97316"
                     onChange={(tags) => setFormData((prev) => (prev ? { ...prev, mechanics: tags } : prev))}
                   />
                   <IconTagEditor
                     title="补充元素"
                     tags={formData.elements}
-                    dictItems={tagDict.filter((t: any) => t.category === 'elements')}
+                    dictItems={tagDict.filter((t: ServerTagDict) => t.category === 'elements')}
                     fallbackColor="#8b5cf6"
                     onChange={(tags) => setFormData((prev) => (prev ? { ...prev, elements: tags } : prev))}
                   />
                   <IconTagEditor
                     title="社区生态"
                     tags={formData.community}
-                    dictItems={tagDict.filter((t: any) => t.category === 'community')}
+                    dictItems={tagDict.filter((t: ServerTagDict) => t.category === 'community')}
                     fallbackColor="#0ea5e9"
                     onChange={(tags) => setFormData((prev) => (prev ? { ...prev, community: tags } : prev))}
                   />

@@ -17,12 +17,20 @@ pub async fn initialize_database(pool: &SqlitePool) {
 }
 
 async fn ensure_legacy_columns(pool: &SqlitePool) {
+    ensure_client_installation_reports_table(pool).await;
     ensure_column(pool, "users", "mc_name", "TEXT").await;
     ensure_column(pool, "users", "afdian_user_id", "TEXT").await;
     ensure_column(
         pool,
         "hero_config",
         "flatpak_script",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    .await;
+    ensure_column(
+        pool,
+        "site_settings",
+        "site_domain",
         "TEXT NOT NULL DEFAULT ''",
     )
     .await;
@@ -51,6 +59,27 @@ async fn ensure_legacy_columns(pool: &SqlitePool) {
     .await;
     ensure_column(
         pool,
+        "server_submissions",
+        "owner_token_hash",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    .await;
+    ensure_column(
+        pool,
+        "server_submissions",
+        "owner_token_issued_at",
+        "DATETIME",
+    )
+    .await;
+    ensure_column(
+        pool,
+        "server_submissions",
+        "owner_offline",
+        "BOOLEAN NOT NULL DEFAULT 0",
+    )
+    .await;
+    ensure_column(
+        pool,
         "submission_email_config",
         "email_subject_template",
         "TEXT NOT NULL DEFAULT 'Your verification code is: {code}'",
@@ -62,6 +91,22 @@ async fn ensure_legacy_columns(pool: &SqlitePool) {
         "email_body_template",
         "TEXT NOT NULL DEFAULT 'Your verification code is: {code}\r\nThis code expires in {ttl} minutes.\r\nIf you did not request a server submission verification, you can ignore this email.'",
     )
+    .await;
+}
+
+async fn ensure_client_installation_reports_table(pool: &SqlitePool) {
+    let _ = sqlx::query(
+        "CREATE TABLE IF NOT EXISTS client_installation_reports (
+            installation_id TEXT PRIMARY KEY,
+            platform TEXT NOT NULL,
+            memory_bytes INTEGER,
+            gpu TEXT NOT NULL DEFAULT '',
+            app_version TEXT NOT NULL DEFAULT '',
+            first_installed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_reported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )",
+    )
+    .execute(pool)
     .await;
 }
 

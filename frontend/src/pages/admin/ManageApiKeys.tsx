@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { api } from '../../api/client';
-import { KeyRound, Plus, Trash2, Activity } from 'lucide-react';
+import { Activity, CircleAlert, KeyRound, Plus, Trash2 } from 'lucide-react';
+import { useVirtualList } from '../../hooks/useVirtualList';
+import { ApiWarningsModal } from './components/ApiWarningsModal';
+import type { ApiWarningItem } from './components/ApiWarningsModal';
 
 type ApiKey = {
   id: string;
@@ -26,7 +30,10 @@ type ApiLog = {
 export default function ManageApiKeys() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [logs, setLogs] = useState<ApiLog[]>([]);
+  const [warnings, setWarnings] = useState<ApiWarningItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isWarningsOpen, setIsWarningsOpen] = useState(false);
+  const [isWarningsLoading, setIsWarningsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ name: '', scopes: '', rateLimitPerMinute: 60 });
 
@@ -39,14 +46,27 @@ export default function ManageApiKeys() {
   const fetchAll = async () => {
     setIsLoading(true);
     try {
-      const [k, l] = await Promise.all([
+      const [k, l, w] = await Promise.all([
         api.get<ApiKey[]>('/admin/api-keys'),
         api.get<ApiLog[]>('/admin/api-logs'),
+        api.get<ApiWarningItem[]>('/admin/api-warnings'),
       ]);
       setKeys(k.data);
       setLogs(l.data);
+      setWarnings(w.data);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchWarnings = async () => {
+    setIsWarningsLoading(true);
+    try {
+      const response = await api.get<ApiWarningItem[]>('/admin/api-warnings');
+      setWarnings(response.data);
+      setIsWarningsOpen(true);
+    } finally {
+      setIsWarningsLoading(false);
     }
   };
 
@@ -54,7 +74,7 @@ export default function ManageApiKeys() {
     fetchAll();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
@@ -65,8 +85,12 @@ export default function ManageApiKeys() {
       });
       setForm({ name: '', scopes: '', rateLimitPerMinute: 60 });
       await fetchAll();
-    } catch (err: any) {
-      alert(err?.response?.data ?? '创建失败');
+    } catch (err: unknown) {
+      const message =
+        typeof (err as { response?: { data?: string } })?.response?.data === 'string'
+          ? (err as { response?: { data?: string } }).response?.data
+          : '创建失败';
+      alert(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -88,7 +112,10 @@ export default function ManageApiKeys() {
     await fetchAll();
   };
 
-  const keyNameById = (id?: string | null) => keys.find(k => k.id === id)?.name ?? '未知 Key';
+  const keyVirtualRows = useVirtualList(keys, 134, 5);
+  const logVirtualRows = useVirtualList(logs, 46, 10);
+  const keyNameMap = useMemo(() => new Map(keys.map(key => [key.id, key.name])), [keys]);
+  const keyNameById = (id?: string | null) => (id ? keyNameMap.get(id) : null) ?? '未知 Key';
 
   return (
     <div className="space-y-8 pb-12">
@@ -96,12 +123,24 @@ export default function ManageApiKeys() {
         <h2 className="text-2xl font-bold text-neutral-900 dark:text-white tracking-wide flex items-center gap-2">
           <KeyRound className="text-blue-500" /> API Key 管理与访问控制
         </h2>
-        <button
-          onClick={fetchAll}
-          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-white/5 px-4 py-2 text-sm font-bold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-white/10 transition-all"
-        >
-          <Activity size={16} /> 刷新
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            onClick={() => void fetchWarnings()}
+            className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-all ${
+              warnings.length > 0
+                ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
+                : 'border-neutral-200 bg-white/70 text-neutral-700 hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10'
+            }`}
+          >
+            <CircleAlert size={16} /> 预警 {warnings.length}
+          </button>
+          <button
+            onClick={() => void fetchAll()}
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-white/5 px-4 py-2 text-sm font-bold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-white/10 transition-all"
+          >
+            <Activity size={16} /> 刷新
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -172,44 +211,53 @@ export default function ManageApiKeys() {
             {isLoading ? (
               <div className="py-6 text-center text-neutral-500 animate-pulse">读取中...</div>
             ) : (
-              <div className="space-y-2 max-h-[420px] overflow-auto pr-1">
-                {keys.map(k => (
-                  <div
-                    key={k.id}
-                    className="rounded-xl border border-neutral-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.02] p-3 text-xs flex flex-col gap-1"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-bold text-neutral-900 dark:text-white text-sm">{k.name}</div>
-                      <button
-                        onClick={() => toggleActive(k)}
-                        className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                          k.isActive
-                            ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20'
-                            : 'bg-neutral-100 text-neutral-500 border-neutral-200 dark:bg-white/5 dark:text-neutral-400 dark:border-white/10'
-                        }`}
-                      >
-                        {k.isActive ? 'active' : 'disabled'}
-                      </button>
-                    </div>
-                    <div className="font-mono text-[11px] break-all text-neutral-600 dark:text-neutral-400">
-                      {k.key}
-                    </div>
-                    <div className="text-[11px] text-neutral-500 dark:text-neutral-500 flex justify-between">
-                      <span>Scopes: {k.scopes || 'ALL'}</span>
-                      <span>{k.rateLimitPerMinute}/min</span>
-                    </div>
-                    <div className="flex items-center justify-between mt-1 text-[10px] text-neutral-400">
-                      <span>创建: {k.createdAt ?? '-'}</span>
-                      <span>最近使用: {k.lastUsedAt ?? '-'}</span>
-                    </div>
-                    <button
-                      onClick={() => handleDelete(k.id)}
-                      className="mt-1 inline-flex items-center gap-1 text-[11px] text-red-500/80 hover:text-red-600"
+              <div
+                ref={keyVirtualRows.containerRef}
+                onScroll={keyVirtualRows.handleScroll}
+                className="max-h-[420px] overflow-auto pr-1"
+              >
+                <div className="relative" style={{ height: keyVirtualRows.totalHeight }}>
+                  {keyVirtualRows.virtualItems.map((k, virtualIndex) => (
+                    <div
+                      key={k.id}
+                      className="absolute left-0 right-0"
+                      style={{ transform: `translateY(${(keyVirtualRows.startIndex + virtualIndex) * 134}px)` }}
                     >
-                      <Trash2 size={12} /> 删除
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex h-[126px] flex-col gap-1 overflow-hidden rounded-xl border border-neutral-200 bg-white/70 p-3 text-xs dark:border-white/10 dark:bg-white/[0.02]">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="truncate text-sm font-bold text-neutral-900 dark:text-white">{k.name}</div>
+                          <button
+                            onClick={() => void toggleActive(k)}
+                            className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                              k.isActive
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                : 'border-neutral-200 bg-neutral-100 text-neutral-500 dark:border-white/10 dark:bg-white/5 dark:text-neutral-400'
+                            }`}
+                          >
+                            {k.isActive ? 'active' : 'disabled'}
+                          </button>
+                        </div>
+                        <div className="truncate font-mono text-[11px] text-neutral-600 dark:text-neutral-400">
+                          {k.key}
+                        </div>
+                        <div className="flex justify-between gap-3 text-[11px] text-neutral-500 dark:text-neutral-500">
+                          <span className="truncate">Scopes: {k.scopes || 'ALL'}</span>
+                          <span className="shrink-0">{k.rateLimitPerMinute}/min</span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-3 text-[10px] text-neutral-400">
+                          <span className="truncate">创建: {k.createdAt ?? '-'}</span>
+                          <span className="truncate">最近使用: {k.lastUsedAt ?? '-'}</span>
+                        </div>
+                        <button
+                          onClick={() => void handleDelete(k.id)}
+                          className="mt-auto inline-flex items-center gap-1 text-[11px] text-red-500/80 hover:text-red-600"
+                        >
+                          <Trash2 size={12} /> 删除
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 {keys.length === 0 && (
                   <div className="py-4 text-center text-neutral-500 text-xs">暂无 Key</div>
                 )}
@@ -225,7 +273,11 @@ export default function ManageApiKeys() {
               <Activity size={18} className="text-blue-500" /> 最新访问日志（最多 500 条）
             </h3>
           </div>
-          <div className="overflow-x-auto">
+          <div
+            ref={logVirtualRows.containerRef}
+            onScroll={logVirtualRows.handleScroll}
+            className="max-h-[620px] overflow-auto"
+          >
             <table className="w-full text-left border-collapse whitespace-nowrap text-xs">
               <thead>
                 <tr className="border-b border-neutral-200 dark:border-white/10 text-[11px] text-neutral-500 dark:text-neutral-500 uppercase tracking-wider">
@@ -245,7 +297,13 @@ export default function ManageApiKeys() {
                     </td>
                   </tr>
                 ) : (
-                  logs.map(l => (
+                  <>
+                    {logVirtualRows.paddingTop > 0 && (
+                      <tr aria-hidden="true">
+                        <td colSpan={6} className="p-0" style={{ height: logVirtualRows.paddingTop }} />
+                      </tr>
+                    )}
+                    {logVirtualRows.virtualItems.map(l => (
                     <tr key={l.id} className="border-b border-neutral-100 dark:border-white/5">
                       <td className="py-2.5 px-2 text-[11px] text-neutral-500">{l.createdAt ?? '-'}</td>
                       <td className="py-2.5 px-2 text-[11px] text-neutral-700 dark:text-neutral-300">
@@ -272,14 +330,25 @@ export default function ManageApiKeys() {
                       </td>
                       <td className="py-2.5 px-2 text-[11px] text-neutral-500">{l.ip ?? '-'}</td>
                     </tr>
-                  ))
+                    ))}
+                    {logVirtualRows.paddingBottom > 0 && (
+                      <tr aria-hidden="true">
+                        <td colSpan={6} className="p-0" style={{ height: logVirtualRows.paddingBottom }} />
+                      </tr>
+                    )}
+                  </>
                 )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
+      <ApiWarningsModal
+        open={isWarningsOpen}
+        warnings={warnings}
+        isLoading={isWarningsLoading}
+        onClose={() => setIsWarningsOpen(false)}
+      />
     </div>
   );
 }
-

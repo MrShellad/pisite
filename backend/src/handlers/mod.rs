@@ -15,6 +15,7 @@ pub mod hero;
 pub mod image_storage;
 pub mod minecraft_api;
 pub mod misc;
+pub mod package_assets;
 pub mod server_submissions;
 pub mod settings;
 pub mod signaling;

@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Copy,
+  Download,
+  Edit3,
   FileSignature,
   GitCommit,
   Globe,
+  Package,
   Percent,
   Plus,
   RefreshCcw,
@@ -12,6 +16,7 @@ import {
   Trash2,
   Upload,
   Users,
+  X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api, getUploadUrl } from '../../api/client';
@@ -56,6 +61,15 @@ type ReleaseLog = {
   status: string;
   changes: ChangeDraft[];
   platforms?: Partial<Record<PlatformKey, Partial<PlatformAsset>>>;
+};
+
+type PackageAsset = {
+  date: string;
+  fileName: string;
+  sizeBytes: number;
+  url: string;
+  downloadUrl: string;
+  uploadedAt?: number | null;
 };
 
 const PRESET_ICONS = [
@@ -143,8 +157,29 @@ function parseSigFromText(raw: string) {
   return lines[0] ?? trimmed;
 }
 
+function formatFileSize(sizeBytes: number) {
+  if (sizeBytes >= 1024 * 1024 * 1024) {
+    return `${(sizeBytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  }
+  if (sizeBytes >= 1024 * 1024) {
+    return `${(sizeBytes / 1024 / 1024).toFixed(1)} MB`;
+  }
+  if (sizeBytes >= 1024) {
+    return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  }
+  return `${sizeBytes} B`;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  const responseData = (error as { response?: { data?: unknown } })?.response?.data;
+  return typeof responseData === 'string' && responseData.trim() ? responseData : fallback;
+}
+
 export default function ManageChangelog() {
   const [logs, setLogs] = useState<ReleaseLog[]>([]);
+  const [packageAssets, setPackageAssets] = useState<PackageAsset[]>([]);
+  const [isPackageManagerOpen, setIsPackageManagerOpen] = useState(false);
+  const [isManualUploading, setIsManualUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingPackage, setIsUploadingPackage] = useState<Record<PlatformKey, boolean>>({
     darwin: false,
@@ -179,8 +214,14 @@ export default function ManageChangelog() {
     setLogs(response.data);
   };
 
+  const fetchPackageAssets = async () => {
+    const response = await api.get<PackageAsset[]>('/admin/package-assets');
+    setPackageAssets(response.data);
+  };
+
   useEffect(() => {
     void fetchLogs();
+    void fetchPackageAssets();
   }, []);
 
   const updatePlatformField = (platform: PlatformKey, field: keyof PlatformAsset, value: string) => {
@@ -209,14 +250,76 @@ export default function ManageChangelog() {
     body.append('file', file);
 
     try {
-      const response = await api.post<{ url: string }>('/admin/upload', body, {
+      const response = await api.post<PackageAsset>('/admin/package-assets/upload', body, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000,
       });
-      updatePlatformField(platform, 'url', getUploadUrl(response.data.url));
-    } catch (error: any) {
-      alert(error?.response?.data ?? '安装包上传失败，请重试。');
+      updatePlatformField(platform, 'url', response.data.downloadUrl || getUploadUrl(response.data.url));
+      await fetchPackageAssets();
+    } catch (error) {
+      alert(getErrorMessage(error, '安装包上传失败，请重试。'));
     } finally {
       setIsUploadingPackage(prev => ({ ...prev, [platform]: false }));
+    }
+  };
+
+  const handleManualPackageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) return;
+
+    setIsManualUploading(true);
+    const body = new FormData();
+    body.append('file', file);
+
+    try {
+      await api.post<PackageAsset>('/admin/package-assets/upload', body, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000,
+      });
+      await fetchPackageAssets();
+      setIsPackageManagerOpen(true);
+    } catch (error) {
+      alert(getErrorMessage(error, '安装包上传失败，请重试。'));
+    } finally {
+      setIsManualUploading(false);
+    }
+  };
+
+  const copyDownloadLink = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      alert('下载链接已复制。');
+    } catch {
+      window.prompt('复制下载链接', url);
+    }
+  };
+
+  const renamePackageAsset = async (asset: PackageAsset) => {
+    const nextName = window.prompt('请输入新的安装包文件名', asset.fileName);
+    if (!nextName || nextName.trim() === asset.fileName) return;
+
+    try {
+      await api.put(
+        `/admin/package-assets/${encodeURIComponent(asset.date)}/${encodeURIComponent(asset.fileName)}`,
+        { fileName: nextName.trim() },
+      );
+      await fetchPackageAssets();
+    } catch (error) {
+      alert(getErrorMessage(error, '重命名失败。'));
+    }
+  };
+
+  const deletePackageAsset = async (asset: PackageAsset) => {
+    if (!window.confirm(`确认删除安装包 ${asset.fileName} 吗？`)) return;
+
+    try {
+      await api.delete(
+        `/admin/package-assets/${encodeURIComponent(asset.date)}/${encodeURIComponent(asset.fileName)}`,
+      );
+      await fetchPackageAssets();
+    } catch (error) {
+      alert(getErrorMessage(error, '删除失败。'));
     }
   };
 
@@ -284,8 +387,8 @@ export default function ManageChangelog() {
       await fetchLogs();
       setFormData(createInitialForm());
       alert('版本发布成功。');
-    } catch (error: any) {
-      alert(error?.response?.data ?? '发布失败，请检查输入后重试。');
+    } catch (error) {
+      alert(getErrorMessage(error, '发布失败，请检查输入后重试。'));
     } finally {
       setIsSubmitting(false);
     }
@@ -296,8 +399,8 @@ export default function ManageChangelog() {
     try {
       await api.post(`/admin/changelog/${id}/rollback`);
       await fetchLogs();
-    } catch (error: any) {
-      alert(error?.response?.data ?? '回滚失败。');
+    } catch (error) {
+      alert(getErrorMessage(error, '回滚失败。'));
     }
   };
 
@@ -306,8 +409,8 @@ export default function ManageChangelog() {
     try {
       await api.delete(`/admin/changelog/${id}`);
       await fetchLogs();
-    } catch (error: any) {
-      alert(error?.response?.data ?? '删除失败。');
+    } catch (error) {
+      alert(getErrorMessage(error, '删除失败。'));
     }
   };
 
@@ -323,30 +426,52 @@ export default function ManageChangelog() {
       alert(
         `已将 ${response.data.displayVersion} 的 ${platformLabels[platform]} 下载地址推送到首页按钮。`,
       );
-    } catch (error: any) {
-      alert(error?.response?.data ?? '推送到首页下载按钮失败。');
+    } catch (error) {
+      alert(getErrorMessage(error, '推送到首页下载按钮失败。'));
     } finally {
       setIsPushing(prev => ({ ...prev, [key]: false }));
     }
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 pb-12">
+    <div className="w-full space-y-8 pb-12">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-2xl font-bold tracking-wide text-neutral-900 dark:text-white">
-          <GitCommit className="text-blue-500" /> 版本发布与分发中心
+          <GitCommit className="text-blue-500" /> 版本分发
         </h2>
-        <button
-          type="button"
-          onClick={() => void fetchLogs()}
-          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white/70 px-4 py-2 text-sm font-bold text-neutral-700 transition-all hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
-        >
-          <RefreshCcw size={15} /> 刷新
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setIsPackageManagerOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white/70 px-4 py-2 text-sm font-bold text-neutral-700 transition-all hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+          >
+            <Package size={15} /> 历史安装包管理
+          </button>
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700">
+            <Upload size={15} />
+            {isManualUploading ? '上传中...' : '手动上传安装包'}
+            <input
+              type="file"
+              className="hidden"
+              onChange={event => void handleManualPackageUpload(event)}
+              disabled={isManualUploading}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              void fetchLogs();
+              void fetchPackageAssets();
+            }}
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white/70 px-4 py-2 text-sm font-bold text-neutral-700 transition-all hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+          >
+            <RefreshCcw size={15} /> 刷新
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 xl:h-[calc(100vh-13rem)] xl:grid-cols-2">
-        <div className="xl:min-h-0 xl:overflow-y-auto xl:pr-2">
+      <div className="grid grid-cols-1 gap-8 2xl:h-[calc(100vh-13rem)] 2xl:grid-cols-2">
+        <div className="2xl:min-h-0 2xl:overflow-y-auto 2xl:pr-2">
           <form onSubmit={handleSubmit}>
             <div className={cardClass}>
               <h3 className="mb-4 flex items-center gap-2 font-bold text-neutral-900 dark:text-white">
@@ -646,7 +771,7 @@ export default function ManageChangelog() {
           </form>
         </div>
 
-        <div className="space-y-4 xl:min-h-0 xl:overflow-y-auto xl:pr-2">
+        <div className="space-y-4 2xl:min-h-0 2xl:overflow-y-auto 2xl:pr-2">
           <h3 className="mb-4 text-xl font-bold text-neutral-900 dark:text-white">版本控制区</h3>
           {logs.map(log => (
             <div
@@ -756,6 +881,110 @@ export default function ManageChangelog() {
           ) : null}
         </div>
       </div>
+
+      {isPackageManagerOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/50 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-950">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-5 py-4 dark:border-white/10">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-black text-neutral-900 dark:text-white">
+                  <Package size={18} className="text-blue-500" />
+                  历史安装包管理
+                </h3>
+                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  安装包按上传日期存放，复制链接会使用站点设置中的网站域名。
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700">
+                  <Upload size={15} />
+                  {isManualUploading ? '上传中...' : '上传安装包'}
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={event => void handleManualPackageUpload(event)}
+                    disabled={isManualUploading}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsPackageManagerOpen(false)}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-900 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white"
+                  aria-label="关闭"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-5">
+              {packageAssets.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-neutral-200 py-16 text-center text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
+                  暂无历史安装包。
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {packageAssets.map(asset => (
+                    <div
+                      key={`${asset.date}/${asset.fileName}`}
+                      className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03] lg:grid-cols-[1fr_auto]"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+                            {asset.date}
+                          </span>
+                          <span className="text-xs font-semibold text-neutral-500">
+                            {formatFileSize(asset.sizeBytes)}
+                          </span>
+                        </div>
+                        <div className="mt-2 truncate font-mono text-sm font-bold text-neutral-900 dark:text-white">
+                          {asset.fileName}
+                        </div>
+                        <div className="mt-1 truncate font-mono text-xs text-neutral-500 dark:text-neutral-400">
+                          {asset.downloadUrl}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                        <a
+                          href={asset.downloadUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-bold text-neutral-700 transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+                        >
+                          <Download size={14} /> 打开
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => void copyDownloadLink(asset.downloadUrl)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-bold text-neutral-700 transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+                        >
+                          <Copy size={14} /> 复制链接
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void renamePackageAsset(asset)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-bold text-neutral-700 transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+                        >
+                          <Edit3 size={14} /> 重命名
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void deletePackageAsset(asset)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+                        >
+                          <Trash2 size={14} /> 删除
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

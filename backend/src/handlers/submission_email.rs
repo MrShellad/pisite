@@ -11,8 +11,7 @@ use axum::{
     http::StatusCode,
 };
 use lettre::{
-    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
-    message::Mailbox,
+    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor, message::Mailbox,
     transport::smtp::authentication::Credentials,
 };
 use once_cell::sync::Lazy;
@@ -85,9 +84,7 @@ fn build_lettre_transport(
             .map_err(|e| format!("smtp relay error: {}", e))?,
         "starttls" => AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(host)
             .map_err(|e| format!("smtp starttls relay error: {}", e))?,
-        _ => {
-            AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(host)
-        }
+        _ => AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(host),
     };
 
     let builder = builder.port(config.smtp_port as u16);
@@ -118,9 +115,13 @@ fn build_lettre_message(
             .parse()
             .map_err(|e| format!("invalid from email: {}", e))?
     } else {
-        format!("{} <{}>", config.smtp_from_name.trim(), config.smtp_from_email.trim())
-            .parse()
-            .map_err(|e| format!("invalid from mailbox: {}", e))?
+        format!(
+            "{} <{}>",
+            config.smtp_from_name.trim(),
+            config.smtp_from_email.trim()
+        )
+        .parse()
+        .map_err(|e| format!("invalid from mailbox: {}", e))?
     };
 
     let to_mailbox: Mailbox = to_email
@@ -171,12 +172,18 @@ pub async fn send_submission_custom_email(
     let email = normalize_submission_email(to_email)?;
     let safe_subject = sanitize_header_value(subject);
     if safe_subject.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Email subject is required".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Email subject is required".to_string(),
+        ));
     }
 
     let safe_body = body.trim().to_string();
     if safe_body.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Email body is required".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Email body is required".to_string(),
+        ));
     }
 
     let config = load_submission_email_config_record(pool).await?;
@@ -227,7 +234,10 @@ fn generate_verification_code(verification_id: &str) -> String {
 pub fn normalize_submission_email(raw: &str) -> Result<String, (StatusCode, String)> {
     let email = raw.trim().to_lowercase();
     if email.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Contact email is required".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Contact email is required".to_string(),
+        ));
     }
 
     if !EMAIL_REGEX.is_match(&email) {
@@ -310,7 +320,16 @@ fn validate_submission_email_config(
     }
 
     if !["none", "plain", "login"].contains(&config.smtp_auth.as_str()) {
-        return Err((StatusCode::BAD_REQUEST, "Invalid SMTP auth mode".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Invalid SMTP auth mode".to_string(),
+        ));
+    }
+    if config.smtp_auth != "none" && config.smtp_security == "none" {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "SMTP authentication requires TLS or STARTTLS".to_string(),
+        ));
     }
 
     let _ = normalize_submission_email(&config.smtp_from_email)?;
@@ -320,10 +339,16 @@ fn validate_submission_email_config(
 
     if config.smtp_auth != "none" {
         if config.smtp_username.trim().is_empty() {
-            return Err((StatusCode::BAD_REQUEST, "SMTP username is required".to_string()));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "SMTP username is required".to_string(),
+            ));
         }
         if config.smtp_password.trim().is_empty() {
-            return Err((StatusCode::BAD_REQUEST, "SMTP password is required".to_string()));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "SMTP password is required".to_string(),
+            ));
         }
     }
 
@@ -392,12 +417,18 @@ fn validate_rule_payload(
 
     let pattern_type = payload.pattern_type.trim().to_lowercase();
     if !["domain_suffix", "exact_email", "contains"].contains(&pattern_type.as_str()) {
-        return Err((StatusCode::BAD_REQUEST, "Invalid rule pattern type".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Invalid rule pattern type".to_string(),
+        ));
     }
 
     let pattern = normalize_rule_pattern(&pattern_type, &payload.pattern);
     if pattern.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Rule pattern is required".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Rule pattern is required".to_string(),
+        ));
     }
 
     if pattern_type == "exact_email" {
@@ -687,7 +718,10 @@ pub async fn send_submission_email_code(
             let wait_seconds = i64::from(config.resend_cooldown_seconds) - seconds_ago;
             return Err((
                 StatusCode::TOO_MANY_REQUESTS,
-                format!("Please wait {} seconds before requesting another code", wait_seconds),
+                format!(
+                    "Please wait {} seconds before requesting another code",
+                    wait_seconds
+                ),
             ));
         }
     }
@@ -766,11 +800,17 @@ pub async fn verify_submission_email_code(
     let code = payload.code.trim();
 
     if verification_id.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Verification id is required".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Verification id is required".to_string(),
+        ));
     }
 
     if code.len() != 6 || !code.chars().all(|ch| ch.is_ascii_digit()) {
-        return Err((StatusCode::BAD_REQUEST, "Invalid verification code".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Invalid verification code".to_string(),
+        ));
     }
 
     let config = load_submission_email_config_record(&pool).await?;
@@ -793,7 +833,10 @@ pub async fn verify_submission_email_code(
     .fetch_optional(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    .ok_or((StatusCode::NOT_FOUND, "Verification session not found".to_string()))?;
+    .ok_or((
+        StatusCode::NOT_FOUND,
+        "Verification session not found".to_string(),
+    ))?;
 
     let _ = (&row.email, &row.expires_at);
 
@@ -805,10 +848,14 @@ pub async fn verify_submission_email_code(
     }
 
     if row.is_expired {
-        return Err((StatusCode::BAD_REQUEST, "Verification code has expired".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Verification code has expired".to_string(),
+        ));
     }
 
-    if let (Some(token), Some(verified_at)) = (row.verification_token.clone(), row.verified_at.clone())
+    if let (Some(token), Some(verified_at)) =
+        (row.verification_token.clone(), row.verified_at.clone())
     {
         return Ok(Json(VerifySubmissionEmailCodeResponse {
             verification_token: token,
@@ -832,7 +879,10 @@ pub async fn verify_submission_email_code(
         .bind(verification_id)
         .execute(&pool)
         .await;
-        return Err((StatusCode::UNAUTHORIZED, "Verification code is incorrect".to_string()));
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            "Verification code is incorrect".to_string(),
+        ));
     }
 
     let now: (String,) = sqlx::query_as("SELECT CURRENT_TIMESTAMP")

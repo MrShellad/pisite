@@ -37,7 +37,7 @@ export default function ManageSettings() {
   }
 
   return (
-    <div className="max-w-5xl space-y-8 pb-12">
+    <div className="w-full space-y-8 pb-12">
       <h2 className="flex items-center gap-2 text-2xl font-bold text-neutral-900 dark:text-white">
         <Settings className="text-blue-500" /> 全局系统设置
       </h2>
@@ -56,6 +56,18 @@ export default function ManageSettings() {
                 onChange={event => handleChange('siteName', event.target.value)}
                 className={inputClass}
               />
+            </div>
+            <div>
+              <label className={labelClass}>网站域名</label>
+              <input
+                value={formData.siteDomain}
+                onChange={event => handleChange('siteDomain', event.target.value)}
+                className={inputClass}
+                placeholder="https://example.com"
+              />
+              <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+                用于生成安装包下载直链，留空时使用相对地址。
+              </p>
             </div>
             <div>
               <label className={labelClass}>底部版权声明</label>

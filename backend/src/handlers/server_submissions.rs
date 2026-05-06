@@ -1,12 +1,13 @@
-use crate::models::{
-    Claims, CreateServerSubmissionPayload, ServerPingBatchRunResult, ServerPingConfig, ServerStatus,
-    ServerStatusHistory, ServerSubmission, ServerTagDictPayload, SendSubmissionContactEmailPayload,
-    UpdateServerPingConfigPayload, UpdateServerSubmissionPayload,
-};
-use crate::handlers::image_storage::{convert_bytes_to_webp, uuid_webp_file_name};
+use crate::handlers::image_storage::{MAX_SERVER_SUBMISSION_IMAGE_BYTES, uuid_webp_file_name};
 use crate::handlers::submission_email::{
     check_submission_email_token, consume_submission_email_token, normalize_submission_email,
     send_submission_custom_email,
+};
+use crate::models::{
+    Claims, CreateServerSubmissionPayload, OwnerUpdateServerSubmissionPayload,
+    SendSubmissionContactEmailPayload, ServerPingBatchRunResult, ServerPingConfig, ServerStatus,
+    ServerStatusHistory, ServerSubmission, ServerSubmissionOwnerAuthPayload, ServerTagDictPayload,
+    UpdateServerPingConfigPayload, UpdateServerSubmissionPayload,
 };
 use ammonia::clean;
 use axum::{
@@ -14,9 +15,11 @@ use axum::{
     extract::{Multipart, Path as AxumPath, Query, State},
     http::StatusCode,
 };
+use image::ImageFormat;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 use sqlx::{QueryBuilder, Sqlite, SqlitePool, types::Json as SqlxJson};
 use std::{collections::HashSet, io};
 use tokio::{
@@ -39,6 +42,24 @@ static FALLBACK_MC_VERSION_REGEXES: Lazy<[Regex; 5]> = Lazy::new(|| {
             .expect("valid experimental snapshot regex"),
     ]
 });
+
+fn hash_owner_token(email: &str, code: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(email.trim().to_lowercase().as_bytes());
+    hasher.update(b":server-owner:");
+    hasher.update(code.trim().as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+fn generate_owner_token() -> String {
+    Uuid::new_v4()
+        .simple()
+        .to_string()
+        .chars()
+        .take(12)
+        .collect::<String>()
+        .to_uppercase()
+}
 
 fn sanitize_versions(raw_versions: &[String]) -> Vec<String> {
     let mut seen = HashSet::new();
@@ -75,7 +96,8 @@ async fn validate_mc_versions(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     if manifest_count.0 > 0 {
-        let mut builder = QueryBuilder::<Sqlite>::new("SELECT id FROM mc_version_manifest WHERE id IN (");
+        let mut builder =
+            QueryBuilder::<Sqlite>::new("SELECT id FROM mc_version_manifest WHERE id IN (");
         let mut separated = builder.separated(", ");
         for version in &versions {
             separated.push_bind(version);
@@ -139,7 +161,10 @@ fn validate_server_submission_fields(
     age_recommendation: &str,
 ) -> Result<(), (StatusCode, String)> {
     if name.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Server name is required".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Server name is required".to_string(),
+        ));
     }
     if ip.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "Server IP is required".to_string()));
@@ -154,7 +179,10 @@ fn validate_server_submission_fields(
         return Err((StatusCode::BAD_REQUEST, "Invalid server port".to_string()));
     }
     if max_players <= 0 {
-        return Err((StatusCode::BAD_REQUEST, "Max players must be positive".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Max players must be positive".to_string(),
+        ));
     }
     if server_type == "modded" && modpack_url.trim().is_empty() {
         return Err((
@@ -195,7 +223,7 @@ fn server_submission_select_sql(only_verified: bool) -> &'static str {
             END AS status_is_expired \
         FROM server_submissions s \
         LEFT JOIN server_status st ON st.server_id = s.id \
-        WHERE s.verified = 1 \
+        WHERE s.verified = 1 AND COALESCE(s.owner_offline, 0) = 0 \
         ORDER BY s.sort_id ASC, datetime(s.created_at) DESC"
     } else {
         "SELECT s.*, \
@@ -213,6 +241,57 @@ fn server_submission_select_sql(only_verified: bool) -> &'static str {
         LEFT JOIN server_status st ON st.server_id = s.id \
         ORDER BY s.sort_id ASC, datetime(s.created_at) DESC"
     }
+}
+
+fn server_submission_by_id_sql() -> &'static str {
+    "SELECT s.*, \
+        st.online_players AS status_online_players, \
+        st.max_players AS status_max_players, \
+        st.is_online AS status_is_online, \
+        st.updated_at AS status_updated_at, \
+        st.expires_at AS status_expires_at, \
+        CASE \
+            WHEN st.expires_at IS NULL THEN 1 \
+            WHEN datetime(st.expires_at) <= datetime('now') THEN 1 \
+            ELSE 0 \
+        END AS status_is_expired \
+     FROM server_submissions s \
+     LEFT JOIN server_status st ON st.server_id = s.id \
+     WHERE s.id = ?"
+}
+
+async fn verify_owner_access(
+    pool: &SqlitePool,
+    contact_email: &str,
+    code: &str,
+) -> Result<String, (StatusCode, String)> {
+    let email = normalize_submission_email(contact_email)?;
+    let clean_code = code.trim();
+    if clean_code.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Owner code is required".to_string(),
+        ));
+    }
+
+    let token_hash = hash_owner_token(&email, clean_code);
+    let (id,): (String,) = sqlx::query_as(
+        "SELECT id
+         FROM server_submissions
+         WHERE contact_email = ? AND owner_token_hash = ?
+         LIMIT 1",
+    )
+    .bind(&email)
+    .bind(&token_hash)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or((
+        StatusCode::UNAUTHORIZED,
+        "Email or owner code is invalid".to_string(),
+    ))?;
+
+    Ok(id)
 }
 
 pub async fn upload_server_cover(
@@ -242,9 +321,30 @@ pub async fn upload_server_cover(
         return Err((StatusCode::BAD_REQUEST, "empty file".to_string()));
     }
 
-    let encoded = convert_bytes_to_webp(&data).map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+    if data.len() > MAX_SERVER_SUBMISSION_IMAGE_BYTES {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Image file must be 1MB or smaller".to_string(),
+        ));
+    }
 
-    tokio::fs::write(&relative_path, encoded)
+    let image_format = image::guess_format(&data)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid image file".to_string()))?;
+    if image_format != ImageFormat::WebP {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Only WebP images are allowed".to_string(),
+        ));
+    }
+
+    image::load_from_memory(&data).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            format!("failed to decode image: {}", e),
+        )
+    })?;
+
+    tokio::fs::write(&relative_path, &data)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -384,7 +484,7 @@ pub async fn get_public_server_statuses(
             st.expires_at
          FROM server_status st
          INNER JOIN server_submissions s ON s.id = st.server_id
-         WHERE s.verified = 1
+         WHERE s.verified = 1 AND COALESCE(s.owner_offline, 0) = 0
          ORDER BY datetime(st.updated_at) DESC",
     )
     .fetch_all(&pool)
@@ -392,6 +492,106 @@ pub async fn get_public_server_statuses(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(statuses))
+}
+
+pub async fn get_owner_server_submission(
+    State(pool): State<SqlitePool>,
+    Json(payload): Json<ServerSubmissionOwnerAuthPayload>,
+) -> Result<Json<ServerSubmission>, (StatusCode, String)> {
+    let id = verify_owner_access(&pool, &payload.contact_email, &payload.code).await?;
+    let submission = sqlx::query_as::<_, ServerSubmission>(server_submission_by_id_sql())
+        .bind(&id)
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(submission))
+}
+
+pub async fn update_owner_server_submission(
+    State(pool): State<SqlitePool>,
+    Json(payload): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let auth: ServerSubmissionOwnerAuthPayload = serde_json::from_value(payload.clone())
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+    let update: OwnerUpdateServerSubmissionPayload =
+        serde_json::from_value(payload).map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+    let id = verify_owner_access(&pool, &auth.contact_email, &auth.code).await?;
+
+    let safe_name = clean(&update.name).trim().to_string();
+    let safe_description = clean(&update.description);
+    let safe_ip = update.ip.trim().to_string();
+    let safe_versions = validate_mc_versions(&pool, &update.versions).await?;
+
+    validate_server_submission_fields(
+        &safe_name,
+        &safe_ip,
+        &update.icon,
+        &update.hero,
+        update.port,
+        update.max_players,
+        update.server_type.trim(),
+        &update.modpack_url,
+        update.has_voice_chat,
+        &update.voice_url,
+        &update.age_recommendation,
+    )?;
+
+    sqlx::query(
+        "UPDATE server_submissions
+         SET name = ?, description = ?, ip = ?, port = ?, versions = ?, max_players = ?, online_players = ?,
+             icon = ?, hero = ?, website = ?, server_type = ?, language = ?, modpack_url = ?,
+             has_paid_content = ?, age_recommendation = ?,
+             social_links = ?, has_voice_chat = ?, voice_platform = ?, voice_url = ?,
+             features = ?, mechanics = ?, elements = ?, community = ?, tags = ?,
+             owner_offline = 0
+         WHERE id = ?",
+    )
+    .bind(&safe_name)
+    .bind(safe_description)
+    .bind(&safe_ip)
+    .bind(update.port)
+    .bind(SqlxJson(&safe_versions))
+    .bind(update.max_players)
+    .bind(update.online_players)
+    .bind(update.icon.trim())
+    .bind(update.hero.trim())
+    .bind(update.website.trim())
+    .bind(update.server_type.trim())
+    .bind(update.language.trim())
+    .bind(update.modpack_url.trim())
+    .bind(update.has_paid_content)
+    .bind(&update.age_recommendation)
+    .bind(SqlxJson(&update.social_links))
+    .bind(update.has_voice_chat)
+    .bind(update.voice_platform.trim())
+    .bind(update.voice_url.trim())
+    .bind(SqlxJson(&update.features))
+    .bind(SqlxJson(&update.mechanics))
+    .bind(SqlxJson(&update.elements))
+    .bind(SqlxJson(&update.community))
+    .bind(SqlxJson(&update.tags))
+    .bind(&id)
+    .execute(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(serde_json::json!({ "message": "updated" })))
+}
+
+pub async fn offline_owner_server_submission(
+    State(pool): State<SqlitePool>,
+    Json(payload): Json<ServerSubmissionOwnerAuthPayload>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let id = verify_owner_access(&pool, &payload.contact_email, &payload.code).await?;
+
+    sqlx::query("UPDATE server_submissions SET owner_offline = 1, verified = 0 WHERE id = ?")
+        .bind(&id)
+        .execute(&pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(serde_json::json!({ "message": "offline" })))
 }
 
 pub async fn update_server_submission(
@@ -528,18 +728,68 @@ pub async fn toggle_verify(
     _claims: Claims,
     State(pool): State<SqlitePool>,
     AxumPath(id): AxumPath<String>,
-) -> Result<StatusCode, (StatusCode, String)> {
-    let result = sqlx::query("UPDATE server_submissions SET verified = NOT verified WHERE id = ?")
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let (name, contact_email, was_verified): (String, String, bool) =
+        sqlx::query_as("SELECT name, contact_email, verified FROM server_submissions WHERE id = ?")
+            .bind(&id)
+            .fetch_optional(&pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+            .ok_or((StatusCode::NOT_FOUND, "Submission not found".to_string()))?;
+
+    let next_verified = !was_verified;
+    let mut owner_code_sent = false;
+    let mut mail_error: Option<String> = None;
+
+    if next_verified {
+        let safe_email = normalize_submission_email(&contact_email)?;
+        let owner_code = generate_owner_token();
+        let owner_token_hash = hash_owner_token(&safe_email, &owner_code);
+
+        sqlx::query(
+            "UPDATE server_submissions
+             SET verified = 1,
+                 owner_offline = 0,
+                 owner_token_hash = ?,
+                 owner_token_issued_at = CURRENT_TIMESTAMP
+             WHERE id = ?",
+        )
+        .bind(&owner_token_hash)
         .bind(&id)
         .execute(&pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    if result.rows_affected() == 0 {
-        return Err((StatusCode::NOT_FOUND, "Submission not found".to_string()));
+        let subject = format!("您的服务器「{}」已通过审核", name);
+        let body = format!(
+            "您好，\n\n您的服务器「{}」已通过审核并上线。\n\n服务器管理 Code：{}\n\n您可以在服务器提交页面的“修改服务器信息”入口，使用原始邮箱地址和该 Code 修改服务器资料或下线服务器。\n\n请妥善保存该 Code，不要公开分享。",
+            name, owner_code
+        );
+
+        match send_submission_custom_email(&pool, &safe_email, &subject, &body).await {
+            Ok(()) => owner_code_sent = true,
+            Err((_, error)) => {
+                mail_error = Some(error);
+                eprintln!(
+                    "[server_submissions] owner token email failed for {}: {}",
+                    safe_email,
+                    mail_error.as_deref().unwrap_or_default()
+                );
+            }
+        }
+    } else {
+        sqlx::query("UPDATE server_submissions SET verified = 0 WHERE id = ?")
+            .bind(&id)
+            .execute(&pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
 
-    Ok(StatusCode::OK)
+    Ok(Json(serde_json::json!({
+        "verified": next_verified,
+        "ownerCodeSent": owner_code_sent,
+        "mailError": mail_error,
+    })))
 }
 
 pub async fn get_server_tags_dict(
@@ -793,11 +1043,11 @@ pub async fn run_server_ping_batch(pool: &SqlitePool) -> Result<ServerPingBatchR
     .await
     .map_err(|e| e.to_string())?;
 
-    let total_servers: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM server_submissions WHERE verified = 1")
-            .fetch_one(pool)
-            .await
-            .map_err(|e| e.to_string())?;
+    let total_servers_sql = "SELECT COUNT(*) FROM server_submissions WHERE verified = 1 AND COALESCE(owner_offline, 0) = 0";
+    let total_servers: (i64,) = sqlx::query_as(total_servers_sql)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
     if total_servers.0 == 0 {
         sqlx::query(
@@ -820,7 +1070,7 @@ pub async fn run_server_ping_batch(pool: &SqlitePool) -> Result<ServerPingBatchR
     let mut targets = sqlx::query_as::<_, PingTarget>(
         "SELECT id, ip, port
          FROM server_submissions
-         WHERE verified = 1
+         WHERE verified = 1 AND COALESCE(owner_offline, 0) = 0
          ORDER BY id ASC
          LIMIT ? OFFSET ?",
     )
@@ -838,7 +1088,7 @@ pub async fn run_server_ping_batch(pool: &SqlitePool) -> Result<ServerPingBatchR
         let mut wrap_targets = sqlx::query_as::<_, PingTarget>(
             "SELECT id, ip, port
              FROM server_submissions
-             WHERE verified = 1
+             WHERE verified = 1 AND COALESCE(owner_offline, 0) = 0
              ORDER BY id ASC
              LIMIT ? OFFSET 0",
         )
@@ -906,10 +1156,12 @@ pub async fn run_server_ping_batch(pool: &SqlitePool) -> Result<ServerPingBatchR
     .await
     .map_err(|e| e.to_string())?;
 
-    sqlx::query("DELETE FROM server_status_history WHERE recorded_at < datetime('now', '-30 days')")
-        .execute(pool)
-        .await
-        .ok();
+    sqlx::query(
+        "DELETE FROM server_status_history WHERE recorded_at < datetime('now', '-30 days')",
+    )
+    .execute(pool)
+    .await
+    .ok();
 
     Ok(ServerPingBatchRunResult {
         total_servers: total_servers.0,
@@ -985,8 +1237,8 @@ async fn ping_server_status(ip: &str, port: i32, timeout_ms: i32) -> Result<(i32
             .await
             .map_err(|e| format!("read status payload failed: {}", e))?;
 
-        let parsed: SlpResponse =
-            serde_json::from_slice(&json_buf).map_err(|e| format!("parse status json failed: {}", e))?;
+        let parsed: SlpResponse = serde_json::from_slice(&json_buf)
+            .map_err(|e| format!("parse status json failed: {}", e))?;
 
         let players = parsed
             .players
@@ -1040,4 +1292,3 @@ async fn read_varint(stream: &mut TcpStream) -> Result<i32, String> {
 
     Err(io::Error::new(io::ErrorKind::InvalidData, "varint is too big").to_string())
 }
-

@@ -6,7 +6,9 @@ use axum::{
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::models::{ApiAccessLog, ApiKey, ApiKeyCreatePayload, ApiKeyUpdatePayload, Claims};
+use crate::models::{
+    ApiAccessLog, ApiKey, ApiKeyCreatePayload, ApiKeyUpdatePayload, ApiWarningItem, Claims,
+};
 
 pub async fn list_api_keys(
     _claims: Claims,
@@ -106,5 +108,41 @@ pub async fn list_logs(
     .fetch_all(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(Json(rows))
+}
+
+pub async fn list_warnings(
+    _claims: Claims,
+    State(pool): State<SqlitePool>,
+) -> Result<Json<Vec<ApiWarningItem>>, (StatusCode, String)> {
+    let rows = sqlx::query_as::<_, ApiWarningItem>(
+        "SELECT
+            latest.path,
+            latest.method,
+            latest.status AS latest_status,
+            grouped.error_count,
+            grouped.client_error_count,
+            grouped.server_error_count,
+            latest.created_at AS last_seen_at
+         FROM (
+            SELECT
+                path,
+                method,
+                COUNT(*) AS error_count,
+                SUM(CASE WHEN status >= 400 AND status < 500 THEN 1 ELSE 0 END) AS client_error_count,
+                SUM(CASE WHEN status >= 500 THEN 1 ELSE 0 END) AS server_error_count,
+                MAX(id) AS latest_id
+            FROM api_access_logs
+            WHERE status >= 400
+            GROUP BY path, method
+         ) grouped
+         INNER JOIN api_access_logs latest ON latest.id = grouped.latest_id
+         ORDER BY grouped.server_error_count DESC, grouped.error_count DESC, latest.id DESC
+         LIMIT 100",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
     Ok(Json(rows))
 }

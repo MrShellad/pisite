@@ -4,6 +4,7 @@ import axios from 'axios';
 
 import { api, getUploadUrl } from '@/api/client';
 import { normalizeMcVersionId } from '@/lib/minecraft';
+import type { ServerTagDict } from '@/pages/ServerSubmission/useServerSubmission';
 import type {
   ServerPingBatchRunResult,
   ServerPingConfig,
@@ -99,7 +100,7 @@ export function useManageServerSubmissions() {
   const [isUploading, setIsUploading] = useState<'icon' | 'hero' | null>(null);
   const [isSavingPingConfig, setIsSavingPingConfig] = useState(false);
   const [isRunningPingJob, setIsRunningPingJob] = useState(false);
-  const [tagDict, setTagDict] = useState<any[]>([]);
+  const [tagDict, setTagDict] = useState<ServerTagDict[]>([]);
   const [pingConfig, setPingConfig] = useState<ServerPingConfig | null>(null);
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
@@ -234,12 +235,17 @@ export function useManageServerSubmissions() {
 
     setIsSendingEmail(true);
     try {
-      await api.post(`/admin/server-submissions/${selectedId}/send-email`, { subject, body });
+      await api.post(`/admin/server-submissions/${selectedId}/send-email`, { subject, body }, { timeout: 30000 });
       window.alert(`邮件已发送到 ${formData.contactEmail || '提交者邮箱'}`);
       return true;
     } catch (err) {
       console.error('Failed to send submission email:', err);
-      const message = extractApiErrorMessage(err) ?? '邮件发送失败，请检查 SMTP 配置后重试。';
+      const isTimeout = axios.isAxiosError(err) && err.code === 'ECONNABORTED';
+      const message =
+        extractApiErrorMessage(err) ??
+        (isTimeout
+          ? '邮件发送请求超时。SMTP 测试正常时，多半是服务器到 SMTP 的握手或投递耗时过长，请稍后重试或检查 Docker 网络出口。'
+          : '邮件发送失败，请检查 SMTP 配置后重试。');
       window.alert(message);
       return false;
     } finally {
@@ -249,12 +255,26 @@ export function useManageServerSubmissions() {
 
   const handleToggleVerify = async (id: string, currentStatus: boolean) => {
     try {
-      await api.put(`/admin/server-submissions/${id}/toggle-verify`);
+      const response = await api.put<{
+        verified: boolean;
+        ownerCodeSent: boolean;
+        mailError?: string | null;
+      }>(`/admin/server-submissions/${id}/toggle-verify`);
+      const nextVerified = response.data.verified;
       setSubmissions((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, verified: !currentStatus } : item)),
+        prev.map((item) => (item.id === id ? { ...item, verified: nextVerified } : item)),
       );
       if (selectedId === id) {
-        setFormData((prev) => (prev ? { ...prev, verified: !currentStatus } : null));
+        setFormData((prev) => (prev ? { ...prev, verified: nextVerified } : null));
+      }
+      if (!currentStatus) {
+        if (response.data.ownerCodeSent) {
+          window.alert('已通过审核，服务器管理 Code 已发送给作者。');
+        } else {
+          window.alert(
+            `已通过审核，但管理 Code 邮件发送失败：${response.data.mailError || '请检查 SMTP 配置或服务器网络。'}`,
+          );
+        }
       }
     } catch (err) {
       console.error('Toggle verify failed:', err);

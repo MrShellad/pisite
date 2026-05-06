@@ -60,9 +60,9 @@ export default function ManageServerTags() {
         </div>
       </div>
 
-      <div className="grid gap-8 xl:grid-cols-[400px_1fr]">
+      <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)] 2xl:grid-cols-[440px_minmax(0,1fr)]">
         {/* ================= 左侧：字典列表 (按分类分组) ================= */}
-        <section className={`${cardClass} flex flex-col h-[calc(100vh-180px)] overflow-hidden !p-0`}>
+        <section className={`${cardClass} flex max-h-[70vh] flex-col overflow-hidden !p-0 xl:h-[calc(100vh-180px)] xl:max-h-none`}>
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
             {(Object.entries(groupedAndFilteredTags) as [keyof typeof CATEGORY_MAP, typeof groupedAndFilteredTags['features']][]).map(([catKey, items]) => (
               <div key={catKey} className="space-y-3">
@@ -108,7 +108,7 @@ export default function ManageServerTags() {
         </section>
 
         {/* ================= 右侧：编辑表单 ================= */}
-        <section className={`${cardClass} h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar`}>
+        <section className={`${cardClass} custom-scrollbar overflow-y-visible xl:h-[calc(100vh-180px)] xl:overflow-y-auto`}>
           {!selectedId ? (
             <div className="flex flex-col items-center justify-center h-full space-y-4 text-neutral-400">
               <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center"><Tags size={32} /></div>

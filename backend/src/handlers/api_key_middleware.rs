@@ -85,6 +85,26 @@ fn client_ip_from_req<B>(req: &Request<B>) -> Option<String> {
         .map(|ci| ci.0.ip().to_string())
 }
 
+async fn log_api_access(
+    pool: &SqlitePool,
+    key_id: Option<&str>,
+    path: &str,
+    method: &str,
+    status: StatusCode,
+    ip: Option<String>,
+) {
+    let _ = sqlx::query(
+        "INSERT INTO api_access_logs (key_id, path, method, status, ip) VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(key_id)
+    .bind(path)
+    .bind(method)
+    .bind(status.as_u16() as i32)
+    .bind(ip)
+    .execute(pool)
+    .await;
+}
+
 pub async fn api_key_middleware(
     State(pool): State<SqlitePool>,
     req: Request<Body>,
@@ -99,6 +119,7 @@ pub async fn api_key_middleware(
     }
 
     let method = req.method().to_string();
+    let ip = client_ip_from_req(&req);
 
     // 默认策略：允许公网访问 & 不强制 API Key
     let (public_enabled, require_api_key) = get_policy(&pool, &method, &path)
@@ -107,6 +128,7 @@ pub async fn api_key_middleware(
 
     if !public_enabled {
         // 对公网禁用时直接 404（隐藏接口）
+        log_api_access(&pool, None, &path, &method, StatusCode::NOT_FOUND, ip).await;
         let resp = Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Body::from("Not Found"))
@@ -123,6 +145,7 @@ pub async fn api_key_middleware(
         .filter(|s| !s.is_empty());
 
     if require_api_key && key_str.is_none() {
+        log_api_access(&pool, None, &path, &method, StatusCode::FORBIDDEN, ip).await;
         let resp = Response::builder()
             .status(StatusCode::FORBIDDEN)
             .body(Body::from("Missing X-API-Key"))
@@ -132,7 +155,6 @@ pub async fn api_key_middleware(
 
     // 不强制 key 且未提供 key：直接放行，但仍然记录访问日志（key_id 为空）
     if key_str.is_none() {
-        let ip = client_ip_from_req(&req);
         let response = next.run(req).await;
         let status = response.status().as_u16() as i32;
         let _ = sqlx::query(
@@ -161,6 +183,7 @@ pub async fn api_key_middleware(
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let Some((key_id, scopes, rate_limit)) = row else {
+        log_api_access(&pool, None, &path, &method, StatusCode::FORBIDDEN, ip).await;
         let resp = Response::builder()
             .status(StatusCode::FORBIDDEN)
             .body(Body::from("Invalid or disabled API key"))
@@ -177,6 +200,15 @@ pub async fn api_key_middleware(
                 .filter(|s| !s.is_empty())
                 .any(|prefix| path.starts_with(prefix));
             if !allowed {
+                log_api_access(
+                    &pool,
+                    Some(&key_id),
+                    &path,
+                    &method,
+                    StatusCode::FORBIDDEN,
+                    ip,
+                )
+                .await;
                 let resp = Response::builder()
                     .status(StatusCode::FORBIDDEN)
                     .body(Body::from("API key has no permission for this path"))
@@ -189,17 +221,34 @@ pub async fn api_key_middleware(
     // 限流：基于 (key_id, 当前分钟)
     if rate_limit > 0 {
         let bucket = now_unix_minute();
-        let mut guard: std::sync::MutexGuard<'_, HashMap<(String, u64), u32>> =
-            RATE_LIMITER.lock().unwrap();
-        let counter = guard.entry((key_id.clone(), bucket)).or_insert(0u32);
-        if *counter >= rate_limit as u32 {
+        let rate_limited = {
+            let mut guard: std::sync::MutexGuard<'_, HashMap<(String, u64), u32>> =
+                RATE_LIMITER.lock().unwrap();
+            let counter = guard.entry((key_id.clone(), bucket)).or_insert(0u32);
+            if *counter >= rate_limit as u32 {
+                true
+            } else {
+                *counter += 1;
+                false
+            }
+        };
+
+        if rate_limited {
+            log_api_access(
+                &pool,
+                Some(&key_id),
+                &path,
+                &method,
+                StatusCode::TOO_MANY_REQUESTS,
+                ip,
+            )
+            .await;
             let resp = Response::builder()
                 .status(StatusCode::TOO_MANY_REQUESTS)
                 .body(Body::from("Rate limit exceeded"))
                 .unwrap();
             return Ok(resp);
         }
-        *counter += 1;
     }
 
     // 更新 last_used_at（尽力而为）
@@ -209,8 +258,6 @@ pub async fn api_key_middleware(
         .await;
 
     // 记录访问日志（请求通过与否都记）
-    let ip = client_ip_from_req(&req);
-
     let response = next.run(req).await;
     let status = response.status().as_u16() as i32;
 

@@ -8,6 +8,7 @@ import { isLikelyEmail, normalizeEmail } from '@/lib/validation';
 import type {
   CreateServerSubmissionRequest,
   SendSubmissionEmailCodeResponse,
+  ServerSubmission,
   VerifySubmissionEmailCodeResponse,
 } from '@/types';
 import { initialFormState, type ServerSubmissionFormState } from './types';
@@ -33,6 +34,11 @@ interface PendingAssetsState {
   hero: PendingAsset;
 }
 
+interface OwnerUpdateServerSubmissionRequest extends ServerSubmissionFormState {
+  contactEmail: string;
+  code: string;
+}
+
 const EMPTY_PENDING_ASSET: PendingAsset = {
   file: null,
   fileName: '',
@@ -43,7 +49,11 @@ const EMPTY_PENDING_ASSETS: PendingAssetsState = {
   icon: EMPTY_PENDING_ASSET,
   hero: EMPTY_PENDING_ASSET,
 };
-const MAX_IMAGE_UPLOAD_BYTES = 50 * 1024 * 1024;
+const MAX_IMAGE_UPLOAD_BYTES = 1024 * 1024;
+
+function isWebpFile(file: File) {
+  return file.type === 'image/webp' || file.name.toLowerCase().endsWith('.webp');
+}
 
 async function readImageDimensions(file: File): Promise<{ width: number; height: number }> {
   const objectUrl = URL.createObjectURL(file);
@@ -79,6 +89,42 @@ async function uploadAsset(file: File) {
   return getUploadUrl(response.data.url);
 }
 
+function toFormState(item: ServerSubmission): ServerSubmissionFormState {
+  return {
+    name: item.name || '',
+    description: item.description || '',
+    ip: item.ip || '',
+    port: item.port || 25565,
+    versions: Array.isArray(item.versions) ? item.versions : [],
+    maxPlayers: item.maxPlayers || 100,
+    onlinePlayers: item.onlinePlayers || 0,
+    icon: getUploadUrl(item.icon || ''),
+    hero: getUploadUrl(item.hero || ''),
+    contactEmail: item.contactEmail || '',
+    website: item.website || '',
+    serverType: item.serverType || 'vanilla',
+    language: item.language || 'zh-CN',
+    modpackUrl: item.modpackUrl || '',
+    hasPaidContent: item.hasPaidContent || false,
+    ageRecommendation: item.ageRecommendation || '全年龄',
+    socialLinks: Array.isArray(item.socialLinks) ? item.socialLinks : [],
+    hasVoiceChat: item.hasVoiceChat || false,
+    voicePlatform: item.voicePlatform || 'QQ',
+    voiceUrl: item.voiceUrl || '',
+    features: Array.isArray(item.features) ? item.features : [],
+    mechanics: Array.isArray(item.mechanics) ? item.mechanics : [],
+    elements: Array.isArray(item.elements) ? item.elements : [],
+    community: Array.isArray(item.community) ? item.community : [],
+    tags: Array.isArray(item.tags) ? item.tags : [],
+  };
+}
+
+function extractBackendMessage(error: unknown) {
+  return typeof (error as { response?: { data?: string } })?.response?.data === 'string'
+    ? (error as { response?: { data?: string } }).response?.data
+    : null;
+}
+
 export function useServerSubmission() {
   const navigate = useNavigate();
 
@@ -93,10 +139,16 @@ export function useServerSubmission() {
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerCode, setOwnerCode] = useState('');
+  const [ownerSubmissionId, setOwnerSubmissionId] = useState<string | null>(null);
+  const [isOwnerLoading, setIsOwnerLoading] = useState(false);
+  const [isOwnerOfflining, setIsOwnerOfflining] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tagDict, setTagDict] = useState<ServerTagDict[]>([]);
   const previewUrlsRef = useRef<string[]>([]);
+  const isOwnerMode = Boolean(ownerSubmissionId);
 
   useEffect(() => {
     api.get('/server-tags-dict')
@@ -105,8 +157,9 @@ export function useServerSubmission() {
   }, []);
 
   useEffect(() => {
+    const previewUrls = previewUrlsRef.current;
     return () => {
-      previewUrlsRef.current.forEach((url) => revokeIfBlob(url));
+      previewUrls.forEach((url) => revokeIfBlob(url));
     };
   }, []);
 
@@ -128,8 +181,13 @@ export function useServerSubmission() {
 
     if (!file) return;
 
+    if (!isWebpFile(file)) {
+      setError('图片必须使用 WebP 格式。');
+      return;
+    }
+
     if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
-      setError('图片大小不能超过 50MB。');
+      setError('WebP 图片大小不能超过 1MB。');
       return;
     }
 
@@ -248,7 +306,7 @@ export function useServerSubmission() {
     }
   };
 
-  const validateBeforeSubmit = () => {
+  const validateCoreFields = () => {
     const normalizedEmail = normalizeEmail(formData.contactEmail);
 
     if (!formData.name.trim() || !formData.ip.trim()) {
@@ -288,6 +346,16 @@ export function useServerSubmission() {
       return '联系邮箱格式不正确。';
     }
 
+    return null;
+  };
+
+  const validateBeforeSubmit = () => {
+    const normalizedEmail = normalizeEmail(formData.contactEmail);
+    const validationError = validateCoreFields();
+    if (validationError) {
+      return validationError;
+    }
+
     if (!verificationToken || verifiedEmail !== normalizedEmail) {
       return '请先完成邮箱验证码验证。';
     }
@@ -295,12 +363,126 @@ export function useServerSubmission() {
     return null;
   };
 
+  const buildSanitizedFormPayload = (): ServerSubmissionFormState => ({
+    ...formData,
+    name: formData.name.trim(),
+    ip: formData.ip.trim(),
+    website: formData.website.trim(),
+    modpackUrl: formData.serverType === 'modded' ? formData.modpackUrl.trim() : '',
+    voiceUrl: formData.hasVoiceChat ? formData.voiceUrl.trim() : '',
+    contactEmail: normalizeEmail(formData.contactEmail),
+    versions: Array.from(
+      new Set(
+        formData.versions
+          .map((version) => normalizeMcVersionId(version))
+          .filter(Boolean),
+      ),
+    ),
+    socialLinks: formData.socialLinks.filter((item) => item.platform.trim() && item.url.trim()),
+  });
+
+  const uploadPendingAssetsIntoPayload = async <T extends ServerSubmissionFormState>(payload: T) => {
+    if (pendingAssets.icon.file) {
+      setIsUploading('icon');
+      payload.icon = await uploadAsset(pendingAssets.icon.file);
+    }
+
+    if (pendingAssets.hero.file) {
+      setIsUploading('hero');
+      payload.hero = await uploadAsset(pendingAssets.hero.file);
+    }
+
+    setIsUploading(null);
+    return payload;
+  };
+
+  const resetPendingAssets = () => {
+    setPendingAssets((current) => {
+      revokeIfBlob(current.icon.previewUrl);
+      revokeIfBlob(current.hero.previewUrl);
+      return EMPTY_PENDING_ASSETS;
+    });
+  };
+
+  const handleLoadOwnerSubmission = async () => {
+    const normalizedEmail = normalizeEmail(ownerEmail);
+    const code = ownerCode.trim();
+
+    if (!normalizedEmail || !isLikelyEmail(normalizedEmail)) {
+      setError('请输入原始联系邮箱。');
+      return;
+    }
+
+    if (!code) {
+      setError('请输入审核通过邮件中的管理 Code。');
+      return;
+    }
+
+    setIsOwnerLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await api.post<ServerSubmission>('/server-submissions/owner/lookup', {
+        contactEmail: normalizedEmail,
+        code,
+      });
+      resetPendingAssets();
+      setFormData(toFormState(response.data));
+      setOwnerEmail(normalizedEmail);
+      setOwnerSubmissionId(response.data.id);
+      setVerificationCode('');
+      setVerificationId(null);
+      setVerificationToken(null);
+      setVerifiedEmail('');
+      setVerifiedAt(null);
+      setMessage('已载入服务器资料，可以修改信息或下线服务器。');
+    } catch (loadError) {
+      setError(extractBackendMessage(loadError) || '载入失败，请确认邮箱和管理 Code 是否正确。');
+    } finally {
+      setIsOwnerLoading(false);
+    }
+  };
+
+  const handleResetOwnerMode = () => {
+    resetPendingAssets();
+    setOwnerSubmissionId(null);
+    setOwnerEmail('');
+    setOwnerCode('');
+    setFormData(initialFormState);
+    setError(null);
+    setMessage(null);
+  };
+
+  const handleOwnerOffline = async () => {
+    const normalizedEmail = normalizeEmail(ownerEmail || formData.contactEmail);
+    const code = ownerCode.trim();
+    if (!ownerSubmissionId || !normalizedEmail || !code) return;
+    if (!window.confirm('确定要下线这台服务器吗？下线后前台将不再展示。')) return;
+
+    setIsOwnerOfflining(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await api.post('/server-submissions/owner/offline', {
+        contactEmail: normalizedEmail,
+        code,
+      });
+      handleResetOwnerMode();
+      setMessage('服务器已下线。');
+    } catch (offlineError) {
+      setError(extractBackendMessage(offlineError) || '下线失败，请稍后重试。');
+    } finally {
+      setIsOwnerOfflining(false);
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setMessage(null);
 
-    const validationError = validateBeforeSubmit();
+    const validationError = isOwnerMode ? validateCoreFields() : validateBeforeSubmit();
     if (validationError) {
       setError(validationError);
       return;
@@ -309,48 +491,35 @@ export function useServerSubmission() {
     setIsSubmitting(true);
 
     try {
+      if (isOwnerMode) {
+        const ownerValidationError = validateCoreFields();
+        if (ownerValidationError) {
+          setError(ownerValidationError);
+          return;
+        }
+
+        const ownerPayload: OwnerUpdateServerSubmissionRequest = {
+          ...(await uploadPendingAssetsIntoPayload(buildSanitizedFormPayload())),
+          contactEmail: normalizeEmail(ownerEmail || formData.contactEmail),
+          code: ownerCode.trim(),
+        };
+        await api.put('/server-submissions/owner/update', ownerPayload);
+        resetPendingAssets();
+        setFormData(ownerPayload);
+        setMessage('服务器资料已保存。');
+        return;
+      }
+
       const payload: CreateServerSubmissionRequest = {
-        ...formData,
-        name: formData.name.trim(),
-        ip: formData.ip.trim(),
-        website: formData.website.trim(),
-        modpackUrl: formData.serverType === 'modded' ? formData.modpackUrl.trim() : '',
-        voiceUrl: formData.hasVoiceChat ? formData.voiceUrl.trim() : '',
-        contactEmail: normalizeEmail(formData.contactEmail),
+        ...(await uploadPendingAssetsIntoPayload(buildSanitizedFormPayload())),
         emailVerificationToken: verificationToken!,
-        versions: Array.from(
-          new Set(
-            formData.versions
-              .map((version) => normalizeMcVersionId(version))
-              .filter(Boolean),
-          ),
-        ),
-        socialLinks: formData.socialLinks.filter(
-          (item) => item.platform.trim() && item.url.trim(),
-        ),
       };
 
-      if (pendingAssets.icon.file) {
-        setIsUploading('icon');
-        payload.icon = await uploadAsset(pendingAssets.icon.file);
-      }
-
-      if (pendingAssets.hero.file) {
-        setIsUploading('hero');
-        payload.hero = await uploadAsset(pendingAssets.hero.file);
-      }
-
-      setIsUploading(null);
       await api.post('/server-submissions', payload);
       setFormData(payload);
       navigate('/servers/submit/success', { state: { serverData: payload } });
     } catch (submitError) {
-      const backendMessage =
-        typeof (submitError as { response?: { data?: string } })?.response?.data === 'string'
-          ? (submitError as { response?: { data?: string } }).response?.data
-          : null;
-
-      setError(backendMessage || '提交失败，请检查字段后重试。');
+      setError(extractBackendMessage(submitError) || '提交失败，请检查字段后重试。');
     } finally {
       setIsUploading(null);
       setIsSubmitting(false);
@@ -366,6 +535,13 @@ export function useServerSubmission() {
     verificationToken,
     verifiedEmail,
     verifiedAt,
+    ownerEmail,
+    setOwnerEmail,
+    ownerCode,
+    setOwnerCode,
+    isOwnerMode,
+    isOwnerLoading,
+    isOwnerOfflining,
     pendingAssets,
     isUploading,
     isSendingCode,
@@ -377,6 +553,9 @@ export function useServerSubmission() {
     handleUpload,
     handleSendVerificationCode,
     handleVerifyCode,
+    handleLoadOwnerSubmission,
+    handleResetOwnerMode,
+    handleOwnerOffline,
     handleSubmit,
   };
 }
