@@ -3,11 +3,12 @@ use crate::handlers::submission_email::{
     check_submission_email_token, consume_submission_email_token, normalize_submission_email,
     send_submission_custom_email,
 };
+use crate::handlers::svg_sanitizer::sanitize_svg;
 use crate::models::{
-    Claims, CreateServerSubmissionPayload, OwnerUpdateServerSubmissionPayload,
+    Claims, CreateServerSubmissionPayload, IconTag, OwnerUpdateServerSubmissionPayload,
     SendSubmissionContactEmailPayload, ServerPingBatchRunResult, ServerPingConfig, ServerStatus,
-    ServerStatusHistory, ServerSubmission, ServerSubmissionOwnerAuthPayload, ServerTagDictPayload,
-    UpdateServerPingConfigPayload, UpdateServerSubmissionPayload,
+    ServerStatusHistory, ServerSubmission, ServerSubmissionOwnerAuthPayload, ServerTagDict,
+    ServerTagDictPayload, UpdateServerPingConfigPayload, UpdateServerSubmissionPayload,
 };
 use ammonia::clean;
 use axum::{
@@ -59,6 +60,33 @@ fn generate_owner_token() -> String {
         .take(12)
         .collect::<String>()
         .to_uppercase()
+}
+
+fn sanitize_icon_tags(tags: &[IconTag]) -> Vec<IconTag> {
+    tags.iter()
+        .cloned()
+        .map(|mut tag| {
+            tag.label = clean(&tag.label).trim().to_string();
+            tag.icon_svg = sanitize_svg(&tag.icon_svg);
+            tag.color = tag.color.trim().to_string();
+            tag
+        })
+        .collect()
+}
+
+fn sanitize_server_submission_tags(submission: &mut ServerSubmission) {
+    submission.features = SqlxJson(sanitize_icon_tags(&submission.features.0));
+    submission.mechanics = SqlxJson(sanitize_icon_tags(&submission.mechanics.0));
+    submission.elements = SqlxJson(sanitize_icon_tags(&submission.elements.0));
+    submission.community = SqlxJson(sanitize_icon_tags(&submission.community.0));
+}
+
+fn sanitize_server_tag_dict_items(dict: &mut [ServerTagDict]) {
+    for item in dict {
+        item.label = clean(&item.label).trim().to_string();
+        item.icon_svg = sanitize_svg(&item.icon_svg);
+        item.color = item.color.trim().to_string();
+    }
 }
 
 fn sanitize_versions(raw_versions: &[String]) -> Vec<String> {
@@ -362,6 +390,10 @@ pub async fn create_server_submission(
     let safe_ip = payload.ip.trim().to_string();
     let safe_contact_email = normalize_submission_email(&payload.contact_email)?;
     let safe_versions = validate_mc_versions(&pool, &payload.versions).await?;
+    let safe_features = sanitize_icon_tags(&payload.features);
+    let safe_mechanics = sanitize_icon_tags(&payload.mechanics);
+    let safe_elements = sanitize_icon_tags(&payload.elements);
+    let safe_community = sanitize_icon_tags(&payload.community);
     validate_server_submission_fields(
         &safe_name,
         &safe_ip,
@@ -418,10 +450,10 @@ pub async fn create_server_submission(
     .bind(payload.has_voice_chat)
     .bind(payload.voice_platform.trim())
     .bind(payload.voice_url.trim())
-    .bind(SqlxJson(&payload.features))
-    .bind(SqlxJson(&payload.mechanics))
-    .bind(SqlxJson(&payload.elements))
-    .bind(SqlxJson(&payload.community))
+    .bind(SqlxJson(&safe_features))
+    .bind(SqlxJson(&safe_mechanics))
+    .bind(SqlxJson(&safe_elements))
+    .bind(SqlxJson(&safe_community))
     .bind(SqlxJson(&payload.tags))
     .execute(&pool)
     .await
@@ -446,10 +478,14 @@ pub async fn get_all_server_submissions(
     _claims: Claims,
     State(pool): State<SqlitePool>,
 ) -> Result<Json<Vec<ServerSubmission>>, (StatusCode, String)> {
-    let submissions = sqlx::query_as::<_, ServerSubmission>(server_submission_select_sql(false))
-        .fetch_all(&pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let mut submissions =
+        sqlx::query_as::<_, ServerSubmission>(server_submission_select_sql(false))
+            .fetch_all(&pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    for item in &mut submissions {
+        sanitize_server_submission_tags(item);
+    }
 
     Ok(Json(submissions))
 }
@@ -463,6 +499,7 @@ pub async fn get_public_server_submissions(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     for item in &mut submissions {
         item.email_verification_id = None;
+        sanitize_server_submission_tags(item);
     }
 
     Ok(Json(submissions))
@@ -499,11 +536,12 @@ pub async fn get_owner_server_submission(
     Json(payload): Json<ServerSubmissionOwnerAuthPayload>,
 ) -> Result<Json<ServerSubmission>, (StatusCode, String)> {
     let id = verify_owner_access(&pool, &payload.contact_email, &payload.code).await?;
-    let submission = sqlx::query_as::<_, ServerSubmission>(server_submission_by_id_sql())
+    let mut submission = sqlx::query_as::<_, ServerSubmission>(server_submission_by_id_sql())
         .bind(&id)
         .fetch_one(&pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    sanitize_server_submission_tags(&mut submission);
 
     Ok(Json(submission))
 }
@@ -522,6 +560,10 @@ pub async fn update_owner_server_submission(
     let safe_description = clean(&update.description);
     let safe_ip = update.ip.trim().to_string();
     let safe_versions = validate_mc_versions(&pool, &update.versions).await?;
+    let safe_features = sanitize_icon_tags(&update.features);
+    let safe_mechanics = sanitize_icon_tags(&update.mechanics);
+    let safe_elements = sanitize_icon_tags(&update.elements);
+    let safe_community = sanitize_icon_tags(&update.community);
 
     validate_server_submission_fields(
         &safe_name,
@@ -566,10 +608,10 @@ pub async fn update_owner_server_submission(
     .bind(update.has_voice_chat)
     .bind(update.voice_platform.trim())
     .bind(update.voice_url.trim())
-    .bind(SqlxJson(&update.features))
-    .bind(SqlxJson(&update.mechanics))
-    .bind(SqlxJson(&update.elements))
-    .bind(SqlxJson(&update.community))
+    .bind(SqlxJson(&safe_features))
+    .bind(SqlxJson(&safe_mechanics))
+    .bind(SqlxJson(&safe_elements))
+    .bind(SqlxJson(&safe_community))
     .bind(SqlxJson(&update.tags))
     .bind(&id)
     .execute(&pool)
@@ -605,6 +647,10 @@ pub async fn update_server_submission(
     let safe_ip = payload.ip.trim().to_string();
     let safe_contact_email = normalize_submission_email(&payload.contact_email)?;
     let safe_versions = validate_mc_versions(&pool, &payload.versions).await?;
+    let safe_features = sanitize_icon_tags(&payload.features);
+    let safe_mechanics = sanitize_icon_tags(&payload.mechanics);
+    let safe_elements = sanitize_icon_tags(&payload.elements);
+    let safe_community = sanitize_icon_tags(&payload.community);
 
     validate_server_submission_fields(
         &safe_name,
@@ -682,10 +728,10 @@ pub async fn update_server_submission(
     .bind(payload.voice_platform.trim())
     .bind(payload.voice_url.trim())
     .bind(payload.sort_id.max(0))
-    .bind(SqlxJson(&payload.features))
-    .bind(SqlxJson(&payload.mechanics))
-    .bind(SqlxJson(&payload.elements))
-    .bind(SqlxJson(&payload.community))
+    .bind(SqlxJson(&safe_features))
+    .bind(SqlxJson(&safe_mechanics))
+    .bind(SqlxJson(&safe_elements))
+    .bind(SqlxJson(&safe_community))
     .bind(SqlxJson(&payload.tags))
     .bind(payload.verified)
     .bind(&id)
@@ -794,13 +840,14 @@ pub async fn toggle_verify(
 
 pub async fn get_server_tags_dict(
     State(pool): State<SqlitePool>,
-) -> Result<Json<Vec<crate::models::ServerTagDict>>, (StatusCode, String)> {
-    let dict = sqlx::query_as::<_, crate::models::ServerTagDict>(
+) -> Result<Json<Vec<ServerTagDict>>, (StatusCode, String)> {
+    let mut dict = sqlx::query_as::<_, ServerTagDict>(
         "SELECT * FROM server_tags_dict ORDER BY priority ASC, id ASC",
     )
     .fetch_all(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    sanitize_server_tag_dict_items(&mut dict);
 
     Ok(Json(dict))
 }
@@ -836,7 +883,7 @@ pub async fn create_server_tag_dict(
     .bind(&id)
     .bind(payload.category.trim())
     .bind(clean(&payload.label).trim())
-    .bind(payload.icon_svg.trim())
+    .bind(sanitize_svg(&payload.icon_svg))
     .bind(payload.color.trim())
     .bind(payload.priority)
     .execute(&pool)
@@ -859,7 +906,7 @@ pub async fn update_server_tag_dict(
     )
     .bind(payload.category.trim())
     .bind(clean(&payload.label).trim())
-    .bind(payload.icon_svg.trim())
+    .bind(sanitize_svg(&payload.icon_svg))
     .bind(payload.color.trim())
     .bind(payload.priority)
     .bind(&id)

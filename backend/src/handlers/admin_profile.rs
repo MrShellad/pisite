@@ -5,7 +5,7 @@ use bcrypt::{DEFAULT_COST, hash, verify};
 use jsonwebtoken::{EncodingKey, Header, encode};
 
 use crate::{
-    auth::JWT_SECRET,
+    auth::{ADMIN_ROLE, JWT_SECRET},
     models::{AdminProfileResponse, AdminUser, AuthResponse, Claims, UpdateAdminProfilePayload},
 };
 
@@ -78,6 +78,7 @@ pub async fn update_profile(
 
     let new_claims = crate::models::Claims {
         sub: payload.newEmail,
+        role: ADMIN_ROLE.to_string(),
         exp: expiration as usize,
     };
     let token = encode(

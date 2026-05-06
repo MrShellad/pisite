@@ -1,5 +1,8 @@
 // backend/src/handlers/faqs.rs
-use crate::models::{Claims, Faq};
+use crate::{
+    handlers::svg_sanitizer::sanitize_svg,
+    models::{Claims, Faq},
+};
 use axum::{
     Json,
     extract::{Path, State},
@@ -11,21 +14,29 @@ use sqlx::SqlitePool;
 
 // 前台：只获取已启用的 FAQ，按优先级排序
 pub async fn get_faqs(State(pool): State<SqlitePool>) -> Json<Vec<Faq>> {
-    let faqs =
+    let mut faqs =
         sqlx::query_as::<_, Faq>("SELECT * FROM faqs WHERE enabled = 1 ORDER BY priority ASC")
             .fetch_all(&pool)
             .await
             .unwrap_or_else(|_| vec![]);
+    sanitize_faqs(&mut faqs);
     Json(faqs)
 }
 
 // 后台：获取所有 FAQ
 pub async fn get_all_faqs(_claims: Claims, State(pool): State<SqlitePool>) -> Json<Vec<Faq>> {
-    let faqs = sqlx::query_as::<_, Faq>("SELECT * FROM faqs ORDER BY priority ASC")
+    let mut faqs = sqlx::query_as::<_, Faq>("SELECT * FROM faqs ORDER BY priority ASC")
         .fetch_all(&pool)
         .await
         .unwrap_or_else(|_| vec![]);
+    sanitize_faqs(&mut faqs);
     Json(faqs)
+}
+
+fn sanitize_faqs(faqs: &mut [Faq]) {
+    for faq in faqs {
+        faq.icon_svg = sanitize_svg(&faq.icon_svg);
+    }
 }
 
 // 添加 FAQ
@@ -35,7 +46,7 @@ pub async fn add_faq(
     Json(payload): Json<Faq>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query("INSERT INTO faqs (id, question, answer, icon_svg, icon_color, priority, enabled) VALUES (?, ?, ?, ?, ?, ?, ?)")
-        .bind(payload.id).bind(payload.question).bind(payload.answer).bind(payload.icon_svg).bind(payload.icon_color).bind(payload.priority).bind(payload.enabled)
+        .bind(payload.id).bind(payload.question).bind(payload.answer).bind(sanitize_svg(&payload.icon_svg)).bind(payload.icon_color).bind(payload.priority).bind(payload.enabled)
         .execute(&pool).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::CREATED)
 }

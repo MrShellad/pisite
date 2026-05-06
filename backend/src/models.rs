@@ -45,7 +45,8 @@ pub struct FriendLinkPayload {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String, // subject (通常是用户名或用户ID)
-    pub exp: usize,  // expiration (过期时间的时间戳)
+    pub role: String,
+    pub exp: usize, // expiration (过期时间的时间戳)
 }
 
 // 2. 前端发送的登录请求体

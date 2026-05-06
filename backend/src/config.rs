@@ -11,10 +11,15 @@ pub struct AppConfig {
     pub bind_host: String,
     pub bind_port: u16,
     pub uploads_dir: PathBuf,
+    pub admin_internal_only: bool,
 }
 
 impl AppConfig {
     pub fn from_env() -> Self {
+        let admin_internal_only = std::env::var("ADMIN_INTERNAL_ONLY")
+            .map(|value| !matches!(value.as_str(), "0" | "false" | "FALSE" | "off" | "OFF"))
+            .unwrap_or(true);
+
         Self {
             database_url: std::env::var("DATABASE_URL")
                 .unwrap_or_else(|_| "sqlite://flowcore.db?mode=rwc".to_string()),
@@ -30,6 +35,7 @@ impl AppConfig {
             uploads_dir: PathBuf::from(
                 std::env::var("UPLOADS_DIR").unwrap_or_else(|_| "uploads".to_string()),
             ),
+            admin_internal_only,
         }
     }
 

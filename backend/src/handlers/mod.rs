@@ -22,4 +22,5 @@ pub mod signaling;
 pub mod sponsors;
 pub mod stats;
 pub mod submission_email;
+pub mod svg_sanitizer;
 pub mod upload;

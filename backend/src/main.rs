@@ -49,14 +49,21 @@ async fn main() {
         .await
         .expect("failed to create uploads directory");
 
-    let app = Router::new()
+    let mut app = Router::new()
         .merge(routes::create_router(pool.clone()))
         .nest_service("/uploads", ServeDir::new(config.uploads_dir.clone()))
+        .layer(middleware::from_fn(crate::auth::admin_auth_middleware))
         .layer(middleware::from_fn_with_state(
             pool.clone(),
             crate::handlers::api_key_middleware::api_key_middleware,
         ))
         .layer(build_cors_layer());
+
+    if config.admin_internal_only {
+        app = app.layer(middleware::from_fn(
+            crate::handlers::admin_internal_middleware::admin_internal_only_middleware,
+        ));
+    }
 
     let addr = config.bind_addr().expect("invalid BIND_HOST/PORT");
     println!("backend listening on http://{addr}");

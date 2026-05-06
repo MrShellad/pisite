@@ -1,6 +1,6 @@
 use axum::{
     body::Body,
-    http::{Request, StatusCode},
+    http::{Method, Request, StatusCode},
     middleware::Next,
     response::Response,
 };
@@ -58,7 +58,7 @@ pub async fn admin_internal_only_middleware(
     let path = req.uri().path();
     let is_admin_path = path.starts_with("/api/admin");
 
-    if !is_admin_path {
+    if !is_admin_path || req.method() == Method::OPTIONS {
         return Ok(next.run(req).await);
     }
 

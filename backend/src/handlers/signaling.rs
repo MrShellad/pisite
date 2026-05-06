@@ -1,13 +1,15 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use serde_json::json;
 use sqlx::SqlitePool;
 
-use crate::models::{SignalingServer, CreateSignalingServerPayload, UpdateSignalingServerPayload};
+use crate::models::{
+    Claims, CreateSignalingServerPayload, SignalingServer, UpdateSignalingServerPayload,
+};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 // =========================================
@@ -15,33 +17,41 @@ use std::time::{SystemTime, UNIX_EPOCH};
 // =========================================
 
 pub async fn get_public_signaling_servers(State(pool): State<SqlitePool>) -> impl IntoResponse {
-    let servers = sqlx::query_as::<_, SignalingServer>("SELECT * FROM signaling_servers WHERE enabled = 1 ORDER BY priority DESC")
-        .fetch_all(&pool)
-        .await
-        .unwrap_or_default();
+    let servers = sqlx::query_as::<_, SignalingServer>(
+        "SELECT * FROM signaling_servers WHERE enabled = 1 ORDER BY priority DESC",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap_or_default();
 
     // 格式化为客户端 PiHub 需要的嵌套格式:
     // { "version": "1.0", "updated_at": 1712345678, "ttl": 300, "servers": [...] }
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
 
-    let formatted_servers: Vec<serde_json::Value> = servers.into_iter().map(|s| {
-        json!({
-            "id": s.id,
-            "url": s.url,
-            "region": s.region,
-            "provider": s.provider,
-            "priority": s.priority,
-            "weight": s.weight,
-            "secure": s.secure,
-            "features": {
-                "p2p": s.features_p2p,
-                "relay": s.features_relay
-            },
-            "limits": {
-                "max_connections": s.limits_max_connections
-            }
+    let formatted_servers: Vec<serde_json::Value> = servers
+        .into_iter()
+        .map(|s| {
+            json!({
+                "id": s.id,
+                "url": s.url,
+                "region": s.region,
+                "provider": s.provider,
+                "priority": s.priority,
+                "weight": s.weight,
+                "secure": s.secure,
+                "features": {
+                    "p2p": s.features_p2p,
+                    "relay": s.features_relay
+                },
+                "limits": {
+                    "max_connections": s.limits_max_connections
+                }
+            })
         })
-    }).collect();
+        .collect();
 
     Json(json!({
         "version": "1.0",
@@ -55,16 +65,22 @@ pub async fn get_public_signaling_servers(State(pool): State<SqlitePool>) -> imp
 // 后台 Admin 管理接口
 // =========================================
 
-pub async fn list_signaling_servers(State(pool): State<SqlitePool>) -> impl IntoResponse {
-    let servers = sqlx::query_as::<_, SignalingServer>("SELECT * FROM signaling_servers ORDER BY priority DESC")
-        .fetch_all(&pool)
-        .await
-        .unwrap_or_default();
+pub async fn list_signaling_servers(
+    _claims: Claims,
+    State(pool): State<SqlitePool>,
+) -> impl IntoResponse {
+    let servers = sqlx::query_as::<_, SignalingServer>(
+        "SELECT * FROM signaling_servers ORDER BY priority DESC",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap_or_default();
 
     Json(servers)
 }
 
 pub async fn add_signaling_server(
+    _claims: Claims,
     State(pool): State<SqlitePool>,
     Json(payload): Json<CreateSignalingServerPayload>,
 ) -> impl IntoResponse {
@@ -87,12 +103,19 @@ pub async fn add_signaling_server(
     .await;
 
     match result {
-        Ok(_) => (StatusCode::CREATED, Json(json!({"msg": "Signaling server created successfully"}))),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))),
+        Ok(_) => (
+            StatusCode::CREATED,
+            Json(json!({"msg": "Signaling server created successfully"})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": e.to_string()})),
+        ),
     }
 }
 
 pub async fn update_signaling_server(
+    _claims: Claims,
     State(pool): State<SqlitePool>,
     Path(id): Path<String>,
     Json(payload): Json<UpdateSignalingServerPayload>,
@@ -117,13 +140,23 @@ pub async fn update_signaling_server(
     .await;
 
     match result {
-        Ok(res) if res.rows_affected() > 0 => (StatusCode::OK, Json(json!({"msg": "Signaling server updated successfully"}))),
-        Ok(_) => (StatusCode::NOT_FOUND, Json(json!({"error": "Signaling server not found"}))),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))),
+        Ok(res) if res.rows_affected() > 0 => (
+            StatusCode::OK,
+            Json(json!({"msg": "Signaling server updated successfully"})),
+        ),
+        Ok(_) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": "Signaling server not found"})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": e.to_string()})),
+        ),
     }
 }
 
 pub async fn delete_signaling_server(
+    _claims: Claims,
     State(pool): State<SqlitePool>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
@@ -133,13 +166,23 @@ pub async fn delete_signaling_server(
         .await;
 
     match result {
-        Ok(res) if res.rows_affected() > 0 => (StatusCode::OK, Json(json!({"msg": "Signaling server deleted successfully"}))),
-        Ok(_) => (StatusCode::NOT_FOUND, Json(json!({"error": "Signaling server not found"}))),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))),
+        Ok(res) if res.rows_affected() > 0 => (
+            StatusCode::OK,
+            Json(json!({"msg": "Signaling server deleted successfully"})),
+        ),
+        Ok(_) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": "Signaling server not found"})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": e.to_string()})),
+        ),
     }
 }
 
 pub async fn toggle_signaling_server(
+    _claims: Claims,
     State(pool): State<SqlitePool>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
@@ -149,8 +192,17 @@ pub async fn toggle_signaling_server(
         .await;
 
     match result {
-        Ok(res) if res.rows_affected() > 0 => (StatusCode::OK, Json(json!({"msg": "Signaling server toggled successfully"}))),
-        Ok(_) => (StatusCode::NOT_FOUND, Json(json!({"error": "Signaling server not found"}))),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))),
+        Ok(res) if res.rows_affected() > 0 => (
+            StatusCode::OK,
+            Json(json!({"msg": "Signaling server toggled successfully"})),
+        ),
+        Ok(_) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": "Signaling server not found"})),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": e.to_string()})),
+        ),
     }
 }

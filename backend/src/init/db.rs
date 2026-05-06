@@ -1,15 +1,26 @@
-use sqlx::{SqlitePool, migrate::Migrator};
+use sqlx::{
+    SqlitePool,
+    migrate::{MigrateError, Migrator},
+};
 
 static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
+const LEGACY_INITIAL_MIGRATION_VERSION: i64 = 202604250001;
 
 pub async fn initialize_database(pool: &SqlitePool) {
     migrate_admin_users_table(pool).await;
     ensure_legacy_columns(pool).await;
 
-    MIGRATOR
-        .run(pool)
-        .await
-        .expect("failed to apply database migrations");
+    match MIGRATOR.run(pool).await {
+        Ok(()) => {}
+        Err(MigrateError::VersionMismatch(version))
+            if version == LEGACY_INITIAL_MIGRATION_VERSION =>
+        {
+            eprintln!(
+                "warning: migration {version} checksum differs from this build; continuing with legacy schema repair"
+            );
+        }
+        Err(error) => panic!("failed to apply database migrations: {error}"),
+    }
 
     ensure_legacy_columns(pool).await;
     sync_api_endpoint_policies(pool).await;

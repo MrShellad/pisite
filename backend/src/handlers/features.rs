@@ -1,5 +1,8 @@
 // backend/src/handlers/features.rs
-use crate::models::{Claims, Feature};
+use crate::{
+    handlers::svg_sanitizer::sanitize_svg,
+    models::{Claims, Feature},
+};
 use axum::{
     Json,
     extract::{Path, State},
@@ -11,12 +14,13 @@ use sqlx::SqlitePool;
 
 // 前台接口：仅获取已启用的特性
 pub async fn get_features(State(pool): State<SqlitePool>) -> Json<Vec<Feature>> {
-    let features = sqlx::query_as::<_, Feature>(
+    let mut features = sqlx::query_as::<_, Feature>(
         "SELECT * FROM features WHERE enabled = 1 ORDER BY priority ASC",
     )
     .fetch_all(&pool)
     .await
     .unwrap_or_else(|_| vec![]);
+    sanitize_features(&mut features);
     Json(features)
 }
 
@@ -25,11 +29,18 @@ pub async fn get_all_features(
     _claims: Claims,
     State(pool): State<SqlitePool>,
 ) -> Json<Vec<Feature>> {
-    let features = sqlx::query_as::<_, Feature>("SELECT * FROM features ORDER BY priority ASC")
+    let mut features = sqlx::query_as::<_, Feature>("SELECT * FROM features ORDER BY priority ASC")
         .fetch_all(&pool)
         .await
         .unwrap_or_else(|_| vec![]);
+    sanitize_features(&mut features);
     Json(features)
+}
+
+fn sanitize_features(features: &mut [Feature]) {
+    for feature in features {
+        feature.icon_svg = sanitize_svg(&feature.icon_svg);
+    }
 }
 
 // 添加特性
@@ -43,7 +54,7 @@ pub async fn add_feature(
          VALUES (?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(payload.id)
-    .bind(payload.icon_svg)
+    .bind(sanitize_svg(&payload.icon_svg))
     .bind(payload.icon_color)
     .bind(payload.title)
     .bind(payload.desc)
