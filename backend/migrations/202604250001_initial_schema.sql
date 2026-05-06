@@ -186,7 +186,6 @@ INSERT OR IGNORE INTO hero_config (
 CREATE TABLE IF NOT EXISTS site_settings (
     id TEXT PRIMARY KEY,
     site_name TEXT NOT NULL,
-    site_domain TEXT NOT NULL DEFAULT '',
     seo_title TEXT NOT NULL,
     seo_description TEXT NOT NULL,
     seo_keywords TEXT NOT NULL,
@@ -200,7 +199,6 @@ CREATE TABLE IF NOT EXISTS site_settings (
 INSERT OR IGNORE INTO site_settings (
     id,
     site_name,
-    site_domain,
     seo_title,
     seo_description,
     seo_keywords,
@@ -212,7 +210,6 @@ INSERT OR IGNORE INTO site_settings (
 ) VALUES (
     '1',
     'FlowCore',
-    '',
     'FlowCore - 极速跨平台工具',
     '专为开发者与团队打造的高效工具。',
     'Rust,工具,跨平台',
@@ -258,16 +255,6 @@ CREATE TABLE IF NOT EXISTS app_activations (
     ip TEXT NOT NULL,
     os_version TEXT,
     activated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS client_installation_reports (
-    installation_id TEXT PRIMARY KEY,
-    platform TEXT NOT NULL,
-    memory_bytes INTEGER,
-    gpu TEXT NOT NULL DEFAULT '',
-    app_version TEXT NOT NULL DEFAULT '',
-    first_installed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    last_reported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS mc_updates (
@@ -339,9 +326,6 @@ CREATE TABLE IF NOT EXISTS server_submissions (
     community TEXT NOT NULL DEFAULT '[]',
     tags TEXT NOT NULL DEFAULT '[]',
     sort_id INTEGER NOT NULL DEFAULT 0,
-    owner_token_hash TEXT NOT NULL DEFAULT '',
-    owner_token_issued_at DATETIME,
-    owner_offline BOOLEAN NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     verified BOOLEAN NOT NULL DEFAULT 0
 );
