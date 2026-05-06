@@ -12,3 +12,4 @@ backend/target
 flowcore.db
 backend/uploads
 docs/*
+pisiterun.sh
