@@ -12,8 +12,7 @@ use std::{
 };
 use tokio::io::AsyncWriteExt;
 
-const PACKAGE_ROOT: &str = "./uploads/packages";
-const PACKAGE_URL_PREFIX: &str = "/uploads/packages";
+const PACKAGE_URL_PREFIX: &str = "/api/package-assets/download";
 const MAX_PACKAGE_BYTES: u64 = 1024 * 1024 * 1024;
 
 #[derive(Serialize)]
@@ -80,11 +79,18 @@ fn sanitize_date(raw: &str) -> Option<String> {
     }
 }
 
+fn package_root() -> PathBuf {
+    std::env::var("UPLOADS_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("uploads"))
+        .join("packages")
+}
+
 fn package_path(date: &str, file_name: &str) -> Result<PathBuf, (StatusCode, String)> {
     let date = sanitize_date(date)
         .ok_or((StatusCode::BAD_REQUEST, "Invalid package date.".to_string()))?;
     let file_name = sanitize_file_name(file_name);
-    Ok(FsPath::new(PACKAGE_ROOT).join(date).join(file_name))
+    Ok(package_root().join(date).join(file_name))
 }
 
 async fn current_date(pool: &SqlitePool) -> Result<String, (StatusCode, String)> {
@@ -197,7 +203,7 @@ pub async fn upload_package_asset(
         .map(sanitize_file_name)
         .unwrap_or_else(|| "package.bin".to_string());
     let date = current_date(&pool).await?;
-    let dir = FsPath::new(PACKAGE_ROOT).join(&date);
+    let dir = package_root().join(&date);
     tokio::fs::create_dir_all(&dir)
         .await
         .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
@@ -250,7 +256,7 @@ pub async fn list_package_assets(
     State(pool): State<SqlitePool>,
 ) -> Result<Json<Vec<PackageAsset>>, (StatusCode, String)> {
     let mut assets = Vec::new();
-    let mut date_dirs = match tokio::fs::read_dir(PACKAGE_ROOT).await {
+    let mut date_dirs = match tokio::fs::read_dir(package_root()).await {
         Ok(value) => value,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Json(assets)),
         Err(error) => return Err((StatusCode::INTERNAL_SERVER_ERROR, error.to_string())),

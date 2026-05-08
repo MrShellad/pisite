@@ -48,10 +48,26 @@ async fn main() {
     tokio::fs::create_dir_all(&config.uploads_dir)
         .await
         .expect("failed to create uploads directory");
+    let package_downloads_dir = config.uploads_dir.join("packages");
 
     let mut app = Router::new()
         .merge(routes::create_router(pool.clone()))
-        .nest_service("/uploads", ServeDir::new(config.uploads_dir.clone()))
+        .nest_service(
+            "/api/package-assets/download",
+            ServeDir::new(package_downloads_dir),
+        )
+        .nest_service(
+            "/uploads/admin",
+            ServeDir::new(config.uploads_dir.join("admin")),
+        )
+        .nest_service(
+            "/uploads/mc_covers",
+            ServeDir::new(config.uploads_dir.join("mc_covers")),
+        )
+        .nest_service(
+            "/uploads/server_covers",
+            ServeDir::new(config.uploads_dir.join("server_covers")),
+        )
         .layer(middleware::from_fn(crate::auth::admin_auth_middleware))
         .layer(middleware::from_fn_with_state(
             pool.clone(),

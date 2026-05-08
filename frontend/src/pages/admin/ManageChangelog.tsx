@@ -72,6 +72,14 @@ type PackageAsset = {
   uploadedAt?: number | null;
 };
 
+type UploadProgressState = {
+  title: string;
+  fileName: string;
+  loaded: number;
+  total: number;
+  percent: number;
+};
+
 const PRESET_ICONS = [
   {
     name: 'Feature',
@@ -191,6 +199,7 @@ export default function ManageChangelog() {
     windows: false,
     linux: false,
   });
+  const [uploadProgress, setUploadProgress] = useState<UploadProgressState | null>(null);
   const [isPushing, setIsPushing] = useState<Record<string, boolean>>({});
   const [formData, setFormData] = useState<PublishForm>(() => createInitialForm());
 
@@ -237,6 +246,38 @@ export default function ManageChangelog() {
     }));
   };
 
+  const uploadPackageAsset = async (file: File, title: string) => {
+    const body = new FormData();
+    body.append('file', file);
+
+    setUploadProgress({
+      title,
+      fileName: file.name,
+      loaded: 0,
+      total: file.size,
+      percent: 0,
+    });
+
+    const response = await api.post<PackageAsset>('/admin/package-assets/upload', body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 300000,
+      onUploadProgress: event => {
+        const total = event.total ?? file.size;
+        const loaded = event.loaded;
+        const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+        setUploadProgress({
+          title,
+          fileName: file.name,
+          loaded,
+          total,
+          percent,
+        });
+      },
+    });
+
+    return response.data;
+  };
+
   const handlePackageUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
     platform: PlatformKey,
@@ -246,20 +287,16 @@ export default function ManageChangelog() {
     if (!file) return;
 
     setIsUploadingPackage(prev => ({ ...prev, [platform]: true }));
-    const body = new FormData();
-    body.append('file', file);
 
     try {
-      const response = await api.post<PackageAsset>('/admin/package-assets/upload', body, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 300000,
-      });
-      updatePlatformField(platform, 'url', response.data.downloadUrl || getUploadUrl(response.data.url));
+      const asset = await uploadPackageAsset(file, `上传 ${platformLabels[platform]} 安装包`);
+      updatePlatformField(platform, 'url', asset.downloadUrl || getUploadUrl(asset.url));
       await fetchPackageAssets();
     } catch (error) {
       alert(getErrorMessage(error, '安装包上传失败，请重试。'));
     } finally {
       setIsUploadingPackage(prev => ({ ...prev, [platform]: false }));
+      setUploadProgress(null);
     }
   };
 
@@ -269,20 +306,16 @@ export default function ManageChangelog() {
     if (!file) return;
 
     setIsManualUploading(true);
-    const body = new FormData();
-    body.append('file', file);
 
     try {
-      await api.post<PackageAsset>('/admin/package-assets/upload', body, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 300000,
-      });
+      await uploadPackageAsset(file, '手动上传安装包');
       await fetchPackageAssets();
       setIsPackageManagerOpen(true);
     } catch (error) {
       alert(getErrorMessage(error, '安装包上传失败，请重试。'));
     } finally {
       setIsManualUploading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -882,6 +915,41 @@ export default function ManageChangelog() {
         </div>
       </div>
 
+      {uploadProgress ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-950/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-neutral-950">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+                <Upload size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-black text-neutral-900 dark:text-white">
+                  {uploadProgress.title}
+                </h3>
+                <p className="mt-1 truncate text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                  {uploadProgress.fileName}
+                </p>
+              </div>
+              <div className="text-lg font-black tabular-nums text-blue-600 dark:text-blue-300">
+                {uploadProgress.percent}%
+              </div>
+            </div>
+
+            <div className="mt-5 h-3 overflow-hidden rounded-full bg-neutral-100 dark:bg-white/10">
+              <div
+                className="h-full rounded-full bg-blue-600 transition-all duration-200 ease-out dark:bg-blue-400"
+                style={{ width: `${uploadProgress.percent}%` }}
+              />
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+              <span>{formatFileSize(uploadProgress.loaded)}</span>
+              <span>{formatFileSize(uploadProgress.total)}</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {isPackageManagerOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/50 p-4 backdrop-blur-sm">
           <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-950">
@@ -892,7 +960,7 @@ export default function ManageChangelog() {
                   历史安装包管理
                 </h3>
                 <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  安装包按上传日期存放，复制链接会使用站点设置中的网站域名。
+                  安装包按上传日期存放，复制链接会使用站点设置中的网站域名和公开下载入口。
                 </p>
               </div>
               <div className="flex items-center gap-2">
