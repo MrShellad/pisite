@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Copy,
   Download,
@@ -183,6 +183,11 @@ function getErrorMessage(error: unknown, fallback: string) {
   return typeof responseData === 'string' && responseData.trim() ? responseData : fallback;
 }
 
+function isCanceledUpload(error: unknown) {
+  const candidate = error as { code?: string; name?: string };
+  return candidate.code === 'ERR_CANCELED' || candidate.name === 'CanceledError';
+}
+
 export default function ManageChangelog() {
   const [logs, setLogs] = useState<ReleaseLog[]>([]);
   const [packageAssets, setPackageAssets] = useState<PackageAsset[]>([]);
@@ -202,6 +207,7 @@ export default function ManageChangelog() {
   const [uploadProgress, setUploadProgress] = useState<UploadProgressState | null>(null);
   const [isPushing, setIsPushing] = useState<Record<string, boolean>>({});
   const [formData, setFormData] = useState<PublishForm>(() => createInitialForm());
+  const uploadAbortControllerRef = useRef<AbortController | null>(null);
 
   const inputClass =
     'w-full rounded-xl border border-neutral-200 bg-neutral-100/50 px-4 py-3 text-sm text-neutral-900 transition-all placeholder:text-neutral-400 focus:border-blue-500/50 focus:bg-blue-50/50 focus:outline-none dark:border-white/10 dark:bg-black/40 dark:text-white dark:placeholder:text-neutral-600 dark:focus:bg-blue-500/5';
@@ -233,6 +239,10 @@ export default function ManageChangelog() {
     void fetchPackageAssets();
   }, []);
 
+  useEffect(() => {
+    return () => uploadAbortControllerRef.current?.abort();
+  }, []);
+
   const updatePlatformField = (platform: PlatformKey, field: keyof PlatformAsset, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -249,6 +259,8 @@ export default function ManageChangelog() {
   const uploadPackageAsset = async (file: File, title: string) => {
     const body = new FormData();
     body.append('file', file);
+    const controller = new AbortController();
+    uploadAbortControllerRef.current = controller;
 
     setUploadProgress({
       title,
@@ -258,24 +270,35 @@ export default function ManageChangelog() {
       percent: 0,
     });
 
-    const response = await api.post<PackageAsset>('/admin/package-assets/upload', body, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 300000,
-      onUploadProgress: event => {
-        const total = event.total ?? file.size;
-        const loaded = event.loaded;
-        const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-        setUploadProgress({
-          title,
-          fileName: file.name,
-          loaded,
-          total,
-          percent,
-        });
-      },
-    });
+    try {
+      const response = await api.post<PackageAsset>('/admin/package-assets/upload', body, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        signal: controller.signal,
+        timeout: 900000,
+        onUploadProgress: event => {
+          const total = event.total ?? file.size;
+          const loaded = event.loaded;
+          const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+          setUploadProgress({
+            title,
+            fileName: file.name,
+            loaded,
+            total,
+            percent,
+          });
+        },
+      });
 
-    return response.data;
+      return response.data;
+    } finally {
+      if (uploadAbortControllerRef.current === controller) {
+        uploadAbortControllerRef.current = null;
+      }
+    }
+  };
+
+  const cancelPackageUpload = () => {
+    uploadAbortControllerRef.current?.abort();
   };
 
   const handlePackageUpload = async (
@@ -293,7 +316,9 @@ export default function ManageChangelog() {
       updatePlatformField(platform, 'url', asset.downloadUrl || getUploadUrl(asset.url));
       await fetchPackageAssets();
     } catch (error) {
-      alert(getErrorMessage(error, '安装包上传失败，请重试。'));
+      if (!isCanceledUpload(error)) {
+        alert(getErrorMessage(error, '安装包上传失败，请重试。'));
+      }
     } finally {
       setIsUploadingPackage(prev => ({ ...prev, [platform]: false }));
       setUploadProgress(null);
@@ -312,7 +337,9 @@ export default function ManageChangelog() {
       await fetchPackageAssets();
       setIsPackageManagerOpen(true);
     } catch (error) {
-      alert(getErrorMessage(error, '安装包上传失败，请重试。'));
+      if (!isCanceledUpload(error)) {
+        alert(getErrorMessage(error, '安装包上传失败，请重试。'));
+      }
     } finally {
       setIsManualUploading(false);
       setUploadProgress(null);
@@ -946,6 +973,15 @@ export default function ManageChangelog() {
               <span>{formatFileSize(uploadProgress.loaded)}</span>
               <span>{formatFileSize(uploadProgress.total)}</span>
             </div>
+
+            <button
+              type="button"
+              onClick={cancelPackageUpload}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+            >
+              <X size={16} />
+              取消上传
+            </button>
           </div>
         </div>
       ) : null}
