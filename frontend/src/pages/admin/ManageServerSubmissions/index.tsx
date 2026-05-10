@@ -173,7 +173,7 @@ export default function ManageServerSubmissions() {
                         <div className="flex gap-3">
                           <img
                             src={getUploadUrl(item.icon) || '/placeholder-icon.png'}
-                            className="h-10 w-10 rounded-xl border border-neutral-200 object-cover"
+                            className="h-10 w-16 rounded-xl border border-neutral-200 bg-white object-contain p-1"
                             alt=""
                           />
                           <div>
@@ -286,10 +286,10 @@ export default function ManageServerSubmissions() {
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className={labelClass}>服务器图标</label>
-                  <label className="group relative block h-24 w-24 cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white">
+                  <label className={labelClass}>Hero Logo</label>
+                  <label className="group relative block h-24 w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white">
                     {formData.icon ? (
-                      <img src={formData.icon} className="h-full w-full object-cover" alt="icon" />
+                      <img src={formData.icon} className="h-full w-full object-contain p-3" alt="hero logo" />
                     ) : (
                       <div className="flex h-full items-center justify-center">
                         <ImagePlus size={24} className="text-neutral-300" />
@@ -306,13 +306,16 @@ export default function ManageServerSubmissions() {
                       accept="image/*"
                     />
                   </label>
+                  <p className="mt-2 text-xs leading-5 text-neutral-500">
+                    不限制图片比例，建议上传类似 MC 官方 Hero 区使用的透明 Logo。
+                  </p>
                 </div>
 
                 <div>
-                  <label className={labelClass}>Hero Logo</label>
+                  <label className={labelClass}>Hero 封面</label>
                   <label className="group relative block h-24 w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white">
                     {formData.hero ? (
-                      <img src={formData.hero} className="h-full w-full object-contain p-3" alt="hero logo" />
+                      <img src={formData.hero} className="h-full w-full object-cover" alt="hero" />
                     ) : (
                       <div className="flex h-full items-center justify-center">
                         <ImagePlus size={24} className="text-neutral-300" />
@@ -329,9 +332,6 @@ export default function ManageServerSubmissions() {
                       accept="image/*"
                     />
                   </label>
-                  <p className="mt-2 text-xs leading-5 text-neutral-500">
-                    不限制图片比例，建议上传类似 MC 官方 Hero 区使用的透明 Logo。
-                  </p>
                 </div>
               </div>
 

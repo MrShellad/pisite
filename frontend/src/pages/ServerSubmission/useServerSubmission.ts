@@ -195,7 +195,7 @@ export function useServerSubmission() {
       try {
         const { width, height } = await readImageDimensions(file);
         if (width > 512 || height > 512) {
-          setError('Icon 建议不超过 512x512。');
+          setError('Hero Logo 建议宽高不超过 512px。');
           return;
         }
       } catch {
@@ -314,11 +314,11 @@ export function useServerSubmission() {
     }
 
     if (!pendingAssets.icon.file && !formData.icon.trim()) {
-      return '请先选择服务器 Icon。';
+      return '请先选择 Hero Logo。';
     }
 
     if (!pendingAssets.hero.file && !formData.hero.trim()) {
-      return '请先选择 Hero Logo。';
+      return '请先选择 Hero 封面。';
     }
 
     if (formData.versions.length === 0) {
