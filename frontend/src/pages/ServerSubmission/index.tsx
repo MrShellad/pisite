@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useRef } from 'react';
 import {
   AlignLeft,
   ArrowLeft,
@@ -41,6 +42,8 @@ const LANGUAGE_OPTIONS = [
 ];
 
 export default function ServerSubmissionPage() {
+  const heroLogoInputRef = useRef<HTMLInputElement | null>(null);
+  const heroCoverInputRef = useRef<HTMLInputElement | null>(null);
   const {
     formData,
     setFormData,
@@ -295,16 +298,22 @@ export default function ServerSubmissionPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={labelClass}>Hero Logo *</label>
-                    <label className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-orange-300 bg-orange-50 text-sm font-semibold text-orange-600 transition hover:bg-orange-100 dark:border-orange-500/60 dark:bg-orange-500/10 dark:text-orange-300">
+                    <button
+                      type="button"
+                      onClick={() => heroLogoInputRef.current?.click()}
+                      disabled={isSubmitting}
+                      className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-orange-300 bg-orange-50 text-sm font-semibold text-orange-600 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-orange-500/60 dark:bg-orange-500/10 dark:text-orange-300"
+                    >
                       {isUploading === 'icon' ? '上传中...' : '选择 Logo'}
-                      <input
-                        type="file"
-                        accept="image/webp,.webp"
-                        className="hidden"
-                        onChange={(event) => void handleUpload(event, 'icon')}
-                        disabled={isSubmitting}
-                      />
-                    </label>
+                    </button>
+                    <input
+                      ref={heroLogoInputRef}
+                      type="file"
+                      accept="image/webp,.webp"
+                      className="hidden"
+                      onChange={(event) => void handleUpload(event, 'icon')}
+                      disabled={isSubmitting}
+                    />
                     <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
                       {pendingAssets.icon.fileName || '仅支持 WebP，不限制比例，建议上传类似 MC 官方 Hero 区使用的透明 Logo，不超过 1MB'}
                     </p>
@@ -312,16 +321,22 @@ export default function ServerSubmissionPage() {
 
                   <div>
                     <label className={labelClass}>Hero 封面 *</label>
-                    <label className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-sky-300 bg-sky-50 text-sm font-semibold text-sky-600 transition hover:bg-sky-100 dark:border-sky-500/60 dark:bg-sky-500/10 dark:text-sky-300">
+                    <button
+                      type="button"
+                      onClick={() => heroCoverInputRef.current?.click()}
+                      disabled={isSubmitting}
+                      className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-sky-300 bg-sky-50 text-sm font-semibold text-sky-600 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-sky-500/60 dark:bg-sky-500/10 dark:text-sky-300"
+                    >
                       {isUploading === 'hero' ? '上传中...' : '选择封面'}
-                      <input
-                        type="file"
-                        accept="image/webp,.webp"
-                        className="hidden"
-                        onChange={(event) => void handleUpload(event, 'hero')}
-                        disabled={isSubmitting}
-                      />
-                    </label>
+                    </button>
+                    <input
+                      ref={heroCoverInputRef}
+                      type="file"
+                      accept="image/webp,.webp"
+                      className="hidden"
+                      onChange={(event) => void handleUpload(event, 'hero')}
+                      disabled={isSubmitting}
+                    />
                     <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
                       {pendingAssets.hero.fileName || '仅支持 WebP，推荐 16:9 且不超过 1MB'}
                     </p>

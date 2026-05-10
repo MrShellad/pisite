@@ -16,7 +16,7 @@
   Upload,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
@@ -28,6 +28,8 @@ import type { ServerTagDict } from '@/pages/ServerSubmission/useServerSubmission
 import { useManageServerSubmissions } from './useManageServerSubmissions';
 
 export default function ManageServerSubmissions() {
+  const heroLogoInputRef = useRef<HTMLInputElement | null>(null);
+  const heroCoverInputRef = useRef<HTMLInputElement | null>(null);
   const {
     filteredSubmissions,
     selectedId,
@@ -287,7 +289,12 @@ export default function ManageServerSubmissions() {
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className={labelClass}>Hero Logo</label>
-                  <label className="group relative block h-24 w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white">
+                  <button
+                    type="button"
+                    onClick={() => heroLogoInputRef.current?.click()}
+                    disabled={!!isUploading}
+                    className="group relative block h-24 w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
                     {formData.icon ? (
                       <img src={formData.icon} className="h-full w-full object-contain p-3" alt="hero logo" />
                     ) : (
@@ -298,14 +305,15 @@ export default function ManageServerSubmissions() {
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
                       <Upload size={18} />
                     </div>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => handleUpload(e, 'icon')}
-                      disabled={!!isUploading}
-                      accept="image/*"
-                    />
-                  </label>
+                  </button>
+                  <input
+                    ref={heroLogoInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => handleUpload(e, 'icon')}
+                    disabled={!!isUploading}
+                    accept="image/*"
+                  />
                   <p className="mt-2 text-xs leading-5 text-neutral-500">
                     不限制图片比例，建议上传类似 MC 官方 Hero 区使用的透明 Logo。
                   </p>
@@ -313,7 +321,12 @@ export default function ManageServerSubmissions() {
 
                 <div>
                   <label className={labelClass}>Hero 封面</label>
-                  <label className="group relative block h-24 w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white">
+                  <button
+                    type="button"
+                    onClick={() => heroCoverInputRef.current?.click()}
+                    disabled={!!isUploading}
+                    className="group relative block h-24 w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
                     {formData.hero ? (
                       <img src={formData.hero} className="h-full w-full object-cover" alt="hero" />
                     ) : (
@@ -324,14 +337,15 @@ export default function ManageServerSubmissions() {
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
                       <Upload size={18} />
                     </div>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => handleUpload(e, 'hero')}
-                      disabled={!!isUploading}
-                      accept="image/*"
-                    />
-                  </label>
+                  </button>
+                  <input
+                    ref={heroCoverInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => handleUpload(e, 'hero')}
+                    disabled={!!isUploading}
+                    accept="image/*"
+                  />
                 </div>
               </div>
 
