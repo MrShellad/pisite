@@ -32,6 +32,12 @@ use uuid::Uuid;
 
 const STATUS_PROTOCOL_VERSION: i32 = 760;
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToggleVerifyPayload {
+    pub verified: Option<bool>,
+}
+
 static FALLBACK_MC_VERSION_REGEXES: Lazy<[Regex; 5]> = Lazy::new(|| {
     [
         Regex::new(r"^\d+\.\d+(\.\d+)?$").expect("valid release regex"),
@@ -666,8 +672,8 @@ pub async fn update_server_submission(
         &payload.age_recommendation,
     )?;
 
-    let current_submission: (String, bool, Option<String>, Option<String>) = sqlx::query_as(
-        "SELECT contact_email, email_verified, email_verified_at, email_verification_id
+    let current_submission: (String, bool, Option<String>, Option<String>, bool) = sqlx::query_as(
+        "SELECT contact_email, email_verified, email_verified_at, email_verification_id, verified
          FROM server_submissions
          WHERE id = ?",
     )
@@ -693,6 +699,7 @@ pub async fn update_server_submission(
     } else {
         current_submission.3.clone()
     };
+    let current_verified = current_submission.4;
 
     sqlx::query(
         "UPDATE server_submissions
@@ -733,7 +740,7 @@ pub async fn update_server_submission(
     .bind(SqlxJson(&safe_elements))
     .bind(SqlxJson(&safe_community))
     .bind(SqlxJson(&payload.tags))
-    .bind(payload.verified)
+    .bind(current_verified)
     .bind(&id)
     .execute(&pool)
     .await
@@ -774,54 +781,77 @@ pub async fn toggle_verify(
     _claims: Claims,
     State(pool): State<SqlitePool>,
     AxumPath(id): AxumPath<String>,
+    payload: Option<Json<ToggleVerifyPayload>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    let (name, contact_email, was_verified): (String, String, bool) =
-        sqlx::query_as("SELECT name, contact_email, verified FROM server_submissions WHERE id = ?")
+    let (name, contact_email, was_verified, owner_token_hash): (String, String, bool, String) =
+        sqlx::query_as(
+            "SELECT name, contact_email, verified, owner_token_hash FROM server_submissions WHERE id = ?",
+        )
             .bind(&id)
             .fetch_optional(&pool)
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
             .ok_or((StatusCode::NOT_FOUND, "Submission not found".to_string()))?;
 
-    let next_verified = !was_verified;
+    let requested_verified = payload
+        .as_ref()
+        .and_then(|Json(payload)| payload.verified);
+    let next_verified = requested_verified.unwrap_or(!was_verified);
     let mut owner_code_sent = false;
+    let mut owner_code_already_issued = false;
     let mut mail_error: Option<String> = None;
 
-    if next_verified {
-        let safe_email = normalize_submission_email(&contact_email)?;
-        let owner_code = generate_owner_token();
-        let owner_token_hash = hash_owner_token(&safe_email, &owner_code);
+    if next_verified == was_verified {
+        owner_code_already_issued = next_verified && !owner_token_hash.trim().is_empty();
+    } else if next_verified {
+        if owner_token_hash.trim().is_empty() {
+            let safe_email = normalize_submission_email(&contact_email)?;
+            let owner_code = generate_owner_token();
+            let next_owner_token_hash = hash_owner_token(&safe_email, &owner_code);
 
-        sqlx::query(
-            "UPDATE server_submissions
-             SET verified = 1,
-                 owner_offline = 0,
-                 owner_token_hash = ?,
-                 owner_token_issued_at = CURRENT_TIMESTAMP
-             WHERE id = ?",
-        )
-        .bind(&owner_token_hash)
-        .bind(&id)
-        .execute(&pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+            sqlx::query(
+                "UPDATE server_submissions
+                 SET verified = 1,
+                     owner_offline = 0,
+                     owner_token_hash = ?,
+                     owner_token_issued_at = CURRENT_TIMESTAMP
+                 WHERE id = ?",
+            )
+            .bind(&next_owner_token_hash)
+            .bind(&id)
+            .execute(&pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-        let subject = format!("您的服务器「{}」已通过审核", name);
-        let body = format!(
-            "您好，\n\n您的服务器「{}」已通过审核并上线。\n\n服务器管理 Code：{}\n\n您可以在服务器提交页面的“修改服务器信息”入口，使用原始邮箱地址和该 Code 修改服务器资料或下线服务器。\n\n请妥善保存该 Code，不要公开分享。",
-            name, owner_code
-        );
+            let subject = format!("您的服务器「{}」已通过审核", name);
+            let body = format!(
+                "您好，\n\n您的服务器「{}」已通过审核并上线。\n\n服务器管理 Code：{}\n\n您可以在服务器提交页面的“修改服务器信息”入口，使用原始邮箱地址和该 Code 修改服务器资料或下线服务器。\n\n请妥善保存该 Code，不要公开分享。",
+                name, owner_code
+            );
 
-        match send_submission_custom_email(&pool, &safe_email, &subject, &body).await {
-            Ok(()) => owner_code_sent = true,
-            Err((_, error)) => {
-                mail_error = Some(error);
-                eprintln!(
-                    "[server_submissions] owner token email failed for {}: {}",
-                    safe_email,
-                    mail_error.as_deref().unwrap_or_default()
-                );
+            match send_submission_custom_email(&pool, &safe_email, &subject, &body).await {
+                Ok(()) => owner_code_sent = true,
+                Err((_, error)) => {
+                    mail_error = Some(error);
+                    eprintln!(
+                        "[server_submissions] owner token email failed for {}: {}",
+                        safe_email,
+                        mail_error.as_deref().unwrap_or_default()
+                    );
+                }
             }
+        } else {
+            owner_code_already_issued = true;
+            sqlx::query(
+                "UPDATE server_submissions
+                 SET verified = 1,
+                     owner_offline = 0
+                 WHERE id = ?",
+            )
+            .bind(&id)
+            .execute(&pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
         }
     } else {
         sqlx::query("UPDATE server_submissions SET verified = 0 WHERE id = ?")
@@ -834,6 +864,7 @@ pub async fn toggle_verify(
     Ok(Json(serde_json::json!({
         "verified": next_verified,
         "ownerCodeSent": owner_code_sent,
+        "ownerCodeAlreadyIssued": owner_code_already_issued,
         "mailError": mail_error,
     })))
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import axios from 'axios';
 
@@ -19,6 +19,15 @@ export interface AdminServerSubmissionFormState extends ServerSubmissionFormStat
   emailVerified: boolean;
   emailVerifiedAt?: string | null;
 }
+
+type ToastTone = 'success' | 'error' | 'info';
+
+export type ServerSubmissionToast = {
+  id: number;
+  title: string;
+  description?: string;
+  tone: ToastTone;
+};
 
 function toFormState(item: ServerSubmission): AdminServerSubmissionFormState {
   return {
@@ -107,13 +116,42 @@ export function useManageServerSubmissions() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'verified'>('all');
+  const [toasts, setToasts] = useState<ServerSubmissionToast[]>([]);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const toastTimersRef = useRef<number[]>([]);
+  const fetchRequestIdRef = useRef(0);
+  const verifyingIdsRef = useRef<Set<string>>(new Set());
+  const [verifyingIds, setVerifyingIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    const timers = toastTimersRef.current;
+    return () => {
+      timers.forEach(timerId => window.clearTimeout(timerId));
+    };
+  }, []);
+
+  const dismissToast = (id: number) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  };
+
+  const pushToast = (title: string, description: string | undefined, tone: ToastTone) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    setToasts(prev => [...prev, { id, title, description, tone }]);
+    const timerId = window.setTimeout(() => dismissToast(id), tone === 'error' ? 5200 : 3600);
+    toastTimersRef.current.push(timerId);
+  };
 
   const fetchData = async () => {
+    const requestId = fetchRequestIdRef.current + 1;
+    fetchRequestIdRef.current = requestId;
+
     try {
       const [submissionsRes, pingConfigRes] = await Promise.all([
         api.get<ServerSubmission[]>('/admin/server-submissions'),
         api.get<ServerPingConfig>('/admin/server-status/config'),
       ]);
+
+      if (requestId !== fetchRequestIdRef.current) return;
 
       setSubmissions(submissionsRes.data);
       setPingConfig(pingConfigRes.data);
@@ -141,9 +179,13 @@ export function useManageServerSubmissions() {
         setEmailBody('');
       }
     } catch (err) {
-      console.error('Failed to fetch submissions:', err);
+      if (requestId === fetchRequestIdRef.current) {
+        console.error('Failed to fetch submissions:', err);
+      }
     } finally {
-      setIsLoading(false);
+      if (requestId === fetchRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -190,7 +232,7 @@ export function useManageServerSubmissions() {
       setFormData({ ...formData, [field]: getUploadUrl(response.data.url) });
     } catch (err) {
       console.error('Upload failed:', err);
-      window.alert('上传失败');
+      pushToast('上传失败', '请重新选择图片后再试。', 'error');
     } finally {
       setIsUploading(null);
       event.target.value = '';
@@ -214,11 +256,11 @@ export function useManageServerSubmissions() {
           (item) => item.platform.trim() && item.url.trim(),
         ),
       });
-      window.alert('保存成功！');
+      pushToast('保存成功', '服务器资料已更新。', 'success');
       await fetchData();
     } catch (err) {
       console.error('Save failed:', err);
-      window.alert('保存失败，请检查字段后重试。');
+      pushToast('保存失败', '请检查字段后重试。', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -229,14 +271,14 @@ export function useManageServerSubmissions() {
     const subject = emailSubject.trim();
     const body = emailBody.trim();
     if (!subject || !body) {
-      window.alert('请填写邮件主题和正文。');
+      pushToast('无法发送邮件', '请填写邮件主题和正文。', 'error');
       return false;
     }
 
     setIsSendingEmail(true);
     try {
       await api.post(`/admin/server-submissions/${selectedId}/send-email`, { subject, body }, { timeout: 30000 });
-      window.alert(`邮件已发送到 ${formData.contactEmail || '提交者邮箱'}`);
+      pushToast('邮件已发送', `已发送到 ${formData.contactEmail || '提交者邮箱'}。`, 'success');
       return true;
     } catch (err) {
       console.error('Failed to send submission email:', err);
@@ -246,7 +288,7 @@ export function useManageServerSubmissions() {
         (isTimeout
           ? '邮件发送请求超时。SMTP 测试正常时，多半是服务器到 SMTP 的握手或投递耗时过长，请稍后重试或检查 Docker 网络出口。'
           : '邮件发送失败，请检查 SMTP 配置后重试。');
-      window.alert(message);
+      pushToast('邮件发送失败', message, 'error');
       return false;
     } finally {
       setIsSendingEmail(false);
@@ -254,12 +296,19 @@ export function useManageServerSubmissions() {
   };
 
   const handleToggleVerify = async (id: string, currentStatus: boolean) => {
+    if (verifyingIdsRef.current.has(id)) return;
+
+    verifyingIdsRef.current.add(id);
+    setVerifyingIds(new Set(verifyingIdsRef.current));
+
     try {
+      const requestedVerified = !currentStatus;
       const response = await api.put<{
         verified: boolean;
         ownerCodeSent: boolean;
+        ownerCodeAlreadyIssued?: boolean;
         mailError?: string | null;
-      }>(`/admin/server-submissions/${id}/toggle-verify`);
+      }>(`/admin/server-submissions/${id}/toggle-verify`, { verified: requestedVerified });
       const nextVerified = response.data.verified;
       setSubmissions((prev) =>
         prev.map((item) => (item.id === id ? { ...item, verified: nextVerified } : item)),
@@ -269,21 +318,37 @@ export function useManageServerSubmissions() {
       }
       if (!currentStatus) {
         if (response.data.ownerCodeSent) {
-          window.alert('已通过审核，服务器管理 Code 已发送给作者。');
+          pushToast('已通过审核', '服务器管理 Code 已发送给作者。', 'success');
+        } else if (response.data.ownerCodeAlreadyIssued) {
+          pushToast('已通过审核', '该服务器已签发过管理 Code，本次不重复发送。', 'info');
         } else {
-          window.alert(
-            `已通过审核，但管理 Code 邮件发送失败：${response.data.mailError || '请检查 SMTP 配置或服务器网络。'}`,
+          pushToast(
+            '已通过审核，但 Code 邮件发送失败',
+            response.data.mailError || '请检查 SMTP 配置或服务器网络。',
+            'error',
           );
         }
+      } else {
+        pushToast('已撤销审核', '该服务器已从公开展示中移除。', 'info');
       }
+      await fetchData();
     } catch (err) {
       console.error('Toggle verify failed:', err);
-      window.alert('操作失败');
+      pushToast('操作失败', '审核状态切换失败，请稍后重试。', 'error');
+    } finally {
+      verifyingIdsRef.current.delete(id);
+      setVerifyingIds(new Set(verifyingIdsRef.current));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('确定要删除该服务器记录吗？此操作不可逆。')) return;
+    setDeleteTargetId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTargetId) return;
+    const id = deleteTargetId;
+    setDeleteTargetId(null);
     try {
       await api.delete(`/admin/server-submissions/${id}`);
       setSubmissions((prev) => prev.filter((item) => item.id !== id));
@@ -291,11 +356,14 @@ export function useManageServerSubmissions() {
         setSelectedId(null);
         setFormData(null);
       }
+      pushToast('已删除服务器记录', '该操作已完成。', 'success');
     } catch (err) {
       console.error('Delete failed:', err);
-      window.alert('删除失败');
+      pushToast('删除失败', '服务器记录未删除，请稍后重试。', 'error');
     }
   };
+
+  const cancelDelete = () => setDeleteTargetId(null);
 
   const updatePingConfigField = (key: keyof ServerPingConfig, value: string | number | boolean) => {
     setPingConfig((prev) => {
@@ -316,10 +384,10 @@ export function useManageServerSubmissions() {
         ttlSeconds: Number(pingConfig.ttlSeconds),
       });
       await fetchData();
-      window.alert('Server ping schedule saved.');
+      pushToast('Ping 计划已保存', '新的计划任务配置已生效。', 'success');
     } catch (err) {
       console.error('Failed to save ping config:', err);
-      window.alert('Failed to save server ping schedule.');
+      pushToast('保存 Ping 计划失败', '请检查配置后重试。', 'error');
     } finally {
       setIsSavingPingConfig(false);
     }
@@ -330,10 +398,10 @@ export function useManageServerSubmissions() {
     try {
       const res = await api.post<ServerPingBatchRunResult>('/admin/server-status/run');
       await fetchData();
-      window.alert(`Ping batch done: ${res.data.processedServers}/${res.data.totalServers}`);
+      pushToast('Ping 批次完成', `${res.data.processedServers}/${res.data.totalServers} 台服务器已处理。`, 'success');
     } catch (err) {
       console.error('Failed to run ping batch:', err);
-      window.alert('Failed to run ping batch.');
+      pushToast('Ping 批次执行失败', '请稍后重试或检查服务端日志。', 'error');
     } finally {
       setIsRunningPingJob(false);
     }
@@ -399,15 +467,21 @@ export function useManageServerSubmissions() {
     setSearchQuery,
     filterStatus,
     setFilterStatus,
+    verifyingIds,
     fetchData,
     handleSelect,
     handleUpload,
     handleSave,
     handleSendEmail,
     handleDelete,
+    deleteTargetId,
+    confirmDelete,
+    cancelDelete,
     handleToggleVerify,
     addSocialLink,
     updateSocialLink,
     removeSocialLink,
+    toasts,
+    dismissToast,
   };
 }

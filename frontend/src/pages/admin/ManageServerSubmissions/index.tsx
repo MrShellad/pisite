@@ -31,6 +31,7 @@ export default function ManageServerSubmissions() {
   const heroLogoInputRef = useRef<HTMLInputElement | null>(null);
   const heroCoverInputRef = useRef<HTMLInputElement | null>(null);
   const {
+    submissions,
     filteredSubmissions,
     selectedId,
     formData,
@@ -55,20 +56,27 @@ export default function ManageServerSubmissions() {
     setSearchQuery,
     filterStatus,
     setFilterStatus,
+    verifyingIds,
     fetchData,
     handleSelect,
     handleUpload,
     handleSave,
     handleSendEmail,
     handleDelete,
+    deleteTargetId,
+    confirmDelete,
+    cancelDelete,
     handleToggleVerify,
     addSocialLink,
     updateSocialLink,
     removeSocialLink,
+    toasts,
+    dismissToast,
   } = useManageServerSubmissions();
 
   const [isPingModalOpen, setIsPingModalOpen] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const deleteTarget = submissions.find((item) => item.id === deleteTargetId);
 
   const inputClass =
     'w-full rounded-xl border border-neutral-200 bg-neutral-100/60 px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-orange-500 focus:bg-white';
@@ -213,12 +221,13 @@ export default function ManageServerSubmissions() {
                           e.stopPropagation();
                           void handleToggleVerify(item.id, item.verified);
                         }}
+                        disabled={verifyingIds.has(item.id)}
                         className={`rounded-lg p-2 transition-colors ${
                           item.verified ? 'text-emerald-500 hover:bg-emerald-50' : 'text-neutral-400 hover:bg-neutral-100'
-                        }`}
-                        title={item.verified ? '撤销审核' : '标记通过'}
+                        } disabled:cursor-not-allowed disabled:opacity-50`}
+                        title={item.verified ? '撤销审核' : '审核通过'}
                       >
-                        {item.verified ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                        {verifyingIds.has(item.id) ? <Clock3 size={18} /> : item.verified ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                       </button>
                       <button
                         onClick={(e) => {
@@ -263,26 +272,16 @@ export default function ManageServerSubmissions() {
                         void handleToggleVerify(selectedId, formData.verified);
                       }
                     }}
+                    disabled={!!selectedId && verifyingIds.has(selectedId)}
                     className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-all ${
                       formData.verified
                         ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                         : 'border-orange-200 bg-white text-orange-700'
-                    }`}
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
                   >
-                    {formData.verified ? <ShieldCheck size={18} /> : <Circle size={18} />}
-                    {formData.verified ? '已通过' : '设为待审'}
+                    {selectedId && verifyingIds.has(selectedId) ? <Clock3 size={18} /> : formData.verified ? <ShieldCheck size={18} /> : <Circle size={18} />}
+                    {selectedId && verifyingIds.has(selectedId) ? '处理中' : formData.verified ? '已通过' : '审核通过'}
                   </button>
-                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-xs font-bold text-neutral-600">
-                    <input
-                      type="checkbox"
-                      checked={formData.verified}
-                      onChange={(e) =>
-                        setFormData((prev) => (prev ? { ...prev, verified: e.target.checked } : prev))
-                      }
-                      className="h-4 w-4 accent-emerald-500"
-                    />
-                    手动切换
-                  </label>
                 </div>
               </div>
 
@@ -785,6 +784,70 @@ export default function ManageServerSubmissions() {
                 暂无计划任务配置
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      <div className="pointer-events-none fixed right-6 top-6 z-[60] flex w-full max-w-sm flex-col gap-3">
+        {toasts.map((toast) => {
+          const toneClassName =
+            toast.tone === 'error'
+              ? 'border-red-200 bg-white text-red-700 shadow-red-100/60 dark:border-red-500/20 dark:bg-neutral-950 dark:text-red-300'
+              : toast.tone === 'success'
+                ? 'border-emerald-200 bg-white text-emerald-700 shadow-emerald-100/60 dark:border-emerald-500/20 dark:bg-neutral-950 dark:text-emerald-300'
+                : 'border-blue-200 bg-white text-blue-700 shadow-blue-100/60 dark:border-blue-500/20 dark:bg-neutral-950 dark:text-blue-300';
+
+          return (
+            <div
+              key={toast.id}
+              className={`pointer-events-auto overflow-hidden rounded-2xl border px-4 py-3 shadow-lg backdrop-blur ${toneClassName}`}
+            >
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold">{toast.title}</div>
+                  {toast.description && <div className="mt-1 text-xs leading-5 opacity-90">{toast.description}</div>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => dismissToast(toast.id)}
+                  className="rounded-full p-1 opacity-70 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/5"
+                  aria-label="关闭提示"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {deleteTargetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-neutral-950">
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-white">删除服务器记录</h3>
+            <p className="mt-3 text-sm leading-6 text-neutral-500 dark:text-neutral-400">
+              确定要删除
+              <span className="mx-1 font-bold text-neutral-800 dark:text-neutral-100">
+                {deleteTarget?.name || '该服务器'}
+              </span>
+              吗？此操作不可逆。
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={cancelDelete}
+                className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDelete()}
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+              >
+                确认删除
+              </button>
+            </div>
           </div>
         </div>
       )}

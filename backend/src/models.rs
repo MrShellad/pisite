@@ -764,7 +764,7 @@ pub struct CreateServerSubmissionPayload {
     pub tags: Vec<String>,
 }
 
-// 4. 更新服务器的请求体 (比创建多了 verified 字段)
+// 4. 更新服务器的请求体。审核状态只通过审核接口修改。
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateServerSubmissionPayload {
@@ -794,7 +794,6 @@ pub struct UpdateServerSubmissionPayload {
     pub community: Vec<IconTag>,
     pub tags: Vec<String>,
     pub sort_id: i32,
-    pub verified: bool,
 }
 
 #[derive(Deserialize)]
