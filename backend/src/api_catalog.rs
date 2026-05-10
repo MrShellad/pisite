@@ -42,6 +42,11 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     },
     ApiEndpointCatalogItem {
         method: "GET",
+        path: "/api/feature-screenshots",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
         path: "/api/faqs",
         group: "public",
     },
@@ -240,6 +245,26 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "POST",
         path: "/api/admin/features",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/features/screenshots",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/features/screenshots",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/features/screenshots/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "DELETE",
+        path: "/api/admin/features/screenshots/{id}",
         group: "admin",
     },
     ApiEndpointCatalogItem {

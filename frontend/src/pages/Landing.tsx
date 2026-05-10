@@ -6,6 +6,7 @@ import Navbar from '../components/Navbar';
 import { useDynamicSEO } from './admin/hooks/useDynamicSEO';
 
 const Features = lazy(() => import('../components/Features'));
+const ScreenshotPreview = lazy(() => import('../components/ScreenshotPreview'));
 const FAQ = lazy(() => import('../components/FAQ'));
 const Changelog = lazy(() => import('../components/Changelog'));
 const Sponsors = lazy(() => import('../components/Sponsors'));
@@ -22,6 +23,12 @@ export default function Landing() {
       <DeferredSection id="features" placeholderClassName="mx-auto min-h-[420px] max-w-6xl px-4 sm:px-6">
         <Suspense fallback={null}>
           <Features />
+        </Suspense>
+      </DeferredSection>
+
+      <DeferredSection id="screenshots" placeholderClassName="mx-auto min-h-[460px] max-w-7xl px-4 sm:px-6">
+        <Suspense fallback={null}>
+          <ScreenshotPreview />
         </Suspense>
       </DeferredSection>
 

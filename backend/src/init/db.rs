@@ -28,6 +28,7 @@ pub async fn initialize_database(pool: &SqlitePool) {
 }
 
 async fn ensure_legacy_columns(pool: &SqlitePool) {
+    ensure_feature_screenshots_table(pool).await;
     ensure_client_installation_reports_table(pool).await;
     ensure_column(pool, "users", "mc_name", "TEXT").await;
     ensure_column(pool, "users", "afdian_user_id", "TEXT").await;
@@ -102,6 +103,20 @@ async fn ensure_legacy_columns(pool: &SqlitePool) {
         "email_body_template",
         "TEXT NOT NULL DEFAULT 'Your verification code is: {code}\r\nThis code expires in {ttl} minutes.\r\nIf you did not request a server submission verification, you can ignore this email.'",
     )
+    .await;
+}
+
+async fn ensure_feature_screenshots_table(pool: &SqlitePool) {
+    let _ = sqlx::query(
+        "CREATE TABLE IF NOT EXISTS feature_screenshots (
+            id TEXT PRIMARY KEY,
+            image_url TEXT NOT NULL,
+            title TEXT NOT NULL DEFAULT '',
+            caption TEXT NOT NULL DEFAULT '',
+            priority INTEGER NOT NULL DEFAULT 0
+        )",
+    )
+    .execute(pool)
     .await;
 }
 

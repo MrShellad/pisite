@@ -278,6 +278,25 @@ pub struct Feature {
     pub enabled: bool,
 }
 
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct FeatureScreenshot {
+    pub id: String,
+    pub image_url: String,
+    pub title: String,
+    pub caption: String,
+    pub priority: i32,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeatureScreenshotPayload {
+    pub image_url: String,
+    pub title: String,
+    pub caption: String,
+    pub priority: i32,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeItem {

@@ -26,6 +26,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route("/api/hero", get(handlers::hero::get_hero))
         // 3. 核心业务数据 (只返回已启用的前台展示数据)
         .route("/api/features", get(handlers::features::get_features))
+        .route(
+            "/api/feature-screenshots",
+            get(handlers::features::get_feature_screenshots),
+        )
         .route("/api/faqs", get(handlers::faqs::get_faqs))
         .route("/api/sponsors", get(handlers::sponsors::get_sponsors))
         // 4. 更新日志与杂项友链
@@ -147,6 +151,16 @@ pub fn create_router(pool: SqlitePool) -> Router {
             get(handlers::features::get_all_features),
         )
         .route("/api/admin/features", post(handlers::features::add_feature))
+        .route(
+            "/api/admin/features/screenshots",
+            get(handlers::features::get_all_feature_screenshots)
+                .post(handlers::features::add_feature_screenshot),
+        )
+        .route(
+            "/api/admin/features/screenshots/{id}",
+            put(handlers::features::update_feature_screenshot)
+                .delete(handlers::features::delete_feature_screenshot),
+        )
         .route(
             "/api/admin/features/{id}/toggle",
             put(handlers::features::toggle_feature),

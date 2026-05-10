@@ -20,7 +20,7 @@ export default function ServerSuccessPreview() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(251,146,60,0.18),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.12),_transparent_24%),linear-gradient(180deg,_#fff8f1_0%,_#fffdf9_48%,_#f8fafc_100%)] text-neutral-900 dark:bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.32),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(236,72,153,0.28),_transparent_32%),linear-gradient(180deg,_#020617_0%,_#020617_45%,_#020617_100%)] dark:text-neutral-50">
-      <div className="mx-auto max-w-4xl px-6 py-12">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12 lg:px-8">
         
         <div className="flex justify-center mb-10">
           <Link
@@ -32,12 +32,12 @@ export default function ServerSuccessPreview() {
         </div>
 
         {/* 成功提示徽章 */}
-        <div className="flex flex-col items-center justify-center text-center space-y-4 mb-12 animate-in slide-in-from-bottom-4 duration-500">
+        <div className="mb-10 flex flex-col items-center justify-center space-y-4 text-center animate-in slide-in-from-bottom-4 duration-500 md:mb-12">
           <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-500 shadow-lg shadow-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:shadow-emerald-500/30">
             <CheckCircle2 size={40} />
           </div>
           <h1 className="text-3xl md:text-4xl font-black text-neutral-900 dark:text-neutral-50">提交成功！</h1>
-          <p className="text-neutral-600 max-w-lg dark:text-neutral-400">
+          <p className="max-w-2xl text-neutral-600 dark:text-neutral-400">
             你的服务器 <b>{serverData.name}</b> 已成功提交至云端。管理员将在审核后通过，届时你的服务器将在发现页隆重登场。
           </p>
         </div>
@@ -47,7 +47,7 @@ export default function ServerSuccessPreview() {
           
           {/* 上半部分：封面与基础信息 (默认显示) */}
           <div 
-            className="relative aspect-[21/9] sm:aspect-[16/6] cursor-pointer group"
+            className="relative aspect-[16/9] cursor-pointer group sm:aspect-[21/9] lg:aspect-[16/6]"
             onClick={() => setIsExpanded(!isExpanded)}
           >
             {serverData.hero ? (
@@ -68,11 +68,11 @@ export default function ServerSuccessPreview() {
               <img
                 src={serverData.icon}
                 alt="Hero Logo"
-                className="absolute left-5 top-5 h-16 max-w-[180px] rounded-xl border-2 border-white bg-white object-contain p-2 shadow-lg"
+                className="absolute left-4 top-4 h-14 max-w-[160px] rounded-xl border-2 border-white bg-white object-contain p-2 shadow-lg sm:left-5 sm:top-5 sm:h-16 sm:max-w-[180px]"
               />
             )}
 
-            <div className="absolute bottom-5 left-5 right-5 text-white flex justify-between items-end pointer-events-none">
+            <div className="pointer-events-none absolute bottom-4 left-4 right-4 flex flex-col gap-3 text-white sm:bottom-5 sm:left-5 sm:right-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <div className="text-2xl font-black mb-1">{serverData.name}</div>
                 <div className="text-xs text-white/80 flex items-center gap-2">
@@ -80,7 +80,7 @@ export default function ServerSuccessPreview() {
                   <span>{serverData.ip}{serverData.port !== 25565 ? `:${serverData.port}` : ''}</span>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <div className="text-emerald-400 font-bold">{serverData.maxPlayers} 槽位</div>
                 <div className="text-white/60 text-xs mt-1">
                   {serverData.versions.length > 0 ? serverData.versions.slice(0, 2).join(', ') : '暂无版本'}

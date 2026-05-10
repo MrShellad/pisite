@@ -55,23 +55,6 @@ function isWebpFile(file: File) {
   return file.type === 'image/webp' || file.name.toLowerCase().endsWith('.webp');
 }
 
-async function readImageDimensions(file: File): Promise<{ width: number; height: number }> {
-  const objectUrl = URL.createObjectURL(file);
-
-  try {
-    const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve({ width: image.width, height: image.height });
-      image.onerror = () => reject(new Error('failed to read image dimensions'));
-      image.src = objectUrl;
-    });
-
-    return dimensions;
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
-
 function revokeIfBlob(url: string) {
   if (url.startsWith('blob:')) {
     URL.revokeObjectURL(url);
@@ -189,19 +172,6 @@ export function useServerSubmission() {
     if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
       setError('WebP 图片大小不能超过 1MB。');
       return;
-    }
-
-    if (field === 'icon') {
-      try {
-        const { width, height } = await readImageDimensions(file);
-        if (width > 512 || height > 512) {
-          setError('Hero Logo 建议宽高不超过 512px。');
-          return;
-        }
-      } catch {
-        setError('无法读取图片尺寸，请重新选择文件。');
-        return;
-      }
     }
 
     setError(null);

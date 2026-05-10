@@ -12,3 +12,13 @@ export interface Feature {
 
 // 剔除 enabled 字段，用于表单提交状态
 export type FeatureFormData = Omit<Feature, 'enabled'>;
+
+export interface FeatureScreenshot {
+  id: string;
+  imageUrl: string;
+  title: string;
+  caption: string;
+  priority: number;
+}
+
+export type FeatureScreenshotFormData = Omit<FeatureScreenshot, 'id'>;
