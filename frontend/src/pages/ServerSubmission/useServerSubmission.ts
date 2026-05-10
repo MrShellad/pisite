@@ -318,7 +318,7 @@ export function useServerSubmission() {
     }
 
     if (!pendingAssets.hero.file && !formData.hero.trim()) {
-      return '请先选择 Hero 封面。';
+      return '请先选择 Hero Logo。';
     }
 
     if (formData.versions.length === 0) {

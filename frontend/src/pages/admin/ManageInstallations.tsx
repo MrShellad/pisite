@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   BarChart3,
+  ChevronLeft,
+  ChevronRight,
   Cpu,
   HardDrive,
   Monitor,
@@ -63,7 +65,10 @@ type InstallationStats = {
 
 const cardClass =
   'rounded-2xl border border-neutral-200/60 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-white/5 dark:bg-white/[0.02] dark:shadow-none';
-const tableCellClass = 'border-b border-neutral-100 px-3 py-3 text-xs dark:border-white/5';
+const tableHeaderCellClass =
+  'sticky top-0 z-10 border-b border-neutral-200 bg-white/95 px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:border-white/10 dark:bg-neutral-950/95';
+const tableCellClass = 'border-b border-neutral-100 px-3 py-3 text-center align-middle text-xs dark:border-white/5';
+const pageSizeOptions = [10, 20, 30];
 
 function formatMemory(bytes?: number | null) {
   if (!bytes || bytes <= 0) return '-';
@@ -77,11 +82,35 @@ function percentChange(current: number, previous: number) {
   return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return '-';
+
+  const matched = value.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2}):(\d{2})/);
+  if (matched) {
+    return `${matched[1]}-${matched[2]}-${matched[3]} ${matched[4]}:${matched[5]}:${matched[6]}`;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const pad = (part: number) => part.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(
+    date.getMinutes(),
+  )}:${pad(date.getSeconds())}`;
+}
+
 export default function ManageInstallations() {
   const [stats, setStats] = useState<InstallationStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const reports = stats?.recentReports ?? [];
-  const reportVirtualRows = useVirtualList(reports, 54, 10);
+  const totalPages = Math.max(1, Math.ceil(reports.length / pageSize));
+  const paginatedReports = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return reports.slice(start, start + pageSize);
+  }, [currentPage, pageSize, reports]);
+  const reportVirtualRows = useVirtualList(paginatedReports, 54, 6);
 
   const fetchStats = async () => {
     setIsLoading(true);
@@ -96,6 +125,16 @@ export default function ManageInstallations() {
   useEffect(() => {
     void fetchStats();
   }, []);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    reportVirtualRows.containerRef.current?.scrollTo({ top: 0 });
+  }, [currentPage, pageSize, reportVirtualRows.containerRef]);
 
   const weekTotal = useMemo(
     () => stats?.weekComparison.reduce((sum, item) => sum + item.thisWeek, 0) ?? 0,
@@ -119,6 +158,13 @@ export default function ManageInstallations() {
   }
 
   const topPlatformTotal = stats.platformStats.reduce((sum, item) => sum + item.count, 0);
+  const pageStart = reports.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const pageEnd = Math.min(reports.length, currentPage * pageSize);
+
+  const changePageSize = (nextPageSize: number) => {
+    setPageSize(nextPageSize);
+    setCurrentPage(1);
+  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -268,28 +314,69 @@ export default function ManageInstallations() {
       </div>
 
       <section className={cardClass}>
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <h3 className="flex items-center gap-2 text-sm font-bold text-neutral-900 dark:text-white">
             <Cpu size={18} className="text-orange-500" />
             安装上报明细
           </h3>
-          <span className="text-xs text-neutral-500">最近 {reports.length} 条</span>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+            <span>
+              共 {reports.length} 条，显示 {pageStart}-{pageEnd}
+            </span>
+            <label className="inline-flex items-center gap-2">
+              <span>每页</span>
+              <select
+                value={pageSize}
+                onChange={event => changePageSize(Number(event.target.value))}
+                className="rounded-lg border border-neutral-200 bg-white px-2 py-1 text-xs font-semibold text-neutral-700 outline-none transition focus:border-orange-400 dark:border-white/10 dark:bg-neutral-950 dark:text-neutral-200"
+              >
+                {pageSizeOptions.map(option => (
+                  <option key={option} value={option}>
+                    {option} 条
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="inline-flex items-center overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-950">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
+                disabled={currentPage <= 1}
+                className="flex h-8 w-8 items-center justify-center text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-35 dark:text-neutral-300 dark:hover:bg-white/10"
+                aria-label="上一页"
+              >
+                <ChevronLeft size={15} />
+              </button>
+              <span className="min-w-[70px] border-x border-neutral-200 px-3 text-center font-semibold text-neutral-700 dark:border-white/10 dark:text-neutral-200">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))}
+                disabled={currentPage >= totalPages}
+                className="flex h-8 w-8 items-center justify-center text-neutral-600 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-35 dark:text-neutral-300 dark:hover:bg-white/10"
+                aria-label="下一页"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          </div>
         </div>
         <div
           ref={reportVirtualRows.containerRef}
           onScroll={reportVirtualRows.handleScroll}
           className="max-h-[620px] overflow-auto rounded-2xl border border-neutral-200/80 dark:border-white/10"
         >
-          <table className="w-full min-w-[980px] table-fixed border-separate border-spacing-0 text-left">
+          <table className="w-full min-w-[1230px] table-fixed border-separate border-spacing-0">
             <thead>
               <tr>
-                <th className="sticky top-0 z-10 w-[230px] border-b border-neutral-200 bg-white/95 px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:border-white/10 dark:bg-neutral-950/95">安装 ID</th>
-                <th className="sticky top-0 z-10 w-[120px] border-b border-neutral-200 bg-white/95 px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:border-white/10 dark:bg-neutral-950/95">平台</th>
-                <th className="sticky top-0 z-10 w-[110px] border-b border-neutral-200 bg-white/95 px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:border-white/10 dark:bg-neutral-950/95">内存</th>
-                <th className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:border-white/10 dark:bg-neutral-950/95">显卡</th>
-                <th className="sticky top-0 z-10 w-[120px] border-b border-neutral-200 bg-white/95 px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:border-white/10 dark:bg-neutral-950/95">版本</th>
-                <th className="sticky top-0 z-10 w-[170px] border-b border-neutral-200 bg-white/95 px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:border-white/10 dark:bg-neutral-950/95">首次安装</th>
-                <th className="sticky top-0 z-10 w-[170px] border-b border-neutral-200 bg-white/95 px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:border-white/10 dark:bg-neutral-950/95">最后上报</th>
+                <th className={`${tableHeaderCellClass} w-[360px]`}>安装 ID</th>
+                <th className={`${tableHeaderCellClass} w-[100px]`}>平台</th>
+                <th className={`${tableHeaderCellClass} w-[100px]`}>内存</th>
+                <th className={`${tableHeaderCellClass} w-[220px]`}>显卡</th>
+                <th className={`${tableHeaderCellClass} w-[110px]`}>版本</th>
+                <th className={`${tableHeaderCellClass} w-[170px]`}>首次安装</th>
+                <th className={`${tableHeaderCellClass} w-[170px]`}>最后上报</th>
               </tr>
             </thead>
             <tbody>
@@ -309,16 +396,18 @@ export default function ManageInstallations() {
                   {reportVirtualRows.virtualItems.map(item => (
                     <tr key={item.installationId} className="transition-colors hover:bg-neutral-50/70 dark:hover:bg-white/[0.03]">
                       <td className={`${tableCellClass} font-mono text-[11px] text-neutral-700 dark:text-neutral-300`}>
-                        <span className="block truncate">{item.installationId}</span>
+                        <span className="block whitespace-nowrap">{item.installationId}</span>
                       </td>
                       <td className={`${tableCellClass} text-neutral-700 dark:text-neutral-300`}>{item.platform}</td>
                       <td className={`${tableCellClass} font-mono text-neutral-600 dark:text-neutral-400`}>{formatMemory(item.memoryBytes)}</td>
                       <td className={`${tableCellClass} text-neutral-700 dark:text-neutral-300`}>
-                        <span className="block truncate">{item.gpu || '-'}</span>
+                        <span className="block truncate" title={item.gpu || '-'}>
+                          {item.gpu || '-'}
+                        </span>
                       </td>
                       <td className={`${tableCellClass} font-mono text-neutral-700 dark:text-neutral-300`}>{item.appVersion || '-'}</td>
-                      <td className={`${tableCellClass} text-[11px] text-neutral-500`}>{item.firstInstalledAt}</td>
-                      <td className={`${tableCellClass} text-[11px] text-neutral-500`}>{item.lastReportedAt}</td>
+                      <td className={`${tableCellClass} text-[11px] text-neutral-500`}>{formatDateTime(item.firstInstalledAt)}</td>
+                      <td className={`${tableCellClass} text-[11px] text-neutral-500`}>{formatDateTime(item.lastReportedAt)}</td>
                     </tr>
                   ))}
                   {reportVirtualRows.paddingBottom > 0 && (

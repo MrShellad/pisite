@@ -146,7 +146,7 @@ export default function ServerSubmissionPage() {
           <section className="sticky top-6 max-h-[calc(100vh-3rem)] space-y-6 overflow-y-auto pb-4 pr-2">
             <div className="relative aspect-[16/10] overflow-hidden rounded-[32px] border border-neutral-200 bg-white/80 shadow-[0_30px_120px_rgba(15,23,42,0.1)] dark:border-neutral-800 dark:bg-neutral-950/70">
               {formData.hero ? (
-                <img src={formData.hero} alt="Hero 预览" className="h-full w-full object-cover" />
+                <img src={formData.hero} alt="Hero Logo 预览" className="h-full w-full object-contain p-8" />
               ) : (
                 <div className="flex h-full items-center justify-center bg-neutral-900 text-white/50">
                   <ImagePlus size={32} />
@@ -311,9 +311,9 @@ export default function ServerSubmissionPage() {
                   </div>
 
                   <div>
-                    <label className={labelClass}>Hero 封面 *</label>
+                    <label className={labelClass}>Hero Logo *</label>
                     <label className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-sky-300 bg-sky-50 text-sm font-semibold text-sky-600 transition hover:bg-sky-100 dark:border-sky-500/60 dark:bg-sky-500/10 dark:text-sky-300">
-                      {isUploading === 'hero' ? '上传中...' : '选择封面'}
+                      {isUploading === 'hero' ? '上传中...' : '选择 Logo'}
                       <input
                         type="file"
                         accept="image/webp,.webp"
@@ -323,7 +323,7 @@ export default function ServerSubmissionPage() {
                       />
                     </label>
                     <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-                      {pendingAssets.hero.fileName || '仅支持 WebP，推荐 16:9 且不超过 1MB'}
+                      {pendingAssets.hero.fileName || '仅支持 WebP，不限制比例，建议上传类似 MC 官方 Hero 区使用的透明 Logo，不超过 1MB'}
                     </p>
                   </div>
                 </div>

@@ -45,7 +45,7 @@ export default function ServerSuccessPreview() {
         {/* 临时预览卡片 */}
         <div className="bg-white/80 backdrop-blur rounded-[32px] border border-neutral-200/80 shadow-[0_24px_80px_rgba(15,23,42,0.08)] overflow-hidden transition-all duration-500 dark:bg-neutral-950/70 dark:border-neutral-800 dark:shadow-[0_40px_140px_rgba(15,23,42,0.9)]">
           
-          {/* 上半部分：封面与基础信息 (默认显示) */}
+          {/* 上半部分：Hero Logo 与基础信息 (默认显示) */}
           <div 
             className="relative aspect-[21/9] sm:aspect-[16/6] cursor-pointer group"
             onClick={() => setIsExpanded(!isExpanded)}
@@ -53,8 +53,8 @@ export default function ServerSuccessPreview() {
             {serverData.hero ? (
               <img
                 src={serverData.hero}
-                alt="Hero预览"
-                className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                alt="Hero Logo 预览"
+                className="h-full w-full object-contain p-8 transition duration-700 group-hover:scale-105"
               />
             ) : (
               <div className="flex h-full items-center justify-center bg-neutral-900 text-white/50">
