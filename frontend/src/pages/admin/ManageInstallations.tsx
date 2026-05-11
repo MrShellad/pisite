@@ -4,6 +4,7 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Cpu,
   HardDrive,
   Monitor,
@@ -22,6 +23,7 @@ import {
 
 import { api } from '../../api/client';
 import { useVirtualList } from '../../hooks/useVirtualList';
+import { useAdminFeedback } from './components/AdminFeedback';
 
 type InstallationReport = {
   installationId: string;
@@ -100,8 +102,10 @@ function formatDateTime(value?: string | null) {
 }
 
 export default function ManageInstallations() {
+  const { notify } = useAdminFeedback();
   const [stats, setStats] = useState<InstallationStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const reports = stats?.recentReports ?? [];
@@ -114,9 +118,13 @@ export default function ManageInstallations() {
 
   const fetchStats = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const response = await api.get<InstallationStats>('/admin/installations');
       setStats(response.data);
+    } catch (err) {
+      console.error(err);
+      setLoadError('安装统计读取失败，请检查网络或服务端日志。');
     } finally {
       setIsLoading(false);
     }
@@ -152,7 +160,16 @@ export default function ManageInstallations() {
   if (!stats) {
     return (
       <div className="rounded-2xl border border-dashed border-neutral-200 px-6 py-12 text-center text-sm text-neutral-500 dark:border-white/10">
-        暂无安装统计数据。
+        <div>{loadError ?? '暂无安装统计数据。'}</div>
+        {loadError ? (
+          <button
+            type="button"
+            onClick={() => void fetchStats()}
+            className="mt-4 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+          >
+            重试
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -164,6 +181,15 @@ export default function ManageInstallations() {
   const changePageSize = (nextPageSize: number) => {
     setPageSize(nextPageSize);
     setCurrentPage(1);
+  };
+
+  const copyInstallationId = async (installationId: string) => {
+    try {
+      await navigator.clipboard.writeText(installationId);
+      notify('安装 ID 已复制', installationId, 'success');
+    } catch {
+      notify('复制失败', '浏览器拒绝访问剪贴板，请手动选择复制。', 'error');
+    }
   };
 
   return (
@@ -396,7 +422,15 @@ export default function ManageInstallations() {
                   {reportVirtualRows.virtualItems.map(item => (
                     <tr key={item.installationId} className="transition-colors hover:bg-neutral-50/70 dark:hover:bg-white/[0.03]">
                       <td className={`${tableCellClass} font-mono text-[11px] text-neutral-700 dark:text-neutral-300`}>
-                        <span className="block whitespace-nowrap">{item.installationId}</span>
+                        <button
+                          type="button"
+                          onClick={() => void copyInstallationId(item.installationId)}
+                          className="inline-flex max-w-full items-center justify-center gap-2 rounded-lg px-2 py-1 transition hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-500/10 dark:hover:text-orange-300"
+                          title="复制安装 ID"
+                        >
+                          <span className="block truncate">{item.installationId}</span>
+                          <Copy size={13} className="shrink-0 opacity-60" />
+                        </button>
                       </td>
                       <td className={`${tableCellClass} text-neutral-700 dark:text-neutral-300`}>{item.platform}</td>
                       <td className={`${tableCellClass} font-mono text-neutral-600 dark:text-neutral-400`}>{formatMemory(item.memoryBytes)}</td>

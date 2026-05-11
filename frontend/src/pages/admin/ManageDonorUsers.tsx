@@ -17,6 +17,7 @@ import {
   Trash2,
   UserRoundSearch,
 } from 'lucide-react';
+import { useAdminFeedback } from './components/AdminFeedback';
 
 type DonorUser = {
   id: string;
@@ -108,6 +109,7 @@ function formatAmount(value?: number | null) {
 }
 
 export default function ManageDonorUsers() {
+  const { confirm, notify } = useAdminFeedback();
   const [searchParams] = useSearchParams();
   const [users, setUsers] = useState<DonorUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -317,7 +319,7 @@ export default function ManageDonorUsers() {
       await fetchUsers();
       setSelectedUserId(res.data.id);
     } catch (error: any) {
-      alert(error?.response?.data ?? '创建用户失败');
+      notify('创建用户失败', error?.response?.data ?? '请稍后重试。', 'error');
     } finally {
       setIsSavingCreate(false);
     }
@@ -339,7 +341,7 @@ export default function ManageDonorUsers() {
         isVisible: res.data.isVisible,
       });
     } catch (error: any) {
-      alert(error?.response?.data ?? '保存用户失败');
+      notify('保存用户失败', error?.response?.data ?? '请稍后重试。', 'error');
     } finally {
       setIsSavingUser(false);
     }
@@ -352,14 +354,20 @@ export default function ManageDonorUsers() {
       const res = await api.post<DonorUser>(`/admin/donor-users/${selectedUserId}/mc-profile/sync`);
       setUsers((prev) => prev.map((user) => (user.id === res.data.id ? res.data : user)));
     } catch (error: any) {
-      alert(error?.response?.data ?? '同步角色名失败');
+      notify('同步角色名失败', error?.response?.data ?? '请稍后重试。', 'error');
     } finally {
       setIsSyncingProfile(false);
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!window.confirm('确认删除该捐赠用户吗？授权、设备和激活记录会一并删除。')) return;
+    const confirmed = await confirm({
+      title: '删除捐赠用户',
+      description: '确认删除该捐赠用户吗？授权、设备和激活记录会一并删除。',
+      confirmLabel: '删除',
+      tone: 'error',
+    });
+    if (!confirmed) return;
     await api.delete(`/admin/donor-users/${userId}`);
     setSelectedUserId(null);
     await fetchUsers();
@@ -372,7 +380,7 @@ export default function ManageDonorUsers() {
       const res = await api.put<License>(`/admin/donor-users/${selectedUserId}/license`, licenseDraft);
       setLicense(res.data);
     } catch (error: any) {
-      alert(error?.response?.data ?? '保存授权失败');
+      notify('保存授权失败', error?.response?.data ?? '请稍后重试。', 'error');
     } finally {
       setIsSavingLicense(false);
     }
@@ -390,7 +398,7 @@ export default function ManageDonorUsers() {
       });
       await refreshSelectedUser();
     } catch (error: any) {
-      alert(error?.response?.data ?? '新增捐赠记录失败');
+      notify('新增捐赠记录失败', error?.response?.data ?? '请稍后重试。', 'error');
     } finally {
       setIsAddingDonation(false);
     }
@@ -414,7 +422,7 @@ export default function ManageDonorUsers() {
       setAfdianConfig(res.data);
       setAfdianConfigDraft((prev) => ({ ...prev, token: '' }));
     } catch (error: any) {
-      alert(error?.response?.data ?? '保存爱发电配置失败');
+      notify('保存爱发电配置失败', error?.response?.data ?? '请稍后重试。', 'error');
     } finally {
       setIsSavingAfdianConfig(false);
     }
@@ -430,7 +438,7 @@ export default function ManageDonorUsers() {
       setAfdianBinding(res.data);
       await fetchUsers();
     } catch (error: any) {
-      alert(error?.response?.data ?? '保存爱发电绑定失败');
+      notify('保存爱发电绑定失败', error?.response?.data ?? '请稍后重试。', 'error');
     } finally {
       setIsSavingAfdianBinding(false);
     }
@@ -444,7 +452,7 @@ export default function ManageDonorUsers() {
       setAfdianBinding(res.data);
       await refreshSelectedUser();
     } catch (error: any) {
-      alert(error?.response?.data ?? '同步爱发电数据失败');
+      notify('同步爱发电数据失败', error?.response?.data ?? '请稍后重试。', 'error');
     } finally {
       setIsSyncingAfdian(false);
     }

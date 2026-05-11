@@ -8,6 +8,7 @@ import type {
   SubmissionEmailRule,
   SubmissionEmailRulePayload,
 } from '@/types';
+import { useAdminFeedback } from './components/AdminFeedback';
 
 const emptyRule: SubmissionEmailRulePayload = {
   mode: 'whitelist',
@@ -19,6 +20,7 @@ const emptyRule: SubmissionEmailRulePayload = {
 };
 
 export default function ManageSubmissionEmail() {
+  const { confirm } = useAdminFeedback();
   const [config, setConfig] = useState<SubmissionEmailConfig | null>(null);
   const [rules, setRules] = useState<SubmissionEmailRule[]>([]);
   const [passwordInput, setPasswordInput] = useState('');
@@ -227,7 +229,13 @@ export default function ManageSubmissionEmail() {
   };
 
   const handleDeleteRule = async (id: string) => {
-    if (!window.confirm('确定删除这条邮箱过滤规则吗？')) return;
+    const confirmed = await confirm({
+      title: '删除邮箱过滤规则',
+      description: '确定删除这条邮箱过滤规则吗？后续提交邮件会立即按新规则处理。',
+      confirmLabel: '删除',
+      tone: 'error',
+    });
+    if (!confirmed) return;
 
     setDeletingRuleIds((current) => [...current, id]);
     setError(null);

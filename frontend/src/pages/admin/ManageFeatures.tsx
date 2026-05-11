@@ -116,6 +116,9 @@ export default function ManageFeatures() {
                   }}
                 />
               </label>
+              <p className="mt-2 text-xs leading-5 text-neutral-500 dark:text-neutral-400">
+                建议上传 16:9 的产品截图或实机画面，前台会作为卡片堆叠轮播展示。
+              </p>
             </div>
             <div>
               <label className={labelClass}>图片 URL</label>

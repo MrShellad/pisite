@@ -1,6 +1,7 @@
-// frontend/src/pages/admin/hooks/useManageFeatures.ts
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+
 import { api } from '../../../api/client';
+import { useAdminFeedback } from '../components/AdminFeedback';
 import type {
   Feature,
   FeatureFormData,
@@ -8,22 +9,33 @@ import type {
   FeatureScreenshotFormData,
 } from '../types/features';
 
+const initialFeatureFormData: FeatureFormData = {
+  id: '',
+  iconSvg: '',
+  iconColor: '#3b82f6',
+  title: '',
+  desc: '',
+  priority: 1,
+};
+
+const initialScreenshotFormData: FeatureScreenshotFormData = {
+  imageUrl: '',
+  title: '',
+  caption: '',
+  priority: 1,
+};
+
 export function useManageFeatures() {
+  const { confirm, notify } = useAdminFeedback();
   const [features, setFeatures] = useState<Feature[]>([]);
   const [screenshots, setScreenshots] = useState<FeatureScreenshot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isScreenshotSubmitting, setIsScreenshotSubmitting] = useState(false);
   const [uploadingScreenshotId, setUploadingScreenshotId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FeatureFormData>({
-    id: '', iconSvg: '', iconColor: '#3b82f6', title: '', desc: '', priority: 1
-  });
-  const [screenshotFormData, setScreenshotFormData] = useState<FeatureScreenshotFormData>({
-    imageUrl: '',
-    title: '',
-    caption: '',
-    priority: 1,
-  });
+  const [formData, setFormData] = useState<FeatureFormData>(initialFeatureFormData);
+  const [screenshotFormData, setScreenshotFormData] =
+    useState<FeatureScreenshotFormData>(initialScreenshotFormData);
 
   const fetchData = async () => {
     try {
@@ -35,13 +47,14 @@ export function useManageFeatures() {
       setScreenshots(screenshotsRes.data);
     } catch (err) {
       console.error(err);
+      notify('特性数据读取失败', '请检查网络或服务端日志。', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
   }, []);
 
   const handleChange = (field: keyof FeatureFormData, value: string | number) => {
@@ -60,10 +73,12 @@ export function useManageFeatures() {
     setIsSubmitting(true);
     try {
       await api.post('/admin/features', { ...formData, enabled: true });
-      setFormData({ id: '', iconSvg: '', iconColor: '#3b82f6', title: '', desc: '', priority: 1 });
-      fetchData();
+      setFormData(initialFeatureFormData);
+      await fetchData();
+      notify('特性已添加', '新的核心特性已保存。', 'success');
     } catch (err) {
-      alert('添加特性失败，请检查 ID 是否重复。');
+      console.error(err);
+      notify('特性添加失败', '请检查 ID 是否重复。', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -72,20 +87,29 @@ export function useManageFeatures() {
   const handleToggle = async (id: string) => {
     try {
       await api.put(`/admin/features/${id}/toggle`);
-      fetchData();
+      await fetchData();
     } catch (err) {
-      alert('状态切换失败');
+      console.error(err);
+      notify('特性状态切换失败', '请稍后重试。', 'error');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('确定要彻底删除该特性吗？此操作不可逆！')) {
-      try {
-        await api.delete(`/admin/features/${id}`);
-        fetchData();
-      } catch (err) {
-        alert('删除失败');
-      }
+    const confirmed = await confirm({
+      title: '删除核心特性',
+      description: '确定要彻底删除该特性吗？此操作不可逆。',
+      confirmLabel: '删除',
+      tone: 'error',
+    });
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/admin/features/${id}`);
+      await fetchData();
+      notify('特性已删除', '该特性已从前台展示配置中移除。', 'success');
+    } catch (err) {
+      console.error(err);
+      notify('特性删除失败', '请稍后重试。', 'error');
     }
   };
 
@@ -109,8 +133,10 @@ export function useManageFeatures() {
       } else {
         setScreenshotFormData(prev => ({ ...prev, imageUrl }));
       }
+      notify('截图已上传', '请保存截图配置使改动生效。', 'success');
     } catch (err) {
-      alert('截图上传失败，请重试。');
+      console.error(err);
+      notify('截图上传失败', '请重新选择图片后再试。', 'error');
     } finally {
       setUploadingScreenshotId(null);
     }
@@ -121,10 +147,12 @@ export function useManageFeatures() {
     setIsScreenshotSubmitting(true);
     try {
       await api.post('/admin/features/screenshots', screenshotFormData);
-      setScreenshotFormData({ imageUrl: '', title: '', caption: '', priority: screenshots.length + 2 });
-      fetchData();
+      setScreenshotFormData({ ...initialScreenshotFormData, priority: screenshots.length + 2 });
+      await fetchData();
+      notify('截图已添加', '前台截图轮播已更新。', 'success');
     } catch (err) {
-      alert('添加截图失败，请检查图片地址。');
+      console.error(err);
+      notify('截图添加失败', '请检查图片地址。', 'error');
     } finally {
       setIsScreenshotSubmitting(false);
     }
@@ -148,23 +176,34 @@ export function useManageFeatures() {
         caption: item.caption,
         priority: Number(item.priority),
       });
-      fetchData();
+      await fetchData();
+      notify('截图已保存', '排序和内容已更新。', 'success');
     } catch (err) {
-      alert('截图保存失败。');
+      console.error(err);
+      notify('截图保存失败', '请稍后重试。', 'error');
     }
   };
 
   const handleScreenshotDelete = async (id: string) => {
-    if (!window.confirm('确定要删除这张截图吗？')) return;
+    const confirmed = await confirm({
+      title: '删除截图',
+      description: '确定要删除这张截图吗？前台轮播会立即移除它。',
+      confirmLabel: '删除',
+      tone: 'error',
+    });
+    if (!confirmed) return;
+
     try {
       await api.delete(`/admin/features/screenshots/${id}`);
-      fetchData();
+      await fetchData();
+      notify('截图已删除', '前台轮播已移除该截图。', 'success');
     } catch (err) {
-      alert('截图删除失败。');
+      console.error(err);
+      notify('截图删除失败', '请稍后重试。', 'error');
     }
   };
 
-  return { 
+  return {
     features,
     screenshots,
     isLoading,

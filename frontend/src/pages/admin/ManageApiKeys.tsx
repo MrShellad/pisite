@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { Activity, CircleAlert, KeyRound, Plus, Trash2 } from 'lucide-react';
 import { useVirtualList } from '../../hooks/useVirtualList';
 import { ApiWarningsModal } from './components/ApiWarningsModal';
+import { useAdminFeedback } from './components/AdminFeedback';
 import type { ApiWarningItem } from './components/ApiWarningsModal';
 
 type ApiKey = {
@@ -28,6 +29,7 @@ type ApiLog = {
 };
 
 export default function ManageApiKeys() {
+  const { confirm, notify } = useAdminFeedback();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [logs, setLogs] = useState<ApiLog[]>([]);
   const [warnings, setWarnings] = useState<ApiWarningItem[]>([]);
@@ -90,7 +92,7 @@ export default function ManageApiKeys() {
         typeof (err as { response?: { data?: string } })?.response?.data === 'string'
           ? (err as { response?: { data?: string } }).response?.data
           : '创建失败';
-      alert(message);
+      notify('API Key 创建失败', message, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -107,7 +109,13 @@ export default function ManageApiKeys() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('确认删除该 API Key？')) return;
+    const confirmed = await confirm({
+      title: '删除 API Key',
+      description: '确认删除该 API Key？删除后调用方会立即失去访问权限。',
+      confirmLabel: '删除',
+      tone: 'error',
+    });
+    if (!confirmed) return;
     await api.delete(`/admin/api-keys/${id}`);
     await fetchAll();
   };

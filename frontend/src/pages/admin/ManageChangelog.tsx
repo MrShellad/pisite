@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api, getUploadUrl } from '../../api/client';
+import { useAdminFeedback } from './components/AdminFeedback';
 
 type PlatformKey = 'darwin' | 'windows' | 'linux';
 type ReleaseChannel = 'stable' | 'preview' | 'beta';
@@ -189,6 +190,7 @@ function isCanceledUpload(error: unknown) {
 }
 
 export default function ManageChangelog() {
+  const { confirm, notify, requestInput } = useAdminFeedback();
   const [logs, setLogs] = useState<ReleaseLog[]>([]);
   const [packageAssets, setPackageAssets] = useState<PackageAsset[]>([]);
   const [isPackageManagerOpen, setIsPackageManagerOpen] = useState(false);
@@ -317,7 +319,7 @@ export default function ManageChangelog() {
       await fetchPackageAssets();
     } catch (error) {
       if (!isCanceledUpload(error)) {
-        alert(getErrorMessage(error, '安装包上传失败，请重试。'));
+        notify('安装包上传失败', getErrorMessage(error, '请重试。'), 'error');
       }
     } finally {
       setIsUploadingPackage(prev => ({ ...prev, [platform]: false }));
@@ -338,7 +340,7 @@ export default function ManageChangelog() {
       setIsPackageManagerOpen(true);
     } catch (error) {
       if (!isCanceledUpload(error)) {
-        alert(getErrorMessage(error, '安装包上传失败，请重试。'));
+        notify('安装包上传失败', getErrorMessage(error, '请重试。'), 'error');
       }
     } finally {
       setIsManualUploading(false);
@@ -349,14 +351,26 @@ export default function ManageChangelog() {
   const copyDownloadLink = async (url: string) => {
     try {
       await navigator.clipboard.writeText(url);
-      alert('下载链接已复制。');
+      notify('下载链接已复制', undefined, 'success');
     } catch {
-      window.prompt('复制下载链接', url);
+      await requestInput({
+        title: '复制下载链接',
+        description: '浏览器不允许自动写入剪贴板，请手动复制下面的链接。',
+        initialValue: url,
+        inputLabel: '下载链接',
+        confirmLabel: '关闭',
+      });
     }
   };
 
   const renamePackageAsset = async (asset: PackageAsset) => {
-    const nextName = window.prompt('请输入新的安装包文件名', asset.fileName);
+    const nextName = await requestInput({
+      title: '重命名安装包',
+      description: '请输入新的安装包文件名。',
+      initialValue: asset.fileName,
+      inputLabel: '文件名',
+      confirmLabel: '保存',
+    });
     if (!nextName || nextName.trim() === asset.fileName) return;
 
     try {
@@ -366,12 +380,18 @@ export default function ManageChangelog() {
       );
       await fetchPackageAssets();
     } catch (error) {
-      alert(getErrorMessage(error, '重命名失败。'));
+      notify('重命名失败', getErrorMessage(error, '请稍后重试。'), 'error');
     }
   };
 
   const deletePackageAsset = async (asset: PackageAsset) => {
-    if (!window.confirm(`确认删除安装包 ${asset.fileName} 吗？`)) return;
+    const confirmed = await confirm({
+      title: '删除安装包',
+      description: `确认删除安装包 ${asset.fileName} 吗？`,
+      confirmLabel: '删除',
+      tone: 'error',
+    });
+    if (!confirmed) return;
 
     try {
       await api.delete(
@@ -379,7 +399,7 @@ export default function ManageChangelog() {
       );
       await fetchPackageAssets();
     } catch (error) {
-      alert(getErrorMessage(error, '删除失败。'));
+      notify('删除失败', getErrorMessage(error, '请稍后重试。'), 'error');
     }
   };
 
@@ -396,12 +416,12 @@ export default function ManageChangelog() {
       const content = await file.text();
       const parsed = parseSigFromText(content);
       if (!parsed) {
-        alert('.sig 文件解析为空，请检查文件内容。');
+        notify('.sig 文件解析为空', '请检查文件内容。', 'error');
         return;
       }
       updatePlatformField(platform, 'signature', parsed);
     } catch {
-      alert('读取 .sig 文件失败，请重试。');
+      notify('读取 .sig 文件失败', '请重试。', 'error');
     } finally {
       setIsUploadingSig(prev => ({ ...prev, [platform]: false }));
     }
@@ -446,31 +466,43 @@ export default function ManageChangelog() {
       await api.post('/admin/changelog', formData);
       await fetchLogs();
       setFormData(createInitialForm());
-      alert('版本发布成功。');
+      notify('版本发布成功', '新的版本记录已创建。', 'success');
     } catch (error) {
-      alert(getErrorMessage(error, '发布失败，请检查输入后重试。'));
+      notify('发布失败', getErrorMessage(error, '请检查输入后重试。'), 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleRollback = async (id: string) => {
-    if (!window.confirm('确认回滚该版本吗？')) return;
+    const confirmed = await confirm({
+      title: '回滚版本',
+      description: '确认回滚该版本吗？',
+      confirmLabel: '回滚',
+      tone: 'warning',
+    });
+    if (!confirmed) return;
     try {
       await api.post(`/admin/changelog/${id}/rollback`);
       await fetchLogs();
     } catch (error) {
-      alert(getErrorMessage(error, '回滚失败。'));
+      notify('回滚失败', getErrorMessage(error, '请稍后重试。'), 'error');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('确认删除该版本记录吗？此操作不可撤销。')) return;
+    const confirmed = await confirm({
+      title: '删除版本记录',
+      description: '确认删除该版本记录吗？此操作不可撤销。',
+      confirmLabel: '删除',
+      tone: 'error',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/admin/changelog/${id}`);
       await fetchLogs();
     } catch (error) {
-      alert(getErrorMessage(error, '删除失败。'));
+      notify('删除失败', getErrorMessage(error, '请稍后重试。'), 'error');
     }
   };
 
@@ -483,11 +515,9 @@ export default function ManageChangelog() {
         url: string;
         displayVersion: string;
       }>(`/admin/changelog/${releaseId}/push-hero-download`, { platform });
-      alert(
-        `已将 ${response.data.displayVersion} 的 ${platformLabels[platform]} 下载地址推送到首页按钮。`,
-      );
+      notify('首页下载按钮已更新', `已将 ${response.data.displayVersion} 的 ${platformLabels[platform]} 下载地址推送到首页按钮。`, 'success');
     } catch (error) {
-      alert(getErrorMessage(error, '推送到首页下载按钮失败。'));
+      notify('推送失败', getErrorMessage(error, '推送到首页下载按钮失败。'), 'error');
     } finally {
       setIsPushing(prev => ({ ...prev, [key]: false }));
     }

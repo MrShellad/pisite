@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import { HomeLocaleProvider } from './lib/home-i18n';
+import { AdminFeedbackProvider } from './pages/admin/components/AdminFeedback';
 
 const Landing = lazy(() => import('./pages/Landing'));
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'));
@@ -41,8 +42,9 @@ function App() {
   return (
     <HomeLocaleProvider>
       <BrowserRouter>
-        <Suspense fallback={<RouteLoader />}>
-          <Routes>
+        <AdminFeedbackProvider>
+          <Suspense fallback={<RouteLoader />}>
+            <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/changelog" element={<ChangelogPage />} />
             <Route path="/servers/submit" element={<ServerSubmissionPage />} />
@@ -70,8 +72,9 @@ function App() {
                 <Route path="signaling" element={<ManageSignalingServers />} />
               </Route>
             </Route>
-          </Routes>
-        </Suspense>
+            </Routes>
+          </Suspense>
+        </AdminFeedbackProvider>
       </BrowserRouter>
     </HomeLocaleProvider>
   );

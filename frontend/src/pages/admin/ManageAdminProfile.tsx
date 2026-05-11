@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import { Key, Mail, Shield, Save } from 'lucide-react';
+import { useAdminFeedback } from './components/AdminFeedback';
 
 type AdminProfile = { email: string };
 
 export default function ManageAdminProfile() {
+  const { notify } = useAdminFeedback();
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -63,7 +65,7 @@ export default function ManageAdminProfile() {
       setCurrentPassword('');
       setNewPassword('');
       setNewPassword2('');
-      alert('账号信息已更新，请重新登录你的账户状态已刷新。');
+      notify('账号信息已更新', '账户状态已刷新。', 'success');
       await fetchProfile();
     } catch (err: any) {
       setError(err?.response?.data ?? '更新失败');

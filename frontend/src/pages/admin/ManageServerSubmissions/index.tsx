@@ -82,6 +82,13 @@ export default function ManageServerSubmissions() {
     'w-full rounded-xl border border-neutral-200 bg-neutral-100/60 px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-orange-500 focus:bg-white';
   const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-500';
   const cardClass = 'rounded-2xl border border-neutral-200/70 bg-white/85 p-6 shadow-sm backdrop-blur';
+  const detailSections = [
+    { id: 'media', label: '媒体' },
+    { id: 'basic', label: '基础' },
+    { id: 'tags', label: '标签' },
+    { id: 'social', label: '社交' },
+    { id: 'save', label: '保存' },
+  ];
 
   if (isLoading) {
     return <div className="animate-pulse p-8 text-neutral-500">Loading submissions...</div>;
@@ -204,7 +211,7 @@ export default function ManageServerSubmissions() {
                       </div>
                     </button>
 
-                    <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-xl bg-white/85 shadow-sm backdrop-blur transition-opacity dark:bg-neutral-950/80">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -213,6 +220,7 @@ export default function ManageServerSubmissions() {
                         }}
                         className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
                         title="给提交者发送邮件"
+                        aria-label={`给 ${item.name || '提交者'} 发送邮件`}
                       >
                         <Mail size={18} />
                       </button>
@@ -226,6 +234,7 @@ export default function ManageServerSubmissions() {
                           item.verified ? 'text-emerald-500 hover:bg-emerald-50' : 'text-neutral-400 hover:bg-neutral-100'
                         } disabled:cursor-not-allowed disabled:opacity-50`}
                         title={item.verified ? '撤销审核' : '审核通过'}
+                        aria-label={item.verified ? `撤销 ${item.name || '服务器'} 的审核` : `通过 ${item.name || '服务器'} 的审核`}
                       >
                         {verifyingIds.has(item.id) ? <Clock3 size={18} /> : item.verified ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                       </button>
@@ -236,6 +245,7 @@ export default function ManageServerSubmissions() {
                         }}
                         className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500"
                         title="删除"
+                        aria-label={`删除 ${item.name || '服务器记录'}`}
                       >
                         <Trash2 size={18} />
                       </button>
@@ -285,7 +295,19 @@ export default function ManageServerSubmissions() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="sticky top-[88px] z-10 -mx-1 flex gap-2 overflow-x-auto rounded-xl border border-neutral-200 bg-white/90 p-2 text-xs font-semibold text-neutral-600 shadow-sm backdrop-blur">
+                {detailSections.map(section => (
+                  <a
+                    key={section.id}
+                    href={`#server-submission-${section.id}`}
+                    className="shrink-0 rounded-lg px-3 py-2 transition hover:bg-orange-50 hover:text-orange-600"
+                  >
+                    {section.label}
+                  </a>
+                ))}
+              </div>
+
+              <div id="server-submission-media" className="grid scroll-mt-40 grid-cols-2 gap-6">
                 <div>
                   <label className={labelClass}>Hero Logo</label>
                   <button
@@ -348,7 +370,7 @@ export default function ManageServerSubmissions() {
                 </div>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-4">
+              <div id="server-submission-basic" className="grid scroll-mt-40 gap-6 sm:grid-cols-4">
                 <div>
                   <label className={labelClass}>排序 ID</label>
                   <input
@@ -443,7 +465,7 @@ export default function ManageServerSubmissions() {
                 </div>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-2">
+              <div id="server-submission-tags" className="grid scroll-mt-40 gap-6 sm:grid-cols-2">
                 <div>
                   <label className={labelClass}>兼容版本</label>
                   <StringTagEditor
@@ -538,7 +560,7 @@ export default function ManageServerSubmissions() {
                 )}
               </div>
 
-              <div className="space-y-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-6">
+              <div id="server-submission-social" className="space-y-5 scroll-mt-40 rounded-3xl border border-neutral-200 bg-neutral-50 p-6">
                 <div className="flex items-center justify-between">
                   <h4 className="flex items-center gap-2 text-sm font-bold text-neutral-800">
                     <Plus size={16} className="text-orange-500" />
@@ -665,7 +687,7 @@ export default function ManageServerSubmissions() {
                 </div>
               </div>
 
-              <div className="sticky bottom-0 -mx-6 -mb-6 flex items-center justify-between rounded-b-[28px] border-t border-neutral-100 bg-white/80 p-6 backdrop-blur-xl shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)]">
+              <div id="server-submission-save" className="sticky bottom-0 -mx-6 -mb-6 flex scroll-mt-40 items-center justify-between rounded-b-[28px] border-t border-neutral-100 bg-white/80 p-6 backdrop-blur-xl shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)]">
                 <div className="flex items-center gap-2 text-neutral-400">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
                   <span className="text-xs font-medium">当前编辑内容尚未保存</span>

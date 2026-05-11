@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, ShieldCheck } from 'lucide-react';
 import { styleTokens } from '../../lib/design-tokens';
 import { api } from '../../api/client';
+import { useAdminFeedback } from './components/AdminFeedback';
 
 export default function Setup() {
+  const { notify } = useAdminFeedback();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -34,7 +36,7 @@ export default function Setup() {
     setIsLoading(true);
     try {
       await api.post('/auth/init', { email, password });
-      alert('初始化成功！请使用新账号登录。');
+      notify('初始化成功', '请使用新账号登录。', 'success');
       navigate('/admin/login', { replace: true });
     } catch (err: any) {
       setError(err.response?.data || '设置失败，请重试');

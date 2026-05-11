@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { api } from '../../../api/client';
+import { useAdminFeedback } from '../components/AdminFeedback';
 import type { ManagedFriendLink, SiteSettings, SiteSettingsFormData } from '../types/settings';
 
 function createFriendLinkId() {
@@ -22,6 +23,7 @@ function normalizeFriendLinks(items: ManagedFriendLink[] | undefined) {
 }
 
 export function useSettings() {
+  const { notify } = useAdminFeedback();
   const [formData, setFormData] = useState<SiteSettingsFormData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -33,8 +35,11 @@ export function useSettings() {
           friendLinks: normalizeFriendLinks(friendsRes.data),
         });
       })
-      .catch(console.error);
-  }, []);
+      .catch(error => {
+        console.error(error);
+        notify('设置读取失败', '请检查网络或服务端日志。', 'error');
+      });
+  }, [notify]);
 
   const handleChange = (field: keyof SiteSettings, value: string) => {
     setFormData(prev => (prev ? { ...prev, [field]: value } : null));
@@ -109,10 +114,10 @@ export function useSettings() {
           enabled: item.enabled,
         })),
       );
-      alert('全局设置与友情链接已保存。');
+      notify('设置已保存', '全局设置与友情链接已更新。', 'success');
     } catch (error) {
       console.error(error);
-      alert('更新失败，请检查网络或服务端日志。');
+      notify('设置保存失败', '请检查网络或服务端日志。', 'error');
     } finally {
       setIsSaving(false);
     }
