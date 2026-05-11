@@ -14,6 +14,12 @@ import type {
 } from '../types';
 import { getErrorMessage, isCanceledUpload, parseSigFromText } from '../utils';
 
+const ADMIN_LAST_ACTIVITY_KEY = 'flowcore_admin_last_activity';
+
+function markAdminActivity() {
+  localStorage.setItem(ADMIN_LAST_ACTIVITY_KEY, String(Date.now()));
+}
+
 export function useManageChangelog() {
   const { confirm, notify, requestInput } = useAdminFeedback();
   const [logs, setLogs] = useState<ReleaseLog[]>([]);
@@ -87,6 +93,7 @@ export function useManageChangelog() {
     body.append('file', file);
     const controller = new AbortController();
     uploadAbortControllerRef.current = controller;
+    markAdminActivity();
 
     setUploadProgress({
       title,
@@ -100,8 +107,9 @@ export function useManageChangelog() {
       const response = await api.post<PackageAsset>('/admin/package-assets/upload', body, {
         headers: { 'Content-Type': 'multipart/form-data' },
         signal: controller.signal,
-        timeout: 900000,
+        timeout: 0,
         onUploadProgress: event => {
+          markAdminActivity();
           const total = event.total ?? file.size;
           const loaded = event.loaded;
           const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;

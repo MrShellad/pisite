@@ -42,7 +42,17 @@ export function formatFileSize(sizeBytes: number) {
 
 export function getErrorMessage(error: unknown, fallback: string) {
   const responseData = (error as { response?: { data?: unknown } })?.response?.data;
-  return typeof responseData === 'string' && responseData.trim() ? responseData : fallback;
+  if (typeof responseData === 'string' && responseData.trim()) return responseData;
+
+  const candidate = error as { code?: string; message?: string };
+  if (candidate.code === 'ECONNABORTED') {
+    return '上传请求超时。请检查反向代理/网关的上传大小和超时配置。';
+  }
+  if (typeof candidate.message === 'string' && candidate.message.trim()) {
+    return candidate.message;
+  }
+
+  return fallback;
 }
 
 export function isCanceledUpload(error: unknown) {

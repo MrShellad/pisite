@@ -24,6 +24,11 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
         path: "/api/auth/login",
         group: "auth",
     },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/auth/admin-security",
+        group: "auth",
+    },
     // ===== public =====
     ApiEndpointCatalogItem {
         method: "GET",
@@ -580,6 +585,26 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "GET",
         path: "/api/admin/api-warnings",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/profile",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/profile",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/security",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/security",
         group: "admin",
     },
     ApiEndpointCatalogItem {

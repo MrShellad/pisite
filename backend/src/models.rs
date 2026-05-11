@@ -54,6 +54,8 @@ pub struct Claims {
 pub struct LoginPayload {
     pub email: String, // 【新增】
     pub password: String,
+    #[serde(default)]
+    pub turnstile_token: Option<String>,
 }
 
 // 3. 返回给前端的登录结果
@@ -74,6 +76,36 @@ pub struct UpdateAdminProfilePayload {
     pub currentPassword: String,
     pub newEmail: String,
     pub newPassword: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminSecurityConfig {
+    pub id: String,
+    pub session_timeout_minutes: i32,
+    pub turnstile_enabled: bool,
+    pub turnstile_site_key: String,
+    pub has_turnstile_secret: bool,
+    pub turnstile_secret_preview: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicAdminSecurityConfig {
+    pub session_timeout_minutes: i32,
+    pub turnstile_enabled: bool,
+    pub turnstile_site_key: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAdminSecurityConfigPayload {
+    pub session_timeout_minutes: i32,
+    pub turnstile_enabled: bool,
+    pub turnstile_site_key: String,
+    pub turnstile_secret_key: Option<String>,
+    pub clear_turnstile_secret: bool,
 }
 
 // 【新增】第一次初始化的请求体

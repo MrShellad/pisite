@@ -21,6 +21,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route("/api/auth/check-init", get(handlers::auth::check_init))
         .route("/api/auth/init", post(handlers::auth::init_admin))
         .route("/api/auth/login", post(handlers::auth::login))
+        .route(
+            "/api/auth/admin-security",
+            get(handlers::admin_security::get_public_admin_security_config),
+        )
         // 2. 全局设置与首屏
         .route("/api/settings", get(handlers::settings::get_settings))
         .route("/api/hero", get(handlers::hero::get_hero))
@@ -382,6 +386,11 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/profile",
             get(handlers::admin_profile::get_profile).put(handlers::admin_profile::update_profile),
+        )
+        .route(
+            "/api/admin/security",
+            get(handlers::admin_security::get_admin_security_config)
+                .put(handlers::admin_security::update_admin_security_config),
         )
         // 10. API 公网访问控制（策略表）
         .route(

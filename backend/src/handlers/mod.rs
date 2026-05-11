@@ -1,6 +1,7 @@
 // backend/src/handlers/mod.rs
 pub mod admin_internal_middleware;
 pub mod admin_profile;
+pub mod admin_security;
 pub mod api_endpoint_policies;
 pub mod api_key_middleware;
 pub mod api_keys;

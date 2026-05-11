@@ -24,6 +24,7 @@ import {
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
 import { AdminThemeToggle } from './components/AdminThemeToggle';
+import { useAdminSessionTimeout } from './hooks/useAdminSessionTimeout';
 
 type NavLinkItem = {
   name: string;
@@ -76,6 +77,7 @@ function getCurrentPageName(pathname: string) {
 }
 
 export default function AdminLayout() {
+  useAdminSessionTimeout();
   const location = useLocation();
   const currentPageName = getCurrentPageName(location.pathname);
   const isSettingsGroupActive = useMemo(
