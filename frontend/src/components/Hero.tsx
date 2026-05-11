@@ -168,15 +168,25 @@ export default function Hero({ previewConfig }: HeroProps) {
       >
         <motion.div
           variants={logoEntry}
-          className="mb-8 transition-transform hover:scale-105"
+          className="relative mb-8 transition-transform hover:scale-105"
           style={{ color: config.logoColor }}
         >
-          <div className="flex h-16 w-16 items-center justify-center md:h-24 md:w-24">
+          <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2">
+            <motion.div
+              className="h-44 w-44 rounded-full blur-3xl md:h-64 md:w-64"
+              style={{
+                background: `radial-gradient(circle, ${config.logoColor}66 0%, ${config.logoColor}2e 42%, transparent 74%)`,
+              }}
+              animate={{ opacity: [0.45, 0.82, 0.45], scale: [0.92, 1.18, 0.92] }}
+              transition={{ duration: 5.2, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          </div>
+          <div className="relative z-10 flex h-16 w-16 items-center justify-center md:h-24 md:w-24">
             {config.logoUrl ? (
               <img
                 src={config.logoUrl}
                 alt="Hero Logo"
-                className="h-full w-full object-contain drop-shadow-[0_0_12px_currentColor]"
+                className="h-full w-full object-contain [filter:drop-shadow(0_18px_28px_rgba(15,23,42,0.16))] dark:[filter:drop-shadow(0_18px_34px_rgba(0,0,0,0.5))]"
               />
             ) : null}
           </div>

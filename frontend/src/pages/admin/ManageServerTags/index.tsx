@@ -3,10 +3,10 @@ import { RefreshCw, Save, Tags, Plus, Search, Trash2, LayoutGrid } from 'lucide-
 import { useManageServerTags } from './useManageServerTags';
 
 const CATEGORY_MAP = {
-  features: { name: '🚀 核心特色', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  mechanics: { name: '⚙️ 玩法机制', color: 'text-orange-600', bg: 'bg-orange-50' },
-  elements: { name: '🔮 补充元素', color: 'text-violet-600', bg: 'bg-violet-50' },
-  community: { name: '🤝 社区生态', color: 'text-sky-600', bg: 'bg-sky-50' },
+  features: { name: '🚀 核心特色', color: 'text-emerald-600 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+  mechanics: { name: '⚙️ 玩法机制', color: 'text-orange-600 dark:text-orange-300', bg: 'bg-orange-50 dark:bg-orange-500/10' },
+  elements: { name: '🔮 补充元素', color: 'text-violet-600 dark:text-violet-300', bg: 'bg-violet-50 dark:bg-violet-500/10' },
+  community: { name: '🤝 社区生态', color: 'text-sky-600 dark:text-sky-300', bg: 'bg-sky-50 dark:bg-sky-500/10' },
 };
 
 export default function ManageServerTags() {
@@ -16,38 +16,40 @@ export default function ManageServerTags() {
     fetchTags, handleSelect, handleCreateNew, handleSave, handleDelete
   } = useManageServerTags();
 
-  const inputClass = 'w-full rounded-xl border border-neutral-200 bg-neutral-100/60 px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10';
-  const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-500';
-  const cardClass = 'rounded-2xl border border-neutral-200/70 bg-white/85 p-6 shadow-sm backdrop-blur';
+  const inputClass =
+    'w-full rounded-xl border border-neutral-200 bg-neutral-100/60 px-4 py-3 text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10 dark:border-white/10 dark:bg-black/35 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:focus:bg-orange-500/5';
+  const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400';
+  const cardClass =
+    'rounded-2xl border border-neutral-200/70 bg-white/85 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.03] dark:shadow-none';
 
-  if (isLoading) return <div className="animate-pulse text-neutral-500 p-8">加载字典中...</div>;
+  if (isLoading) return <div className="animate-pulse p-8 text-neutral-500 dark:text-neutral-400">加载字典中...</div>;
 
   return (
     <div className="space-y-8 pb-12">
       {/* 顶部控制台 */}
       <div className="flex flex-wrap items-center justify-between gap-6">
         <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold text-neutral-900">
+          <h2 className="flex items-center gap-2 text-2xl font-bold text-neutral-900 dark:text-white">
             <Tags className="text-orange-500" />
             服务器标签字典管理
           </h2>
-          <p className="mt-2 text-sm text-neutral-500">在这里管理前台“发现页”可用的图文徽章（新增、修改 SVG 和颜色）。</p>
+          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">在这里管理前台“发现页”可用的图文徽章（新增、修改 SVG 和颜色）。</p>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="relative group">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-orange-500 transition-colors" />
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors group-focus-within:text-orange-500 dark:text-neutral-500" />
             <input
               type="text"
               placeholder="搜索标签名称..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-64 rounded-xl border border-neutral-200 bg-white pl-10 pr-4 py-2.5 text-sm outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+              className="w-64 rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-sm text-neutral-900 outline-none transition-all placeholder:text-neutral-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 dark:border-white/10 dark:bg-black/35 dark:text-neutral-100 dark:placeholder:text-neutral-600"
             />
           </div>
           <button
             onClick={() => void fetchTags()}
-            className="p-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-500 hover:text-orange-600 transition shadow-sm"
+            className="rounded-xl border border-neutral-200 bg-white p-2.5 text-neutral-500 shadow-sm transition hover:text-orange-600 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:shadow-none dark:hover:text-orange-300"
           >
             <RefreshCw size={16} />
           </button>
@@ -72,7 +74,7 @@ export default function ManageServerTags() {
                 </div>
                 
                 {items.length === 0 ? (
-                  <div className="text-xs text-neutral-400 pl-3">暂无匹配项</div>
+                  <div className="pl-3 text-xs text-neutral-400 dark:text-neutral-500">暂无匹配项</div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     {items.map((item) => {
@@ -81,19 +83,23 @@ export default function ManageServerTags() {
                         <div key={item.id} className="relative group">
                           <button
                             onClick={() => handleSelect(item)}
-                            className={`flex items-center gap-2 w-full p-2 rounded-xl border text-left transition-all ${isActive ? 'bg-orange-50 border-orange-300 ring-2 ring-orange-500/20' : 'bg-white border-neutral-200 hover:border-neutral-300'}`}
+                            className={`flex w-full items-center gap-2 rounded-xl border p-2 text-left transition-all ${
+                              isActive
+                                ? 'border-orange-300 bg-orange-50 ring-2 ring-orange-500/20 dark:border-orange-400/50 dark:bg-orange-500/10'
+                                : 'border-neutral-200 bg-white hover:border-neutral-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20 dark:hover:bg-white/[0.06]'
+                            }`}
                           >
                             <div 
                               className="w-5 h-5 flex items-center justify-center shrink-0"
                               style={{ color: item.color }}
                               dangerouslySetInnerHTML={{ __html: item.iconSvg }} 
                             />
-                            <span className="text-xs font-bold text-neutral-700 truncate">{item.label}</span>
+                            <span className="truncate text-xs font-bold text-neutral-700 dark:text-neutral-200">{item.label}</span>
                           </button>
                           
                           <button 
                             onClick={(e) => { e.stopPropagation(); void handleDelete(item.id); }}
-                            className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 p-1.5 bg-white border border-neutral-200 text-neutral-400 hover:text-red-500 hover:border-red-200 rounded-full shadow-sm transition-all"
+                            className="absolute -right-1 -top-1 rounded-full border border-neutral-200 bg-white p-1.5 text-neutral-400 opacity-0 shadow-sm transition-all hover:border-red-200 hover:text-red-500 group-hover:opacity-100 dark:border-white/10 dark:bg-neutral-950 dark:shadow-none dark:hover:border-red-500/30 dark:hover:text-red-300"
                           >
                             <Trash2 size={12} />
                           </button>
@@ -110,23 +116,23 @@ export default function ManageServerTags() {
         {/* ================= 右侧：编辑表单 ================= */}
         <section className={`${cardClass} custom-scrollbar overflow-y-visible xl:h-[calc(100vh-180px)] xl:overflow-y-auto`}>
           {!selectedId ? (
-            <div className="flex flex-col items-center justify-center h-full space-y-4 text-neutral-400">
-              <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center"><Tags size={32} /></div>
+            <div className="flex h-full flex-col items-center justify-center space-y-4 text-neutral-400 dark:text-neutral-500">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5"><Tags size={32} /></div>
               <p className="text-sm font-medium">请选择一个标签，或点击右上角添加新标签</p>
             </div>
           ) : (
             <div className="space-y-8 animate-in fade-in zoom-in-95 duration-200">
               
-              <div className="flex items-center justify-between pb-4 border-b border-neutral-200">
-                <h3 className="text-lg font-bold text-neutral-900">{selectedId === 'new' ? '✨ 添加新标签' : '📝 编辑标签属性'}</h3>
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-4 dark:border-white/10">
+                <h3 className="text-lg font-bold text-neutral-900 dark:text-white">{selectedId === 'new' ? '✨ 添加新标签' : '📝 编辑标签属性'}</h3>
                 {selectedId !== 'new' && <span className="text-xs font-mono text-neutral-400">ID: {selectedId}</span>}
               </div>
 
               {/* 核心：所见即所得的预览卡片 */}
-              <div className="p-6 bg-[radial-gradient(circle_at_center,_#f1f5f9_0%,_#f8fafc_100%)] border border-neutral-200 rounded-3xl flex flex-col items-center justify-center gap-4">
+              <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-neutral-200 bg-[radial-gradient(circle_at_center,_#f1f5f9_0%,_#f8fafc_100%)] p-6 dark:border-white/10 dark:bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.08)_0%,_rgba(255,255,255,0.03)_100%)]">
                 <span className="text-xs font-bold text-neutral-400 tracking-widest uppercase">前台渲染预览效果</span>
                 <div 
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border-2 shadow-sm transition-all"
+                  className="flex items-center gap-1.5 rounded-xl border-2 bg-white px-3 py-1.5 shadow-sm transition-all dark:bg-neutral-950 dark:shadow-none"
                   style={{ borderColor: `${formData.color}40`, color: formData.color }} // 40为透明度
                 >
                   <div className="w-5 h-5 flex items-center justify-center shrink-0" dangerouslySetInnerHTML={{ __html: formData.iconSvg || '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>' }} />
@@ -158,7 +164,7 @@ export default function ManageServerTags() {
                       type="color" 
                       value={formData.color} 
                       onChange={e => setFormData({...formData, color: e.target.value})} 
-                      className="w-12 h-12 rounded-xl cursor-pointer border-0 p-0 shadow-sm shrink-0" 
+                      className="h-12 w-12 shrink-0 cursor-pointer rounded-xl border-0 p-0 shadow-sm dark:shadow-none" 
                     />
                     <input value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} className={`${inputClass} font-mono`} placeholder="#10b981" />
                   </div>
@@ -180,11 +186,11 @@ export default function ManageServerTags() {
                 />
               </div>
 
-              <div className="pt-4 flex justify-end gap-4">
+              <div className="flex justify-end gap-4 pt-4">
                 <button
                   onClick={() => void handleSave()}
                   disabled={isSaving}
-                  className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-8 py-3.5 text-sm font-bold tracking-wider text-white transition hover:bg-neutral-800 disabled:opacity-50 shadow-lg"
+                  className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-8 py-3.5 text-sm font-bold tracking-wider text-white shadow-lg transition hover:bg-neutral-800 disabled:opacity-50 dark:bg-white dark:text-neutral-950 dark:shadow-none dark:hover:bg-neutral-200"
                 >
                   <Save size={18} />
                   {isSaving ? '保存中...' : '保存标签设置'}
