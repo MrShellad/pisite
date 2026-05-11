@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
+import { AdminThemeToggle } from './components/AdminThemeToggle';
+
 type NavLinkItem = {
   name: string;
   path: string;
@@ -52,7 +54,7 @@ const dataNavs: NavLinkItem[] = [
 
 const settingsNavs: NavLinkItem[] = [
   { name: '站点设置', path: '/admin/settings', icon: <LinkIcon size={16} /> },
-  { name: '邮箱验证', path: '/admin/submission-email', icon: <Mail size={16} /> },
+  { name: '邮件模板', path: '/admin/submission-email', icon: <Mail size={16} /> },
   { name: 'API Key 管理', path: '/admin/api-keys', icon: <KeyRound size={16} /> },
   { name: '公网 API 控制', path: '/admin/api-access', icon: <GlobeLock size={16} /> },
   { name: '账号安全', path: '/admin/account', icon: <ShieldCheck size={16} /> },
@@ -214,6 +216,7 @@ export default function AdminLayout() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-3">
+            <AdminThemeToggle />
             <span className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white/80 px-3 py-1.5 text-xs font-mono text-neutral-600 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-neutral-400 dark:shadow-none">
               <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
               <span className="hidden sm:inline">System Online</span>

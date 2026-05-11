@@ -1,7 +1,7 @@
 use crate::handlers::image_storage::{MAX_SERVER_SUBMISSION_IMAGE_BYTES, uuid_webp_file_name};
 use crate::handlers::submission_email::{
     check_submission_email_token, consume_submission_email_token, normalize_submission_email,
-    send_submission_custom_email,
+    send_submission_custom_email, send_submission_owner_code_email,
 };
 use crate::handlers::svg_sanitizer::sanitize_svg;
 use crate::models::{
@@ -823,13 +823,7 @@ pub async fn toggle_verify(
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-            let subject = format!("您的服务器「{}」已通过审核", name);
-            let body = format!(
-                "您好，\n\n您的服务器「{}」已通过审核并上线。\n\n服务器管理 Code：{}\n\n您可以在服务器提交页面的“修改服务器信息”入口，使用原始邮箱地址和该 Code 修改服务器资料或下线服务器。\n\n请妥善保存该 Code，不要公开分享。",
-                name, owner_code
-            );
-
-            match send_submission_custom_email(&pool, &safe_email, &subject, &body).await {
+            match send_submission_owner_code_email(&pool, &safe_email, &name, &owner_code).await {
                 Ok(()) => owner_code_sent = true,
                 Err((_, error)) => {
                     mail_error = Some(error);

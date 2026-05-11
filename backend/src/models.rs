@@ -509,8 +509,6 @@ pub struct SubmissionEmailConfig {
     pub code_ttl_minutes: i32,
     pub resend_cooldown_seconds: i32,
     pub max_verify_attempts: i32,
-    pub email_subject_template: String,
-    pub email_body_template: String,
     pub updated_at: Option<String>,
 }
 
@@ -531,8 +529,29 @@ pub struct UpdateSubmissionEmailConfigPayload {
     pub code_ttl_minutes: i32,
     pub resend_cooldown_seconds: i32,
     pub max_verify_attempts: i32,
-    pub email_subject_template: String,
-    pub email_body_template: String,
+    #[serde(default)]
+    pub email_subject_template: Option<String>,
+    #[serde(default)]
+    pub email_body_template: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct SubmissionEmailTemplate {
+    pub template_key: String,
+    pub label: String,
+    pub description: String,
+    pub subject_template: String,
+    pub html_body_template: String,
+    pub variables: String,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSubmissionEmailTemplatePayload {
+    pub subject_template: String,
+    pub html_body_template: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, FromRow)]

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Copy,
   Download,
@@ -58,6 +59,8 @@ export default function ManageChangelog() {
     handleDelete,
     handlePushDownload,
   } = useManageChangelog();
+  const [iconPickerIndex, setIconPickerIndex] = useState<number | null>(null);
+  const selectedIconChange = iconPickerIndex === null ? null : formData.changes[iconPickerIndex] ?? null;
 
   const inputClass =
     'w-full rounded-xl border border-neutral-200 bg-neutral-100/50 px-4 py-3 text-sm text-neutral-900 transition-all placeholder:text-neutral-400 focus:border-blue-500/50 focus:bg-blue-50/50 focus:outline-none dark:border-white/10 dark:bg-black/40 dark:text-white dark:placeholder:text-neutral-600 dark:focus:bg-blue-500/5';
@@ -330,26 +333,33 @@ export default function ManageChangelog() {
                   key={index}
                   className="relative mb-5 rounded-xl border border-neutral-200 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[0.02]"
                 >
-                  <div className="mb-3 flex items-start gap-2">
-                    <input
-                      type="color"
-                      value={item.iconColor}
-                      onChange={event => updateChange(index, 'iconColor', event.target.value)}
-                      className="h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded border-0 p-0"
-                    />
-                    <div className="flex-1 space-y-2">
-                      <input
-                        value={item.iconSvg}
-                        onChange={event => updateChange(index, 'iconSvg', event.target.value)}
-                        className={`${inputClass} py-2 font-mono text-[11px]`}
-                        placeholder="SVG 内容"
+                  <div className="flex items-start gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIconPickerIndex(index)}
+                      className="group flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-600 shadow-sm transition-all hover:border-blue-400 hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:border-blue-400 dark:hover:text-blue-300"
+                      title="选择图标"
+                    >
+                      <div
+                        dangerouslySetInnerHTML={{ __html: item.iconSvg }}
+                        className="h-5 w-5 transition-transform group-hover:scale-110"
+                        style={{ color: item.iconColor }}
                       />
+                    </button>
+                    <div className="flex-1">
                       <input
                         value={item.text}
                         onChange={event => updateChange(index, 'text', event.target.value)}
                         className={inputClass}
                         placeholder="变更描述"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setIconPickerIndex(index)}
+                        className="mt-2 text-xs font-bold text-blue-600 transition hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        选择预设图标
+                      </button>
                     </div>
                     <button
                       type="button"
@@ -358,26 +368,6 @@ export default function ManageChangelog() {
                     >
                       <Trash2 size={16} />
                     </button>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 pl-12">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
-                      预设图标
-                    </span>
-                    {PRESET_ICONS.map(preset => (
-                      <button
-                        key={preset.name}
-                        type="button"
-                        onClick={() => applyPreset(index, preset.svg, preset.color)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-neutral-200 bg-white transition-all hover:border-blue-500 dark:border-white/10 dark:bg-white/5 dark:hover:border-blue-500"
-                        title={preset.name}
-                      >
-                        <div
-                          dangerouslySetInnerHTML={{ __html: preset.svg }}
-                          className="h-3.5 w-3.5"
-                          style={{ color: preset.color }}
-                        />
-                      </button>
-                    ))}
                   </div>
                 </div>
               ))}
@@ -512,6 +502,68 @@ export default function ManageChangelog() {
           ) : null}
         </div>
       </div>
+
+      {iconPickerIndex !== null ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/50 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-950">
+            <div className="flex items-start justify-between gap-4 border-b border-neutral-200 px-5 py-4 dark:border-white/10">
+              <div>
+                <h3 className="text-lg font-black text-neutral-900 dark:text-white">
+                  选择更新图标
+                </h3>
+                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  从预设图标中选择，图标样式和颜色会自动匹配。
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIconPickerIndex(null)}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-neutral-200 text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-900 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white"
+                aria-label="关闭图标选择器"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="overflow-auto p-5">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+                {PRESET_ICONS.map(preset => {
+                  const isSelected =
+                    selectedIconChange?.iconSvg === preset.svg &&
+                    selectedIconChange?.iconColor === preset.color;
+
+                  return (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => {
+                        applyPreset(iconPickerIndex, preset.svg, preset.color);
+                        setIconPickerIndex(null);
+                      }}
+                      className={`group flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl border p-3 text-center transition-all ${
+                        isSelected
+                          ? 'border-blue-400 bg-blue-50 text-blue-700 shadow-sm dark:border-blue-400/60 dark:bg-blue-500/10 dark:text-blue-200'
+                          : 'border-neutral-200 bg-neutral-50/70 text-neutral-600 hover:border-blue-300 hover:bg-white hover:text-blue-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-neutral-300 dark:hover:border-blue-400 dark:hover:bg-white/[0.06] dark:hover:text-blue-300'
+                      }`}
+                    >
+                      <span
+                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm transition-transform group-hover:scale-105 dark:bg-white/5"
+                        style={{ color: preset.color }}
+                      >
+                        <span
+                          dangerouslySetInnerHTML={{ __html: preset.svg }}
+                          className="h-5 w-5"
+                        />
+                      </span>
+                      <span className="text-xs font-bold">{preset.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {uploadProgress ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-950/60 p-4 backdrop-blur-sm">

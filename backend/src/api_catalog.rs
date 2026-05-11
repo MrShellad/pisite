@@ -214,6 +214,16 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     },
     ApiEndpointCatalogItem {
         method: "GET",
+        path: "/api/admin/submission-email/templates",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/submission-email/templates/{template_key}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
         path: "/api/admin/submission-email/rules",
         group: "admin",
     },

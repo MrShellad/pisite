@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Zap, Lock, Mail } from 'lucide-react';
 import { api } from '../../api/client';
+import { AdminThemeToggle } from './components/AdminThemeToggle';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -37,6 +38,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-[#050505] relative overflow-hidden font-sans transition-colors duration-500">
+      <AdminThemeToggle className="absolute right-5 top-5 z-20" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/20 dark:bg-blue-600/20 rounded-full blur-[150px] pointer-events-none"></div>
 
       <div className="relative w-full max-w-sm p-8 z-10 bg-white/80 dark:bg-white/[0.03] border border-neutral-200 dark:border-white/10 backdrop-blur-2xl rounded-3xl shadow-2xl transition-colors duration-500">

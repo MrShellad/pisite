@@ -135,6 +135,14 @@ pub fn create_router(pool: SqlitePool) -> Router {
             post(handlers::submission_email::send_submission_email_test),
         )
         .route(
+            "/api/admin/submission-email/templates",
+            get(handlers::submission_email::list_submission_email_templates),
+        )
+        .route(
+            "/api/admin/submission-email/templates/{template_key}",
+            put(handlers::submission_email::update_submission_email_template),
+        )
+        .route(
             "/api/admin/submission-email/rules",
             get(handlers::submission_email::list_submission_email_rules)
                 .post(handlers::submission_email::create_submission_email_rule),

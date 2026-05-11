@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Mail, Plus, RefreshCw, Save, Send, ShieldCheck, Trash2 } from 'lucide-react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 import { api } from '@/api/client';
 import type {
@@ -7,6 +9,9 @@ import type {
   SubmissionEmailConfigUpdatePayload,
   SubmissionEmailRule,
   SubmissionEmailRulePayload,
+  SubmissionEmailTemplate,
+  SubmissionEmailTemplateKey,
+  SubmissionEmailTemplateUpdatePayload,
 } from '@/types';
 import { useAdminFeedback } from './components/AdminFeedback';
 
@@ -19,10 +24,35 @@ const emptyRule: SubmissionEmailRulePayload = {
   enabled: true,
 };
 
+const templateVariables: Record<SubmissionEmailTemplateKey, Array<{ key: string; label: string }>> = {
+  verification_code: [
+    { key: 'code', label: '验证码' },
+    { key: 'ttl', label: '有效期分钟数' },
+  ],
+  server_owner_code: [
+    { key: 'serverName', label: '服务器名称' },
+    { key: 'code', label: '服务器管理 Code' },
+    { key: 'contactEmail', label: '提交者邮箱' },
+  ],
+};
+
+const quillModules = {
+  toolbar: [
+    [{ header: [2, 3, false] }],
+    ['bold', 'italic', 'underline'],
+    [{ list: 'ordered' }, { list: 'bullet' }],
+    ['link'],
+    ['clean'],
+  ],
+};
+
 export default function ManageSubmissionEmail() {
   const { confirm } = useAdminFeedback();
   const [config, setConfig] = useState<SubmissionEmailConfig | null>(null);
   const [rules, setRules] = useState<SubmissionEmailRule[]>([]);
+  const [templates, setTemplates] = useState<SubmissionEmailTemplate[]>([]);
+  const [activeTemplateKey, setActiveTemplateKey] =
+    useState<SubmissionEmailTemplateKey>('verification_code');
   const [passwordInput, setPasswordInput] = useState('');
   const [clearPassword, setClearPassword] = useState(false);
   const [testEmail, setTestEmail] = useState('');
@@ -31,6 +61,7 @@ export default function ManageSubmissionEmail() {
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [isCreatingRule, setIsCreatingRule] = useState(false);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [savingRuleIds, setSavingRuleIds] = useState<string[]>([]);
   const [deletingRuleIds, setDeletingRuleIds] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
@@ -40,16 +71,25 @@ export default function ManageSubmissionEmail() {
     'w-full rounded-xl border border-neutral-200 bg-neutral-100/60 px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-orange-500 focus:bg-white';
   const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-500';
   const cardClass = 'rounded-2xl border border-neutral-200/70 bg-white/85 p-6 shadow-sm backdrop-blur';
+  const activeTemplate = templates.find((template) => template.templateKey === activeTemplateKey) ?? templates[0] ?? null;
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [configRes, rulesRes] = await Promise.all([
+      const [configRes, rulesRes, templatesRes] = await Promise.all([
         api.get<SubmissionEmailConfig>('/admin/submission-email/config'),
         api.get<SubmissionEmailRule[]>('/admin/submission-email/rules'),
+        api.get<SubmissionEmailTemplate[]>('/admin/submission-email/templates'),
       ]);
       setConfig(configRes.data);
       setRules(rulesRes.data);
+      setTemplates(templatesRes.data);
+      if (
+        templatesRes.data.length > 0 &&
+        !templatesRes.data.some((template) => template.templateKey === activeTemplateKey)
+      ) {
+        setActiveTemplateKey(templatesRes.data[0].templateKey);
+      }
     } catch (requestError) {
       console.error('Failed to load submission email config', requestError);
       setError('加载邮箱验证配置失败。');
@@ -118,8 +158,6 @@ export default function ManageSubmissionEmail() {
       codeTtlMinutes: Number(config.codeTtlMinutes),
       resendCooldownSeconds: Number(config.resendCooldownSeconds),
       maxVerifyAttempts: Number(config.maxVerifyAttempts),
-      emailSubjectTemplate: config.emailSubjectTemplate.trim(),
-      emailBodyTemplate: config.emailBodyTemplate.trim(),
     };
 
     try {
@@ -171,6 +209,42 @@ export default function ManageSubmissionEmail() {
       setError(`测试发信失败。请检查 SMTP 配置。${debugLog}`);
     } finally {
       setIsSendingTest(false);
+    }
+  };
+
+  const updateTemplate = (key: keyof SubmissionEmailTemplateUpdatePayload, value: string) => {
+    setTemplates((current) =>
+      current.map((template) =>
+        template.templateKey === activeTemplateKey ? { ...template, [key]: value } : template,
+      ),
+    );
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!activeTemplate) return;
+
+    setIsSavingTemplate(true);
+    setError(null);
+    setMessage(null);
+
+    const payload: SubmissionEmailTemplateUpdatePayload = {
+      subjectTemplate: activeTemplate.subjectTemplate.trim(),
+      htmlBodyTemplate: activeTemplate.htmlBodyTemplate.trim(),
+    };
+
+    try {
+      await api.put(`/admin/submission-email/templates/${activeTemplate.templateKey}`, payload);
+      setMessage('邮件模板已保存。');
+      await fetchData();
+    } catch (requestError) {
+      const backendMessage =
+        typeof (requestError as { response?: { data?: string } })?.response?.data === 'string'
+          ? (requestError as { response?: { data?: string } }).response?.data
+          : null;
+
+      setError(backendMessage || '保存邮件模板失败。');
+    } finally {
+      setIsSavingTemplate(false);
     }
   };
 
@@ -387,32 +461,6 @@ export default function ManageSubmissionEmail() {
             <label className={labelClass}>最大校验次数</label>
             <input type="number" value={config.maxVerifyAttempts} onChange={(event) => handleConfigChange('maxVerifyAttempts', Number(event.target.value))} className={inputClass} />
           </div>
-          
-          <div className="sm:col-span-2 pt-4 border-t border-neutral-100">
-            <h4 className="mb-4 text-sm font-bold text-neutral-900">邮件模板</h4>
-            <div className="space-y-4">
-              <div>
-                <label className={labelClass}>邮件标题模板</label>
-                <input 
-                  value={config.emailSubjectTemplate} 
-                  onChange={(event) => handleConfigChange('emailSubjectTemplate', event.target.value)} 
-                  className={inputClass} 
-                  placeholder="例如: 您的验证码是: {code}" 
-                />
-                <p className="mt-1.5 text-xs text-neutral-500">可用变量：{`{code}`} 验证码, {`{ttl}`} 有效期(分钟)</p>
-              </div>
-              <div>
-                <label className={labelClass}>邮件正文模板 (支持 HTML)</label>
-                <textarea 
-                  value={config.emailBodyTemplate} 
-                  onChange={(event) => handleConfigChange('emailBodyTemplate', event.target.value)} 
-                  className={`${inputClass} min-h-[120px] font-mono whitespace-pre`} 
-                  placeholder={"您好！\n您的验证码是 {code} ..."}
-                />
-                <p className="mt-1.5 text-xs text-neutral-500">可用变量：{`{code}`} 验证码, {`{ttl}`} 有效期(分钟)。邮件将作为纯文本或带基本 HTML 解析的格式发送（取决于客户端），此处主要按照换行自动转译。</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="mt-6 flex flex-wrap items-end gap-3">
@@ -429,6 +477,115 @@ export default function ManageSubmissionEmail() {
             {isSendingTest ? '发送中...' : '发送测试邮件'}
           </button>
         </div>
+      </section>
+
+      <section className={cardClass}>
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
+              <Mail size={18} className="text-orange-500" />
+              邮件模板
+            </h3>
+            <p className="mt-1 text-sm text-neutral-500">
+              统一维护各功能使用的邮件内容，支持 HTML 模板编辑。
+            </p>
+          </div>
+          <button
+            onClick={() => void handleSaveTemplate()}
+            disabled={isSavingTemplate || !activeTemplate}
+            className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            <Save size={16} />
+            {isSavingTemplate ? '保存中...' : '保存模板'}
+          </button>
+        </div>
+
+        {templates.length > 0 && activeTemplate ? (
+          <div className="space-y-5">
+            <div className="inline-flex flex-wrap gap-1 rounded-xl border border-neutral-200 bg-neutral-100 p-1">
+              {templates.map((template) => {
+                const isActive = template.templateKey === activeTemplateKey;
+                return (
+                  <button
+                    key={template.templateKey}
+                    type="button"
+                    onClick={() => setActiveTemplateKey(template.templateKey)}
+                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
+                      isActive
+                        ? 'bg-white text-orange-600 shadow-sm'
+                        : 'text-neutral-500 hover:bg-white/70 hover:text-neutral-900'
+                    }`}
+                  >
+                    {template.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h4 className="font-bold text-neutral-900">{activeTemplate.label}</h4>
+                  <p className="mt-1 text-sm text-neutral-500">{activeTemplate.description}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {(templateVariables[activeTemplate.templateKey] ?? []).map((variable) => (
+                    <span
+                      key={variable.key}
+                      className="rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700"
+                      title={variable.label}
+                    >
+                      {`{${variable.key}}`}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>邮件标题模板</label>
+              <input
+                value={activeTemplate.subjectTemplate}
+                onChange={(event) => updateTemplate('subjectTemplate', event.target.value)}
+                className={inputClass}
+                placeholder="例如：您的验证码是 {code}"
+              />
+            </div>
+
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+              <div>
+                <label className={labelClass}>HTML 邮件正文模板</label>
+                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+                  <ReactQuill
+                    theme="snow"
+                    value={activeTemplate.htmlBodyTemplate}
+                    onChange={(value) => updateTemplate('htmlBodyTemplate', value)}
+                    modules={quillModules}
+                    className="min-h-[280px] [&_.ql-container]:min-h-[230px] [&_.ql-editor]:min-h-[230px]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className={labelClass}>预览</label>
+                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+                  <div className="border-b border-neutral-100 px-4 py-3 text-sm font-bold text-neutral-800">
+                    {activeTemplate.subjectTemplate || '邮件标题预览'}
+                  </div>
+                  <iframe
+                    title="邮件模板预览"
+                    sandbox=""
+                    srcDoc={activeTemplate.htmlBodyTemplate || '<p></p>'}
+                    className="h-[290px] w-full bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500">
+            暂无可用邮件模板。
+          </div>
+        )}
       </section>
 
       <section className={cardClass}>
