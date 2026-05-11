@@ -23,6 +23,7 @@ pub async fn initialize_database(pool: &SqlitePool) {
     }
 
     ensure_legacy_columns(pool).await;
+    ensure_column(pool, "article_pushes", "expires_at", "DATETIME").await;
     sync_api_endpoint_policies(pool).await;
     refresh_historical_donors(pool).await;
 }
@@ -31,6 +32,7 @@ async fn ensure_legacy_columns(pool: &SqlitePool) {
     ensure_admin_security_config_table(pool).await;
     ensure_submission_email_templates_table(pool).await;
     ensure_feature_screenshots_table(pool).await;
+    ensure_article_pushes_table(pool).await;
     ensure_client_installation_reports_table(pool).await;
     ensure_column(pool, "users", "mc_name", "TEXT").await;
     ensure_column(pool, "users", "afdian_user_id", "TEXT").await;
@@ -194,6 +196,36 @@ async fn ensure_feature_screenshots_table(pool: &SqlitePool) {
             caption TEXT NOT NULL DEFAULT '',
             priority INTEGER NOT NULL DEFAULT 0
         )",
+    )
+    .execute(pool)
+    .await;
+}
+
+async fn ensure_article_pushes_table(pool: &SqlitePool) {
+    let _ = sqlx::query(
+        r#"CREATE TABLE IF NOT EXISTS article_pushes (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            cover TEXT NOT NULL DEFAULT '',
+            content TEXT NOT NULL,
+            related_link TEXT NOT NULL DEFAULT '',
+            category TEXT NOT NULL DEFAULT '',
+            enabled BOOLEAN NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )"#,
+    )
+    .execute(pool)
+    .await;
+
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_article_pushes_enabled_created ON article_pushes (enabled, created_at)",
+    )
+    .execute(pool)
+    .await;
+
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_article_pushes_category ON article_pushes (category)",
     )
     .execute(pool)
     .await;

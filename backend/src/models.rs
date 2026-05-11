@@ -678,6 +678,35 @@ pub struct UpdateMcCrawlerConfig {
     pub interval_minutes: i32,
 }
 
+// ==================== Article Push Data ====================
+
+#[derive(Serialize, Deserialize, Clone, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct ArticlePush {
+    pub id: String,
+    pub title: String,
+    pub cover: String,
+    pub content: String,
+    pub related_link: String,
+    pub category: String,
+    pub enabled: bool,
+    pub expires_at: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArticlePushPayload {
+    pub title: String,
+    pub cover: String,
+    pub content: String,
+    pub related_link: String,
+    pub category: String,
+    pub enabled: Option<bool>,
+    pub expires_at: Option<String>,
+}
+
 // ==================== Tauri Updater 发行模型 ====================
 
 // 1. 前端控制台提交的发布表单

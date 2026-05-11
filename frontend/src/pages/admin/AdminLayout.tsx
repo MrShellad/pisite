@@ -45,7 +45,7 @@ const ecosystemNavs: NavLinkItem[] = [
   { name: '服务器提交', path: '/admin/server-submissions', icon: <Star size={18} /> },
   { name: '标签字典管理', path: '/admin/server-tags', icon: <Tags size={18} /> },
   { name: '信令服务器', path: '/admin/signaling', icon: <Server size={18} /> },
-  { name: '爬虫配置', path: '/admin/mccrawler', icon: <MessageCircle size={18} /> },
+  { name: '文章推送', path: '/admin/mccrawler', icon: <MessageCircle size={18} /> },
 ];
 
 const dataNavs: NavLinkItem[] = [

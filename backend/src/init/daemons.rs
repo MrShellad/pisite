@@ -15,4 +15,9 @@ pub fn spawn_background_tasks(pool: &SqlitePool) {
     tokio::spawn(async move {
         crate::handlers::server_submissions::server_status_daemon(server_ping_pool).await;
     });
+
+    let article_push_pool = pool.clone();
+    tokio::spawn(async move {
+        crate::handlers::article_push::article_push_cleanup_daemon(article_push_pool).await;
+    });
 }

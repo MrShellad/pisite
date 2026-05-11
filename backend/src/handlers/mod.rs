@@ -5,6 +5,7 @@ pub mod admin_security;
 pub mod api_endpoint_policies;
 pub mod api_key_middleware;
 pub mod api_keys;
+pub mod article_push;
 pub mod auth;
 pub mod changelog;
 pub mod donor_admin;

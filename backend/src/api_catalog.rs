@@ -86,6 +86,16 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
         group: "public",
     },
     ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/article-pushes",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/article-pushes/latest",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
         method: "POST",
         path: "/api/server-submissions/email/send-code",
         group: "public",
@@ -405,6 +415,31 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "POST",
         path: "/api/admin/mc-crawler/force-manifest",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/article-pushes",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/article-pushes",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/article-pushes/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "DELETE",
+        path: "/api/admin/article-pushes/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/article-pushes/{id}/toggle",
         group: "admin",
     },
     ApiEndpointCatalogItem {
