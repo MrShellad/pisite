@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Copy,
   Download,
@@ -19,510 +18,52 @@ import {
   X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api, getUploadUrl } from '../../api/client';
-import { useAdminFeedback } from './components/AdminFeedback';
 
-type PlatformKey = 'darwin' | 'windows' | 'linux';
-type ReleaseChannel = 'stable' | 'preview' | 'beta';
-type RolloutType = 'all' | 'grayscale' | 'targeted';
-
-type PlatformAsset = {
-  url: string;
-  signature: string;
-};
-
-type ChangeDraft = {
-  iconSvg: string;
-  iconColor: string;
-  text: string;
-};
-
-type PublishForm = {
-  versionId: string;
-  displayVersion: string;
-  date: string;
-  channel: ReleaseChannel;
-  rolloutType: RolloutType;
-  rolloutValue: string;
-  allowedRegions: string;
-  platforms: Record<PlatformKey, PlatformAsset>;
-  changes: ChangeDraft[];
-};
-
-type ReleaseLog = {
-  id: string;
-  version: string;
-  versionId?: string;
-  displayVersion?: string;
-  date: string;
-  channel: string;
-  rolloutType: string;
-  rolloutValue: string;
-  allowedRegions?: string;
-  status: string;
-  changes: ChangeDraft[];
-  platforms?: Partial<Record<PlatformKey, Partial<PlatformAsset>>>;
-};
-
-type PackageAsset = {
-  date: string;
-  fileName: string;
-  sizeBytes: number;
-  url: string;
-  downloadUrl: string;
-  uploadedAt?: number | null;
-};
-
-type UploadProgressState = {
-  title: string;
-  fileName: string;
-  loaded: number;
-  total: number;
-  percent: number;
-};
-
-const PRESET_ICONS = [
-  {
-    name: 'Feature',
-    svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
-    color: '#3b82f6',
-  },
-  {
-    name: 'Bugfix',
-    svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="8" height="14" x="8" y="6" rx="4"/><path d="m19 7-3 2"/><path d="m5 7 3 2"/><path d="m19 19-3-2"/><path d="m5 19 3-2"/><path d="M20 13h-4"/><path d="M4 13h4"/></svg>',
-    color: '#ef4444',
-  },
-  {
-    name: 'Performance',
-    svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
-    color: '#eab308',
-  },
-  {
-    name: 'Security',
-    svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>',
-    color: '#10b981',
-  },
-  {
-    name: 'UI/UX',
-    svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>',
-    color: '#8b5cf6',
-  },
-];
-
-const platformLabels: Record<PlatformKey, string> = {
-  darwin: 'macOS',
-  windows: 'Windows',
-  linux: 'Linux',
-};
-
-const emptyChange: ChangeDraft = {
-  iconSvg: PRESET_ICONS[0].svg,
-  iconColor: PRESET_ICONS[0].color,
-  text: '',
-};
-
-const createInitialForm = (): PublishForm => ({
-  versionId: '',
-  displayVersion: '',
-  date: new Date().toISOString().slice(0, 10),
-  channel: 'stable',
-  rolloutType: 'all',
-  rolloutValue: '',
-  allowedRegions: 'ALL',
-  platforms: {
-    darwin: { url: '', signature: '' },
-    windows: { url: '', signature: '' },
-    linux: { url: '', signature: '' },
-  },
-  changes: [{ ...emptyChange }],
-});
-
-function parseSigFromText(raw: string) {
-  const trimmed = raw.trim();
-  if (!trimmed) return '';
-
-  try {
-    const parsed = JSON.parse(trimmed) as { signature?: string; sig?: string } | string;
-    if (typeof parsed === 'string') return parsed.trim();
-    if (typeof parsed.signature === 'string' && parsed.signature.trim()) {
-      return parsed.signature.trim();
-    }
-    if (typeof parsed.sig === 'string' && parsed.sig.trim()) {
-      return parsed.sig.trim();
-    }
-  } catch {
-    // not json, keep parsing by line below
-  }
-
-  const lines = trimmed
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(Boolean)
-    .filter(line => !line.startsWith('untrusted comment:') && !line.startsWith('trusted comment:'));
-
-  const likelySig = lines.find(line => /^[A-Za-z0-9+/=_-]{40,}$/.test(line));
-  if (likelySig) return likelySig;
-
-  return lines[0] ?? trimmed;
-}
-
-function formatFileSize(sizeBytes: number) {
-  if (sizeBytes >= 1024 * 1024 * 1024) {
-    return `${(sizeBytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
-  }
-  if (sizeBytes >= 1024 * 1024) {
-    return `${(sizeBytes / 1024 / 1024).toFixed(1)} MB`;
-  }
-  if (sizeBytes >= 1024) {
-    return `${(sizeBytes / 1024).toFixed(1)} KB`;
-  }
-  return `${sizeBytes} B`;
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  const responseData = (error as { response?: { data?: unknown } })?.response?.data;
-  return typeof responseData === 'string' && responseData.trim() ? responseData : fallback;
-}
-
-function isCanceledUpload(error: unknown) {
-  const candidate = error as { code?: string; name?: string };
-  return candidate.code === 'ERR_CANCELED' || candidate.name === 'CanceledError';
-}
+import { PRESET_ICONS, platformLabels } from './changelog/constants';
+import { useManageChangelog } from './changelog/hooks/useManageChangelog';
+import type { PlatformKey, ReleaseChannel } from './changelog/types';
+import { formatFileSize } from './changelog/utils';
 
 export default function ManageChangelog() {
-  const { confirm, notify, requestInput } = useAdminFeedback();
-  const [logs, setLogs] = useState<ReleaseLog[]>([]);
-  const [packageAssets, setPackageAssets] = useState<PackageAsset[]>([]);
-  const [isPackageManagerOpen, setIsPackageManagerOpen] = useState(false);
-  const [isManualUploading, setIsManualUploading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadingPackage, setIsUploadingPackage] = useState<Record<PlatformKey, boolean>>({
-    darwin: false,
-    windows: false,
-    linux: false,
-  });
-  const [isUploadingSig, setIsUploadingSig] = useState<Record<PlatformKey, boolean>>({
-    darwin: false,
-    windows: false,
-    linux: false,
-  });
-  const [uploadProgress, setUploadProgress] = useState<UploadProgressState | null>(null);
-  const [isPushing, setIsPushing] = useState<Record<string, boolean>>({});
-  const [formData, setFormData] = useState<PublishForm>(() => createInitialForm());
-  const uploadAbortControllerRef = useRef<AbortController | null>(null);
+  const {
+    logs,
+    packageAssets,
+    isPackageManagerOpen,
+    setIsPackageManagerOpen,
+    isManualUploading,
+    isSubmitting,
+    isUploadingPackage,
+    isUploadingSig,
+    uploadProgress,
+    isPushing,
+    formData,
+    setFormData,
+    firstTargetUuid,
+    fetchLogs,
+    fetchPackageAssets,
+    updatePlatformField,
+    cancelPackageUpload,
+    handlePackageUpload,
+    handleManualPackageUpload,
+    copyDownloadLink,
+    renamePackageAsset,
+    deletePackageAsset,
+    handleSignatureUpload,
+    addChange,
+    updateChange,
+    applyPreset,
+    removeChange,
+    handleSubmit,
+    handleRollback,
+    handleDelete,
+    handlePushDownload,
+  } = useManageChangelog();
 
   const inputClass =
     'w-full rounded-xl border border-neutral-200 bg-neutral-100/50 px-4 py-3 text-sm text-neutral-900 transition-all placeholder:text-neutral-400 focus:border-blue-500/50 focus:bg-blue-50/50 focus:outline-none dark:border-white/10 dark:bg-black/40 dark:text-white dark:placeholder:text-neutral-600 dark:focus:bg-blue-500/5';
   const labelClass = 'mb-1.5 ml-1 block text-xs font-bold text-neutral-500 dark:text-neutral-400';
   const cardClass =
     'mb-6 rounded-2xl border border-neutral-200/60 bg-white/80 p-6 shadow-sm dark:border-white/5 dark:bg-white/[0.02] dark:shadow-none';
-
-  const firstTargetUuid = useMemo(() => {
-    if (formData.rolloutType !== 'targeted') return '';
-    const list = formData.rolloutValue
-      .split(/[,\s]+/)
-      .map(item => item.trim())
-      .filter(Boolean);
-    return list[0] ?? '';
-  }, [formData.rolloutType, formData.rolloutValue]);
-
-  const fetchLogs = async () => {
-    const response = await api.get<ReleaseLog[]>('/admin/changelog');
-    setLogs(response.data);
-  };
-
-  const fetchPackageAssets = async () => {
-    const response = await api.get<PackageAsset[]>('/admin/package-assets');
-    setPackageAssets(response.data);
-  };
-
-  useEffect(() => {
-    void fetchLogs();
-    void fetchPackageAssets();
-  }, []);
-
-  useEffect(() => {
-    return () => uploadAbortControllerRef.current?.abort();
-  }, []);
-
-  const updatePlatformField = (platform: PlatformKey, field: keyof PlatformAsset, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      platforms: {
-        ...prev.platforms,
-        [platform]: {
-          ...prev.platforms[platform],
-          [field]: value,
-        },
-      },
-    }));
-  };
-
-  const uploadPackageAsset = async (file: File, title: string) => {
-    const body = new FormData();
-    body.append('file', file);
-    const controller = new AbortController();
-    uploadAbortControllerRef.current = controller;
-
-    setUploadProgress({
-      title,
-      fileName: file.name,
-      loaded: 0,
-      total: file.size,
-      percent: 0,
-    });
-
-    try {
-      const response = await api.post<PackageAsset>('/admin/package-assets/upload', body, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        signal: controller.signal,
-        timeout: 900000,
-        onUploadProgress: event => {
-          const total = event.total ?? file.size;
-          const loaded = event.loaded;
-          const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-          setUploadProgress({
-            title,
-            fileName: file.name,
-            loaded,
-            total,
-            percent,
-          });
-        },
-      });
-
-      return response.data;
-    } finally {
-      if (uploadAbortControllerRef.current === controller) {
-        uploadAbortControllerRef.current = null;
-      }
-    }
-  };
-
-  const cancelPackageUpload = () => {
-    uploadAbortControllerRef.current?.abort();
-  };
-
-  const handlePackageUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-    platform: PlatformKey,
-  ) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = '';
-    if (!file) return;
-
-    setIsUploadingPackage(prev => ({ ...prev, [platform]: true }));
-
-    try {
-      const asset = await uploadPackageAsset(file, `上传 ${platformLabels[platform]} 安装包`);
-      updatePlatformField(platform, 'url', asset.downloadUrl || getUploadUrl(asset.url));
-      await fetchPackageAssets();
-    } catch (error) {
-      if (!isCanceledUpload(error)) {
-        notify('安装包上传失败', getErrorMessage(error, '请重试。'), 'error');
-      }
-    } finally {
-      setIsUploadingPackage(prev => ({ ...prev, [platform]: false }));
-      setUploadProgress(null);
-    }
-  };
-
-  const handleManualPackageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = '';
-    if (!file) return;
-
-    setIsManualUploading(true);
-
-    try {
-      await uploadPackageAsset(file, '手动上传安装包');
-      await fetchPackageAssets();
-      setIsPackageManagerOpen(true);
-    } catch (error) {
-      if (!isCanceledUpload(error)) {
-        notify('安装包上传失败', getErrorMessage(error, '请重试。'), 'error');
-      }
-    } finally {
-      setIsManualUploading(false);
-      setUploadProgress(null);
-    }
-  };
-
-  const copyDownloadLink = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      notify('下载链接已复制', undefined, 'success');
-    } catch {
-      await requestInput({
-        title: '复制下载链接',
-        description: '浏览器不允许自动写入剪贴板，请手动复制下面的链接。',
-        initialValue: url,
-        inputLabel: '下载链接',
-        confirmLabel: '关闭',
-      });
-    }
-  };
-
-  const renamePackageAsset = async (asset: PackageAsset) => {
-    const nextName = await requestInput({
-      title: '重命名安装包',
-      description: '请输入新的安装包文件名。',
-      initialValue: asset.fileName,
-      inputLabel: '文件名',
-      confirmLabel: '保存',
-    });
-    if (!nextName || nextName.trim() === asset.fileName) return;
-
-    try {
-      await api.put(
-        `/admin/package-assets/${encodeURIComponent(asset.date)}/${encodeURIComponent(asset.fileName)}`,
-        { fileName: nextName.trim() },
-      );
-      await fetchPackageAssets();
-    } catch (error) {
-      notify('重命名失败', getErrorMessage(error, '请稍后重试。'), 'error');
-    }
-  };
-
-  const deletePackageAsset = async (asset: PackageAsset) => {
-    const confirmed = await confirm({
-      title: '删除安装包',
-      description: `确认删除安装包 ${asset.fileName} 吗？`,
-      confirmLabel: '删除',
-      tone: 'error',
-    });
-    if (!confirmed) return;
-
-    try {
-      await api.delete(
-        `/admin/package-assets/${encodeURIComponent(asset.date)}/${encodeURIComponent(asset.fileName)}`,
-      );
-      await fetchPackageAssets();
-    } catch (error) {
-      notify('删除失败', getErrorMessage(error, '请稍后重试。'), 'error');
-    }
-  };
-
-  const handleSignatureUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-    platform: PlatformKey,
-  ) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = '';
-    if (!file) return;
-
-    setIsUploadingSig(prev => ({ ...prev, [platform]: true }));
-    try {
-      const content = await file.text();
-      const parsed = parseSigFromText(content);
-      if (!parsed) {
-        notify('.sig 文件解析为空', '请检查文件内容。', 'error');
-        return;
-      }
-      updatePlatformField(platform, 'signature', parsed);
-    } catch {
-      notify('读取 .sig 文件失败', '请重试。', 'error');
-    } finally {
-      setIsUploadingSig(prev => ({ ...prev, [platform]: false }));
-    }
-  };
-
-  const addChange = () => {
-    setFormData(prev => ({
-      ...prev,
-      changes: [...prev.changes, { ...emptyChange }],
-    }));
-  };
-
-  const updateChange = (index: number, field: keyof ChangeDraft, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      changes: prev.changes.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, [field]: value } : item,
-      ),
-    }));
-  };
-
-  const applyPreset = (index: number, svg: string, color: string) => {
-    setFormData(prev => ({
-      ...prev,
-      changes: prev.changes.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, iconSvg: svg, iconColor: color } : item,
-      ),
-    }));
-  };
-
-  const removeChange = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      changes: prev.changes.filter((_, itemIndex) => itemIndex !== index),
-    }));
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setIsSubmitting(true);
-    try {
-      await api.post('/admin/changelog', formData);
-      await fetchLogs();
-      setFormData(createInitialForm());
-      notify('版本发布成功', '新的版本记录已创建。', 'success');
-    } catch (error) {
-      notify('发布失败', getErrorMessage(error, '请检查输入后重试。'), 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRollback = async (id: string) => {
-    const confirmed = await confirm({
-      title: '回滚版本',
-      description: '确认回滚该版本吗？',
-      confirmLabel: '回滚',
-      tone: 'warning',
-    });
-    if (!confirmed) return;
-    try {
-      await api.post(`/admin/changelog/${id}/rollback`);
-      await fetchLogs();
-    } catch (error) {
-      notify('回滚失败', getErrorMessage(error, '请稍后重试。'), 'error');
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    const confirmed = await confirm({
-      title: '删除版本记录',
-      description: '确认删除该版本记录吗？此操作不可撤销。',
-      confirmLabel: '删除',
-      tone: 'error',
-    });
-    if (!confirmed) return;
-    try {
-      await api.delete(`/admin/changelog/${id}`);
-      await fetchLogs();
-    } catch (error) {
-      notify('删除失败', getErrorMessage(error, '请稍后重试。'), 'error');
-    }
-  };
-
-  const handlePushDownload = async (releaseId: string, platform: 'windows' | 'linux') => {
-    const key = `${releaseId}-${platform}`;
-    setIsPushing(prev => ({ ...prev, [key]: true }));
-    try {
-      const response = await api.post<{
-        platform: string;
-        url: string;
-        displayVersion: string;
-      }>(`/admin/changelog/${releaseId}/push-hero-download`, { platform });
-      notify('首页下载按钮已更新', `已将 ${response.data.displayVersion} 的 ${platformLabels[platform]} 下载地址推送到首页按钮。`, 'success');
-    } catch (error) {
-      notify('推送失败', getErrorMessage(error, '推送到首页下载按钮失败。'), 'error');
-    } finally {
-      setIsPushing(prev => ({ ...prev, [key]: false }));
-    }
-  };
-
   return (
     <div className="w-full space-y-8 pb-12">
       <div className="flex flex-wrap items-center justify-between gap-3">
