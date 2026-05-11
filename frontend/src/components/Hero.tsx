@@ -147,7 +147,20 @@ export default function Hero({ previewConfig }: HeroProps) {
   }, [config, latestPlatforms, previewConfig]);
 
   if (!config) {
-    return null;
+    return (
+      <section className="relative min-h-[560px] overflow-hidden pb-20 pt-16 md:min-h-[720px] md:pb-40 md:pt-28" aria-busy="true">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-emerald-400/20 blur-[128px] dark:bg-emerald-500/10" />
+          <div className="absolute -right-40 top-20 h-96 w-96 rounded-full bg-lime-400/20 blur-[128px] dark:bg-lime-500/10" />
+        </div>
+        <div className="relative z-10 mx-auto flex max-w-5xl animate-pulse flex-col items-center px-4 text-center sm:px-6">
+          <div className="mb-8 h-16 w-16 rounded-3xl bg-white/70 shadow-sm dark:bg-white/10 md:h-24 md:w-24" />
+          <div className="mb-5 h-12 w-full max-w-[620px] rounded-3xl bg-white/70 dark:bg-white/10 md:mb-6 md:h-20" />
+          <div className="mb-10 h-16 w-full max-w-2xl rounded-2xl bg-white/55 dark:bg-white/5 md:mb-12" />
+          <div className="h-14 w-full max-w-xs rounded-full bg-emerald-500/20 dark:bg-emerald-400/10" />
+        </div>
+      </section>
+    );
   }
 
   const displayDate = latestDate || config.updateDate;

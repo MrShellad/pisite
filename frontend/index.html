@@ -4,7 +4,16 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FlowCore - 你的应用产品页</title>
+    <title>FlowCore</title>
+    <script>
+      try {
+        var cachedSeo = localStorage.getItem('flowcore_cached_seo');
+        if (cachedSeo) {
+          var parsedSeo = JSON.parse(cachedSeo);
+          if (parsedSeo && parsedSeo.title) document.title = parsedSeo.title;
+        }
+      } catch (error) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

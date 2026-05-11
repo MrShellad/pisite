@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useLayoutEffect } from 'react';
 
 import DeferredSection from '../components/DeferredSection';
 import Hero from '../components/Hero';
@@ -14,6 +14,19 @@ const Footer = lazy(() => import('../components/Footer'));
 
 export default function Landing() {
   useDynamicSEO();
+
+  useLayoutEffect(() => {
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+
+    if (!window.location.hash) {
+      window.scrollTo(0, 0);
+    }
+
+    return () => {
+      window.history.scrollRestoration = previousScrollRestoration;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-lime-50/40 to-stone-50 transition-colors duration-500 dark:from-[#04130a] dark:via-[#07180d] dark:to-[#050505]">

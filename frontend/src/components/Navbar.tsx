@@ -13,15 +13,37 @@ interface BrandingState {
   logoColor: string;
 }
 
+const cachedSiteNameKey = 'flowcore_cached_site_name';
+const cachedBrandingKey = 'flowcore_cached_branding';
+const defaultBranding: BrandingState = {
+  logoUrl: '',
+  logoColor: '#4ade80',
+};
+
+function readCachedSiteName() {
+  return localStorage.getItem(cachedSiteNameKey) || '';
+}
+
+function readCachedBranding(): BrandingState {
+  try {
+    const cached = localStorage.getItem(cachedBrandingKey);
+    if (!cached) return defaultBranding;
+    const parsed = JSON.parse(cached) as Partial<BrandingState>;
+    return {
+      logoUrl: parsed.logoUrl || '',
+      logoColor: parsed.logoColor || defaultBranding.logoColor,
+    };
+  } catch {
+    return defaultBranding;
+  }
+}
+
 export default function Navbar() {
   const location = useLocation();
   const { copy, locale, setLocale } = useHomeLocale();
   const [isDark, setIsDark] = useState(false);
-  const [siteName, setSiteName] = useState('');
-  const [branding, setBranding] = useState<BrandingState>({
-    logoUrl: '',
-    logoColor: '#4ade80',
-  });
+  const [siteName, setSiteName] = useState(readCachedSiteName);
+  const [branding, setBranding] = useState<BrandingState>(readCachedBranding);
 
   useEffect(() => {
     let isMounted = true;
@@ -34,16 +56,20 @@ export default function Navbar() {
       const [settingsResult, heroResult] = results;
 
       if (settingsResult.status === 'fulfilled' && settingsResult.value.data?.siteName) {
-        setSiteName(settingsResult.value.data.siteName);
+        const nextSiteName = settingsResult.value.data.siteName;
+        setSiteName(nextSiteName);
+        localStorage.setItem(cachedSiteNameKey, nextSiteName);
       } else {
         setSiteName('FlowCore');
       }
 
       if (heroResult.status === 'fulfilled') {
-        setBranding({
+        const nextBranding = {
           logoUrl: heroResult.value.data.logoUrl || '',
-          logoColor: heroResult.value.data.logoColor || '#4ade80',
-        });
+          logoColor: heroResult.value.data.logoColor || defaultBranding.logoColor,
+        };
+        setBranding(nextBranding);
+        localStorage.setItem(cachedBrandingKey, JSON.stringify(nextBranding));
       }
     });
 
