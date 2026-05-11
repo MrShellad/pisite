@@ -2,9 +2,11 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { motion } from 'framer-motion';
-import { staggerContainer, cardSpringUp } from '../lib/design-tokens';
+import { dramaticCardReveal, staggerContainer } from '../lib/design-tokens';
+import { useHomeLocale } from '../lib/home-i18n';
 
 export default function Features() {
+  const { copy } = useHomeLocale();
   const [features, setFeatures] = useState<any[]>([]);
 
   useEffect(() => {
@@ -21,7 +23,25 @@ export default function Features() {
   if (features.length === 0) return null;
 
   return (
-    <section className="relative z-10 py-20">
+    <section className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <motion.div
+        className="mx-auto mb-12 max-w-3xl text-center"
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/75 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-sky-700 shadow-sm backdrop-blur dark:border-sky-400/25 dark:bg-white/5 dark:text-sky-200">
+          {copy.features.eyebrow}
+        </div>
+        <h2 className="text-3xl font-black tracking-tight text-neutral-950 dark:text-white md:text-5xl">
+          {copy.features.title}
+        </h2>
+        <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-neutral-600 dark:text-neutral-400 md:text-base">
+          {copy.features.subtitle}
+        </p>
+      </motion.div>
+
       <motion.div 
         // 【核心修复2】：把数组长度作为 key，数据一旦出现，强制触发完整的入场动画
         key={features.length} 
@@ -33,7 +53,8 @@ export default function Features() {
         {features.map((f, index) => (
           <motion.div 
             key={f.id || `feature-${index}`}
-            variants={cardSpringUp}
+            variants={dramaticCardReveal}
+            whileHover={{ y: -10, rotateX: 3, rotateY: index % 2 === 0 ? -3 : 3 }}
             style={{ 
               '--feature-color': f.iconColor,
               '--feature-glow': `${f.iconColor}4D` 
@@ -46,6 +67,11 @@ export default function Features() {
               hover:shadow-[0_0_40px_var(--feature-glow)]
             `}
           >
+            <motion.div
+              className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-[var(--feature-color)] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-90"
+              animate={{ x: ['-30%', '30%', '-30%'] }}
+              transition={{ duration: 5 + index * 0.3, repeat: Infinity, ease: 'easeInOut' }}
+            />
             <div 
               className="w-14 h-14 mb-6 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6"
               style={{ 

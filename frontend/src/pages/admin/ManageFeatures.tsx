@@ -1,9 +1,13 @@
 // frontend/src/pages/admin/ManageFeatures.tsx
+import { useState } from 'react';
 import { ImagePlus, Plus, Save, Trash2, Power, LayoutGrid, Upload } from 'lucide-react';
 import { getUploadUrl } from '../../api/client';
 import { useManageFeatures } from './hooks/useManageFeatures';
 
+type ActiveSection = 'features' | 'screenshots';
+
 export default function ManageFeatures() {
+  const [activeSection, setActiveSection] = useState<ActiveSection>('features');
   const {
     features,
     screenshots,
@@ -29,14 +33,38 @@ export default function ManageFeatures() {
   const labelClass = "block text-xs text-neutral-500 dark:text-neutral-400 ml-1 mb-1.5 uppercase tracking-wider font-semibold";
   const cardClass = "p-6 bg-white/80 dark:bg-white/[0.02] border border-neutral-200/60 dark:border-white/5 rounded-2xl relative overflow-hidden backdrop-blur-xl shadow-sm dark:shadow-none";
 
+  const renderSegmentButton = (section: ActiveSection, label: string, icon: JSX.Element, count: number) => (
+    <button
+      type="button"
+      onClick={() => setActiveSection(section)}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition ${
+        activeSection === section
+          ? 'bg-neutral-900 text-white shadow-sm dark:bg-white dark:text-neutral-950'
+          : 'text-neutral-500 hover:bg-white hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-white'
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+      <span className={`rounded-full px-2 py-0.5 text-[11px] ${activeSection === section ? 'bg-white/15 dark:bg-black/10' : 'bg-neutral-200 text-neutral-500 dark:bg-white/10 dark:text-neutral-400'}`}>
+        {count}
+      </span>
+    </button>
+  );
+
   return (
     <div className="space-y-8 pb-12">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <h2 className="text-2xl font-bold text-neutral-900 dark:text-white tracking-wide flex items-center gap-2">
           <LayoutGrid className="text-blue-500" /> 核心特性管理
         </h2>
+
+        <div className="grid grid-cols-2 gap-1 rounded-xl border border-neutral-200 bg-neutral-100 p-1 dark:border-white/10 dark:bg-black/30">
+          {renderSegmentButton('features', '特性', <LayoutGrid size={16} />, features.length)}
+          {renderSegmentButton('screenshots', '截图', <ImagePlus size={16} />, screenshots.length)}
+        </div>
       </div>
 
+      {activeSection === 'features' ? (
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         <div className={`${cardClass} h-fit xl:col-span-1`}>
           <h3 className="font-bold text-neutral-900 dark:text-white mb-6 flex items-center gap-2 border-b border-neutral-200 dark:border-white/10 pb-4">
@@ -90,7 +118,9 @@ export default function ManageFeatures() {
           )}
         </div>
       </div>
+      ) : null}
 
+      {activeSection === 'screenshots' ? (
       <section className="grid grid-cols-1 gap-8 xl:grid-cols-3">
         <div className={`${cardClass} h-fit xl:col-span-1`}>
           <h3 className="mb-6 flex items-center gap-2 border-b border-neutral-200 pb-4 font-bold text-neutral-900 dark:border-white/10 dark:text-white">
@@ -269,6 +299,7 @@ export default function ManageFeatures() {
           )}
         </div>
       </section>
+      ) : null}
     </div>
   );
 }

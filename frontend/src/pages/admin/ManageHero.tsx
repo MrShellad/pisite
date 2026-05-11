@@ -1,8 +1,12 @@
-import { Download, Image as ImageIcon, Link as LinkIcon, PanelTop, Type, Upload } from 'lucide-react';
+import { useState } from 'react';
+import { Download, Globe2, Image as ImageIcon, Link as LinkIcon, PanelTop, Type, Upload } from 'lucide-react';
 
 import { useManageHero } from './hooks/useManageHero';
 
+type HeroLocale = 'zh' | 'en';
+
 export default function ManageHero() {
+  const [activeLocale, setActiveLocale] = useState<HeroLocale>('zh');
   const { formData, isSaving, isLoading, isUploading, handleChange, handleFileUpload, handleSubmit } =
     useManageHero();
 
@@ -12,6 +16,42 @@ export default function ManageHero() {
     'mb-1.5 ml-1 block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400';
   const cardClass =
     'relative overflow-hidden rounded-2xl border border-neutral-200/60 bg-white/80 p-6 shadow-sm backdrop-blur-xl dark:border-white/5 dark:bg-white/[0.02] dark:shadow-none';
+  const localeFields =
+    activeLocale === 'zh'
+      ? {
+          title: 'title' as const,
+          subtitle: 'subtitle' as const,
+          description: 'description' as const,
+          buttonText: 'buttonText' as const,
+          titleLabel: '主标题',
+          subtitleLabel: '副标题',
+          descriptionLabel: '产品介绍（支持换行）',
+          buttonLabel: '按钮文案',
+        }
+      : {
+          title: 'titleEn' as const,
+          subtitle: 'subtitleEn' as const,
+          description: 'descriptionEn' as const,
+          buttonText: 'buttonTextEn' as const,
+          titleLabel: 'Main Title',
+          subtitleLabel: 'Subtitle',
+          descriptionLabel: 'Description',
+          buttonLabel: 'Button Text',
+        };
+
+  const renderLocaleButton = (locale: HeroLocale, label: string) => (
+    <button
+      type="button"
+      onClick={() => setActiveLocale(locale)}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition ${
+        activeLocale === locale
+          ? 'bg-neutral-900 text-white shadow-sm dark:bg-white dark:text-neutral-950'
+          : 'text-neutral-500 hover:bg-white hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-white'
+      }`}
+    >
+      {label}
+    </button>
+  );
 
   if (isLoading) {
     return <div className="py-10 text-center text-neutral-500 animate-pulse">Syncing Hero config...</div>;
@@ -26,37 +66,56 @@ export default function ManageHero() {
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-8 xl:grid-cols-3">
         <div className="space-y-8 xl:col-span-2">
           <section className={cardClass}>
-            <h3 className="mb-6 flex items-center gap-2 border-b border-neutral-200 pb-4 font-bold text-neutral-900 dark:border-white/10 dark:text-white">
-              <Type size={16} className="text-indigo-500" /> 核心文案
-            </h3>
+            <div className="mb-6 flex flex-col gap-4 border-b border-neutral-200 pb-4 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="flex items-center gap-2 font-bold text-neutral-900 dark:text-white">
+                <Type size={16} className="text-indigo-500" /> 核心文案
+              </h3>
+              <div className="grid grid-cols-2 gap-1 rounded-xl border border-neutral-200 bg-neutral-100 p-1 dark:border-white/10 dark:bg-black/30">
+                {renderLocaleButton('zh', '中文')}
+                {renderLocaleButton('en', 'English')}
+              </div>
+            </div>
+            <div className="mb-5 flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3 text-xs leading-5 text-blue-700 dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-200">
+              <Globe2 size={16} className="mt-0.5 shrink-0" />
+              前台会根据语言切换自动读取对应文案；英文为空时会回退中文内容。
+            </div>
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClass}>主标题</label>
+                  <label className={labelClass}>{localeFields.titleLabel}</label>
                   <input
-                    required
-                    value={formData.title}
-                    onChange={event => handleChange('title', event.target.value)}
+                    required={activeLocale === 'zh'}
+                    value={formData[localeFields.title]}
+                    onChange={event => handleChange(localeFields.title, event.target.value)}
                     className={inputClass}
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>副标题</label>
+                  <label className={labelClass}>{localeFields.subtitleLabel}</label>
                   <input
-                    required
-                    value={formData.subtitle}
-                    onChange={event => handleChange('subtitle', event.target.value)}
+                    required={activeLocale === 'zh'}
+                    value={formData[localeFields.subtitle]}
+                    onChange={event => handleChange(localeFields.subtitle, event.target.value)}
                     className={inputClass}
                   />
                 </div>
               </div>
               <div>
-                <label className={labelClass}>产品介绍（支持换行）</label>
+                <label className={labelClass}>{localeFields.descriptionLabel}</label>
                 <textarea
-                  required
-                  value={formData.description}
-                  onChange={event => handleChange('description', event.target.value)}
+                  required={activeLocale === 'zh'}
+                  value={formData[localeFields.description]}
+                  onChange={event => handleChange(localeFields.description, event.target.value)}
                   className={`${inputClass} h-32 leading-relaxed`}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>{localeFields.buttonLabel}</label>
+                <input
+                  required={activeLocale === 'zh'}
+                  value={formData[localeFields.buttonText]}
+                  onChange={event => handleChange(localeFields.buttonText, event.target.value)}
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -67,16 +126,7 @@ export default function ManageHero() {
               <LinkIcon size={16} className="text-emerald-500" /> 下载分发
             </h3>
             <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass}>按钮文案</label>
-                  <input
-                    required
-                    value={formData.buttonText}
-                    onChange={event => handleChange('buttonText', event.target.value)}
-                    className={inputClass}
-                  />
-                </div>
+              <div className="max-w-sm">
                 <div>
                   <label className={labelClass}>更新日期</label>
                   <input

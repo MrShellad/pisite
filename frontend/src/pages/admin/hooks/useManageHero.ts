@@ -26,6 +26,10 @@ export function useManageHero() {
     subtitle: '',
     description: '',
     buttonText: '',
+    titleEn: '',
+    subtitleEn: '',
+    descriptionEn: '',
+    buttonTextEn: '',
     updateDate: getTodayDate(),
     dlMac: '',
     dlWin: '',
@@ -45,6 +49,10 @@ export function useManageHero() {
         setFormData({
           ...heroConfig,
           logoUrl: data.logoUrl || logoSvg || '',
+          titleEn: data.titleEn || '',
+          subtitleEn: data.subtitleEn || '',
+          descriptionEn: data.descriptionEn || '',
+          buttonTextEn: data.buttonTextEn || '',
           updateDate: getTodayDate(),
           steamDeckSourceUrl: data.steamDeckSourceUrl || flatpakScript || '',
         });

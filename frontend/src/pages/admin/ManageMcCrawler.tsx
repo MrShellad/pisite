@@ -114,9 +114,12 @@ export default function ManageMcCrawler() {
   const [isSyncingManifest, setIsSyncingManifest] = useState(false);
   const [isSavingPush, setIsSavingPush] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
   const [newInterval, setNewInterval] = useState('');
 
   const enabledPushCount = useMemo(() => pushes.filter(item => item.enabled).length, [pushes]);
+  const coverPreviewSrc = coverPreviewUrl ?? (form.cover ? getUploadUrl(form.cover) : '');
 
   const fetchCrawlerData = async () => {
     const [confRes, updRes] = await Promise.all([
@@ -146,34 +149,49 @@ export default function ManageMcCrawler() {
     void fetchData();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
+    };
+  }, [coverPreviewUrl]);
+
   const resetForm = () => {
     setForm(createEmptyPushForm());
     setEditingId(null);
+    setCoverFile(null);
+    setCoverPreviewUrl(null);
   };
 
   const handlePushFieldChange = (field: keyof ArticlePushForm, value: string | boolean) => {
     setForm(current => ({ ...current, [field]: value }));
   };
 
-  const handleUploadCover = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleCoverUrlChange = (value: string) => {
+    setCoverFile(null);
+    setCoverPreviewUrl(null);
+    handlePushFieldChange('cover', value);
+  };
+
+  const handleSelectCover = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    setCoverFile(file);
+    setCoverPreviewUrl(URL.createObjectURL(file));
+    event.target.value = '';
+  };
 
+  const uploadSelectedCover = async () => {
+    if (!coverFile) return form.cover.trim();
     const body = new FormData();
-    body.append('file', file);
+    body.append('file', coverFile);
     setIsUploadingCover(true);
     try {
       const response = await api.post<{ url: string }>('/admin/upload', body, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      handlePushFieldChange('cover', response.data.url);
-      notify('封面已上传', '活动 PUSH 封面地址已填入表单。', 'success');
-    } catch (err) {
-      console.error(err);
-      notify('封面上传失败', '请检查图片大小或后端日志。', 'error');
+      return response.data.url;
     } finally {
       setIsUploadingCover(false);
-      event.target.value = '';
     }
   };
 
@@ -181,9 +199,10 @@ export default function ManageMcCrawler() {
     event.preventDefault();
     setIsSavingPush(true);
     try {
+      const cover = await uploadSelectedCover();
       const payload = {
         title: form.title.trim(),
-        cover: form.cover.trim(),
+        cover,
         content: form.content.trim(),
         relatedLink: form.relatedLink.trim(),
         category: form.category.trim(),
@@ -220,6 +239,8 @@ export default function ManageMcCrawler() {
       expiresAt: toDateTimeLocalValue(item.expiresAt),
       enabled: item.enabled,
     });
+    setCoverFile(null);
+    setCoverPreviewUrl(null);
   };
 
   const handleTogglePush = async (id: string) => {
@@ -344,15 +365,20 @@ export default function ManageMcCrawler() {
             <div>
               <label className={labelClass}>封面</label>
               <div className="flex gap-2">
-                <input value={form.cover} onChange={event => handlePushFieldChange('cover', event.target.value)} className={inputClass} placeholder="/uploads/admin/..." />
+                <input value={form.cover} onChange={event => handleCoverUrlChange(event.target.value)} className={inputClass} placeholder="/uploads/admin/... 或 https://..." />
                 <label className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-neutral-900 px-3 py-2 text-sm font-bold text-white transition hover:bg-neutral-800 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200">
                   <ImagePlus size={16} />
-                  {isUploadingCover ? '上传中' : '上传'}
-                  <input type="file" accept="image/*" onChange={event => void handleUploadCover(event)} className="hidden" />
+                  {coverFile ? '已选择' : '选择'}
+                  <input type="file" accept="image/*" onChange={handleSelectCover} className="hidden" />
                 </label>
               </div>
-              {form.cover ? (
-                <img src={getUploadUrl(form.cover)} alt="" className="mt-3 aspect-video w-full rounded-lg object-cover" />
+              {coverFile ? (
+                <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                  {coverFile.name} 将在提交时上传。
+                </p>
+              ) : null}
+              {coverPreviewSrc ? (
+                <img src={coverPreviewSrc} alt="" className="mt-3 aspect-video w-full rounded-lg object-cover" />
               ) : null}
             </div>
 
@@ -403,11 +429,11 @@ export default function ManageMcCrawler() {
 
             <button
               type="submit"
-              disabled={isSavingPush}
+              disabled={isSavingPush || isUploadingCover}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Save size={16} />
-              {isSavingPush ? '保存中...' : editingId ? '保存修改' : '发布 PUSH'}
+              {isUploadingCover ? '上传封面中...' : isSavingPush ? '保存中...' : editingId ? '保存修改' : '发布 PUSH'}
             </button>
           </form>
 

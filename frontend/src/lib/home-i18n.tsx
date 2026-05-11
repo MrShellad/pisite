@@ -33,6 +33,16 @@ const messages = {
       lastUpdate: '最后更新',
       steamDeckSourceButton: '部署SteamDeck软件源',
     },
+    features: {
+      eyebrow: '体验亮点',
+      title: '把复杂流程收进清爽界面',
+      subtitle: '从启动、下载到服务器生态，每一个模块都围绕真实使用场景打磨，减少等待、跳转和重复操作。',
+    },
+    screenshots: {
+      eyebrow: '实机画面',
+      title: '看见 FlowCore 的日常工作流',
+      subtitle: '用真实界面感受布局、状态反馈与细节质感，切换截图即可快速浏览主要使用场景。',
+    },
     faq: {
       title: '常见问题',
     },
@@ -76,6 +86,16 @@ const messages = {
       forPlatform: (platform: string) => `For ${platform}`,
       lastUpdate: 'Last update',
       steamDeckSourceButton: 'Deploy SteamDeck Software Source',
+    },
+    features: {
+      eyebrow: 'Highlights',
+      title: 'A cleaner surface for complex workflows',
+      subtitle: 'From launching and downloads to server discovery, every module is tuned for fewer detours and clearer feedback.',
+    },
+    screenshots: {
+      eyebrow: 'In product',
+      title: 'See FlowCore in everyday motion',
+      subtitle: 'Explore real interface states, layout details, and interaction feedback across the core experience.',
     },
     faq: {
       title: 'Frequently Asked Questions',

@@ -43,6 +43,28 @@ async fn ensure_legacy_columns(pool: &SqlitePool) {
         "TEXT NOT NULL DEFAULT ''",
     )
     .await;
+    ensure_column(pool, "hero_config", "title_en", "TEXT NOT NULL DEFAULT ''").await;
+    ensure_column(
+        pool,
+        "hero_config",
+        "subtitle_en",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    .await;
+    ensure_column(
+        pool,
+        "hero_config",
+        "description_en",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    .await;
+    ensure_column(
+        pool,
+        "hero_config",
+        "button_text_en",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    .await;
     ensure_column(
         pool,
         "site_settings",

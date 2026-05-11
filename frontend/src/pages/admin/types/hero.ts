@@ -8,6 +8,10 @@ export interface HeroFormData {
   subtitle: string;
   description: string;
   buttonText: string;
+  titleEn: string;
+  subtitleEn: string;
+  descriptionEn: string;
+  buttonTextEn: string;
   updateDate: string;
   dlMac: string;
   dlWin: string;

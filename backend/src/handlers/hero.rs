@@ -21,13 +21,17 @@ pub async fn update_hero(
     State(pool): State<SqlitePool>,
     Json(payload): Json<HeroConfig>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    sqlx::query("UPDATE hero_config SET logo_url=?, logo_color=?, title=?, subtitle=?, description=?, button_text=?, update_date=?, dl_mac=?, dl_win=?, dl_linux=?, flatpak_script=? WHERE id='1'")
+    sqlx::query("UPDATE hero_config SET logo_url=?, logo_color=?, title=?, subtitle=?, description=?, button_text=?, title_en=?, subtitle_en=?, description_en=?, button_text_en=?, update_date=?, dl_mac=?, dl_win=?, dl_linux=?, flatpak_script=? WHERE id='1'")
     .bind(payload.logo_url)
     .bind(payload.logo_color)
     .bind(payload.title)
     .bind(payload.subtitle)
     .bind(payload.description)
     .bind(payload.button_text)
+    .bind(payload.title_en)
+    .bind(payload.subtitle_en)
+    .bind(payload.description_en)
+    .bind(payload.button_text_en)
     .bind(payload.update_date)
     .bind(payload.dl_mac)
     .bind(payload.dl_win)

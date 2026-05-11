@@ -65,7 +65,7 @@ function resolveOsInfo(config: HeroFormData, changelogPlatforms?: ChangelogPlatf
 }
 
 export default function Hero({ previewConfig }: HeroProps) {
-  const { copy } = useHomeLocale();
+  const { copy, locale } = useHomeLocale();
   const [config, setConfig] = useState<HeroFormData | null>(previewConfig ?? null);
   const [latestPlatforms, setLatestPlatforms] = useState<ChangelogPlatforms | null>(null);
   const [osInfo, setOsInfo] = useState<OsInfo>(defaultOsInfo);
@@ -164,13 +164,18 @@ export default function Hero({ previewConfig }: HeroProps) {
   }
 
   const displayDate = latestDate || config.updateDate;
-  const normalizedDescription = (config.description || '').replace(/\r\n?/g, '\n');
+  const localizedTitle = locale === 'en' && config.titleEn.trim() ? config.titleEn : config.title;
+  const localizedSubtitle = locale === 'en' && config.subtitleEn.trim() ? config.subtitleEn : config.subtitle;
+  const localizedDescription =
+    locale === 'en' && config.descriptionEn.trim() ? config.descriptionEn : config.description;
+  const localizedButtonText =
+    locale === 'en' && config.buttonTextEn.trim() ? config.buttonTextEn : config.buttonText;
+  const normalizedDescription = (localizedDescription || '').replace(/\r\n?/g, '\n');
 
   return (
     <section className="relative overflow-hidden pb-20 pt-16 md:pb-40 md:pt-28">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-emerald-400/20 blur-[128px] dark:bg-emerald-500/10" />
-        <div className="absolute -right-40 top-20 h-96 w-96 rounded-full bg-lime-400/20 blur-[128px] dark:bg-lime-500/10" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/70 to-transparent" />
       </div>
 
       <motion.div
@@ -209,9 +214,9 @@ export default function Hero({ previewConfig }: HeroProps) {
           variants={heroFadeDown}
           className="mb-5 text-4xl font-extrabold leading-[1.2] tracking-tighter text-neutral-900 dark:text-white sm:text-5xl md:mb-6 md:text-7xl md:leading-[1.15]"
         >
-          {config.title}
+          {localizedTitle}
           <span className="mt-1 block bg-gradient-to-r from-emerald-500 to-lime-500 bg-clip-text text-transparent md:mt-2">
-            {config.subtitle}
+            {localizedSubtitle}
           </span>
         </motion.h1>
 
@@ -231,7 +236,7 @@ export default function Hero({ previewConfig }: HeroProps) {
               whileHover="hover"
             >
               <Download className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
-              <span className="font-bold">{config.buttonText}</span>
+              <span className="font-bold">{localizedButtonText}</span>
 
               <motion.span
                 className="pointer-events-none absolute top-0 h-full w-32 -skew-x-[25deg] bg-gradient-to-r from-transparent via-white/60 to-transparent blur-md"
