@@ -40,8 +40,8 @@ const messages = {
     },
     screenshots: {
       eyebrow: '实机画面',
-      title: '看见 FlowCore 的日常工作流',
-      subtitle: '用真实界面感受布局、状态反馈与细节质感，切换截图即可快速浏览主要使用场景。',
+      title: 'Pilauncher的截图',
+      subtitle: '切换截图即可快速浏览主要使用场景。',
     },
     faq: {
       title: '常见问题',
@@ -94,8 +94,8 @@ const messages = {
     },
     screenshots: {
       eyebrow: 'In product',
-      title: 'See FlowCore in everyday motion',
-      subtitle: 'Explore real interface states, layout details, and interaction feedback across the core experience.',
+      title: 'Pilauncher Screenshots',
+      subtitle: 'Explore real interface states, and interaction feedback across the core experience.',
     },
     faq: {
       title: 'Frequently Asked Questions',
