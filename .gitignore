@@ -16,4 +16,5 @@ backend/target
 flowcore.db
 backend/uploads
 docs/*
+!docs/project-feature-gap-analysis.md
 pisiterun.sh

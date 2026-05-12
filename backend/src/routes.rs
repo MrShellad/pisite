@@ -128,6 +128,16 @@ pub fn create_router(pool: SqlitePool) -> Router {
             "/api/admin/installations",
             get(handlers::stats::get_installation_stats),
         )
+        .route(
+            "/api/admin/installations/gpu-mappings",
+            get(handlers::stats::list_gpu_name_mappings)
+                .post(handlers::stats::create_gpu_name_mapping),
+        )
+        .route(
+            "/api/admin/installations/gpu-mappings/{id}",
+            put(handlers::stats::update_gpu_name_mapping)
+                .delete(handlers::stats::delete_gpu_name_mapping),
+        )
         // 2. 全局设置与首屏管理
         .route(
             "/api/admin/settings",

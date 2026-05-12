@@ -445,9 +445,33 @@ pub struct ClientInstallationReportRow {
     pub platform: String,
     pub memory_bytes: Option<i64>,
     pub gpu: String,
+    pub gpu_raw: String,
     pub app_version: String,
     pub first_installed_at: String,
     pub last_reported_at: String,
+}
+
+#[derive(Serialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct GpuNameMapping {
+    pub id: String,
+    pub match_text: String,
+    pub display_name: String,
+    pub priority: i64,
+    pub enabled: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GpuNameMappingPayload {
+    pub match_text: String,
+    pub display_name: String,
+    #[serde(default)]
+    pub priority: Option<i64>,
+    #[serde(default)]
+    pub enabled: Option<bool>,
 }
 
 #[derive(Serialize, FromRow)]

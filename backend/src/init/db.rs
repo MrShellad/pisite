@@ -34,6 +34,7 @@ async fn ensure_legacy_columns(pool: &SqlitePool) {
     ensure_feature_screenshots_table(pool).await;
     ensure_article_pushes_table(pool).await;
     ensure_client_installation_reports_table(pool).await;
+    ensure_gpu_name_mappings_table(pool).await;
     ensure_column(pool, "users", "mc_name", "TEXT").await;
     ensure_column(pool, "users", "afdian_user_id", "TEXT").await;
     ensure_column(
@@ -264,6 +265,42 @@ async fn ensure_client_installation_reports_table(pool: &SqlitePool) {
             first_installed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             last_reported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
         )",
+    )
+    .execute(pool)
+    .await;
+}
+
+async fn ensure_gpu_name_mappings_table(pool: &SqlitePool) {
+    let _ = sqlx::query(
+        r#"CREATE TABLE IF NOT EXISTS gpu_name_mappings (
+            id TEXT PRIMARY KEY,
+            match_text TEXT NOT NULL UNIQUE,
+            display_name TEXT NOT NULL,
+            priority INTEGER NOT NULL DEFAULT 0,
+            enabled BOOLEAN NOT NULL DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )"#,
+    )
+    .execute(pool)
+    .await;
+
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_gpu_name_mappings_enabled_priority ON gpu_name_mappings (enabled, priority)",
+    )
+    .execute(pool)
+    .await;
+
+    let _ = sqlx::query(
+        r#"INSERT OR IGNORE INTO gpu_name_mappings (
+            id, match_text, display_name, priority, enabled
+        ) VALUES (
+            'builtin-amd-phoenix1-780m',
+            'Phoenix1',
+            'AMD 780M',
+            100,
+            1
+        )"#,
     )
     .execute(pool)
     .await;

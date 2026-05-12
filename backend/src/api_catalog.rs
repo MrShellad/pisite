@@ -198,6 +198,26 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
         group: "admin",
     },
     ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/installations/gpu-mappings",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/installations/gpu-mappings",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/installations/gpu-mappings/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "DELETE",
+        path: "/api/admin/installations/gpu-mappings/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
         method: "PUT",
         path: "/api/admin/settings",
         group: "admin",
