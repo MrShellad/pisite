@@ -37,6 +37,11 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     },
     ApiEndpointCatalogItem {
         method: "GET",
+        path: "/api/legal-pages/{slug}",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
         path: "/api/hero",
         group: "public",
     },
@@ -230,6 +235,16 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "PUT",
         path: "/api/admin/friends",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/legal-pages",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/legal-pages/{slug}",
         group: "admin",
     },
     ApiEndpointCatalogItem {

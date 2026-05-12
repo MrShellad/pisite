@@ -35,6 +35,7 @@ async fn ensure_legacy_columns(pool: &SqlitePool) {
     ensure_article_pushes_table(pool).await;
     ensure_client_installation_reports_table(pool).await;
     ensure_gpu_name_mappings_table(pool).await;
+    ensure_legal_pages_table(pool).await;
     ensure_column(pool, "users", "mc_name", "TEXT").await;
     ensure_column(pool, "users", "afdian_user_id", "TEXT").await;
     ensure_column(
@@ -301,6 +302,28 @@ async fn ensure_gpu_name_mappings_table(pool: &SqlitePool) {
             100,
             1
         )"#,
+    )
+    .execute(pool)
+    .await;
+}
+
+async fn ensure_legal_pages_table(pool: &SqlitePool) {
+    let _ = sqlx::query(
+        r#"CREATE TABLE IF NOT EXISTS legal_pages (
+            slug TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            content_html TEXT NOT NULL DEFAULT '',
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )"#,
+    )
+    .execute(pool)
+    .await;
+
+    let _ = sqlx::query(
+        r#"INSERT OR IGNORE INTO legal_pages (slug, title, content_html)
+        VALUES
+            ('privacy', '隐私政策', '<p>这里填写隐私政策正文。请在后台“隐私与条款”页面更新。</p>'),
+            ('terms', '服务条款', '<p>这里填写服务条款正文。请在后台“隐私与条款”页面更新。</p>')"#,
     )
     .execute(pool)
     .await;

@@ -41,6 +41,22 @@ pub struct FriendLinkPayload {
     pub enabled: bool,
 }
 
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct LegalPage {
+    pub slug: String,
+    pub title: String,
+    pub content_html: String,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LegalPagePayload {
+    pub title: String,
+    pub content_html: String,
+}
+
 // 1. JWT 中包含的载荷 (Payload) 结构
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {

@@ -68,9 +68,10 @@ export default function ManageSubmissionEmail() {
   const [error, setError] = useState<string | null>(null);
 
   const inputClass =
-    'w-full rounded-xl border border-neutral-200 bg-neutral-100/60 px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-orange-500 focus:bg-white';
-  const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-500';
-  const cardClass = 'rounded-2xl border border-neutral-200/70 bg-white/85 p-6 shadow-sm backdrop-blur';
+    'w-full rounded-xl border border-neutral-200 bg-neutral-100/60 px-4 py-3 text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-orange-500 focus:bg-white dark:border-white/10 dark:bg-black/35 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:focus:bg-orange-500/5';
+  const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400';
+  const cardClass =
+    'rounded-2xl border border-neutral-200/70 bg-white/85 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.03] dark:shadow-none';
   const activeTemplate = templates.find((template) => template.templateKey === activeTemplateKey) ?? templates[0] ?? null;
 
   const fetchData = async () => {
@@ -332,23 +333,23 @@ export default function ManageSubmissionEmail() {
   };
 
   if (isLoading || !config) {
-    return <div className="animate-pulse p-8 text-neutral-500">Loading submission email settings...</div>;
+    return <div className="animate-pulse p-8 text-neutral-500 dark:text-neutral-400">Loading submission email settings...</div>;
   }
 
   return (
     <div className="space-y-8 pb-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold text-neutral-900">
+          <h2 className="flex items-center gap-2 text-2xl font-bold text-neutral-900 dark:text-white">
             <Mail className="text-orange-500" />
             邮箱验证
           </h2>
-          <p className="mt-2 text-sm text-neutral-500">配置 SMTP、测试发信，并维护服务器投稿邮箱的过滤规则。</p>
+          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">配置 SMTP、测试发信，并维护服务器投稿邮箱的过滤规则。</p>
         </div>
 
         <button
           onClick={() => void fetchData()}
-          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
+          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:border-orange-500/40 dark:hover:bg-orange-500/10 dark:hover:text-orange-300"
         >
           <RefreshCw size={16} />
           刷新
@@ -359,8 +360,8 @@ export default function ManageSubmissionEmail() {
         <div
           className={`rounded-2xl border px-4 py-3 text-sm font-medium ${
             error
-              ? 'border-red-200 bg-red-50 text-red-600'
-              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              ? 'border-red-200 bg-red-50 text-red-600 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300'
           }`}
         >
           {error || message}
@@ -370,16 +371,16 @@ export default function ManageSubmissionEmail() {
       <section className={cardClass}>
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900 dark:text-white">
               <ShieldCheck size={18} className="text-orange-500" />
               SMTP 配置
             </h3>
-            <p className="mt-1 text-sm text-neutral-500">用户发送验证码时会使用这里配置的发信服务器。</p>
+            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">用户发送验证码时会使用这里配置的发信服务器。</p>
           </div>
           <button
             onClick={() => void handleSaveConfig()}
             disabled={isSavingConfig}
-            className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200"
           >
             <Save size={16} />
             {isSavingConfig ? '保存中...' : '保存配置'}
@@ -387,7 +388,7 @@ export default function ManageSubmissionEmail() {
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <label className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-medium text-neutral-700 sm:col-span-2">
+          <label className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-medium text-neutral-700 dark:border-white/10 dark:bg-white/[0.03] dark:text-neutral-200 sm:col-span-2">
             <input
               type="checkbox"
               checked={config.enabled}
@@ -427,7 +428,7 @@ export default function ManageSubmissionEmail() {
           </div>
           <div>
             <label className={labelClass}>密码管理</label>
-            <label className="flex h-[50px] items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4 text-sm text-neutral-700">
+            <label className="flex h-[50px] items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4 text-sm text-neutral-700 dark:border-white/10 dark:bg-white/[0.03] dark:text-neutral-200">
               <input type="checkbox" checked={clearPassword} onChange={(event) => setClearPassword(event.target.checked)} className="h-4 w-4 accent-red-500" />
               清空现有 SMTP 密码
             </label>
@@ -447,7 +448,7 @@ export default function ManageSubmissionEmail() {
               <option value="plain">plain</option>
               <option value="login">login</option>
             </select>
-            <p className="mt-1.5 text-xs text-neutral-500">使用认证时会自动要求 TLS 或 STARTTLS，避免 SMTP 凭据明文传输。</p>
+            <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">使用认证时会自动要求 TLS 或 STARTTLS，避免 SMTP 凭据明文传输。</p>
           </div>
           <div>
             <label className={labelClass}>验证码有效期(分钟)</label>
@@ -471,7 +472,7 @@ export default function ManageSubmissionEmail() {
           <button
             onClick={() => void handleSendTest()}
             disabled={isSendingTest}
-            className="inline-flex h-[50px] items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 text-sm font-semibold text-sky-700 disabled:opacity-60"
+            className="inline-flex h-[50px] items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 disabled:opacity-60 dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/15"
           >
             <Send size={16} />
             {isSendingTest ? '发送中...' : '发送测试邮件'}
@@ -482,18 +483,18 @@ export default function ManageSubmissionEmail() {
       <section className={cardClass}>
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900 dark:text-white">
               <Mail size={18} className="text-orange-500" />
               邮件模板
             </h3>
-            <p className="mt-1 text-sm text-neutral-500">
+            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               统一维护各功能使用的邮件内容，支持 HTML 模板编辑。
             </p>
           </div>
           <button
             onClick={() => void handleSaveTemplate()}
             disabled={isSavingTemplate || !activeTemplate}
-            className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200"
           >
             <Save size={16} />
             {isSavingTemplate ? '保存中...' : '保存模板'}
@@ -502,7 +503,7 @@ export default function ManageSubmissionEmail() {
 
         {templates.length > 0 && activeTemplate ? (
           <div className="space-y-5">
-            <div className="inline-flex flex-wrap gap-1 rounded-xl border border-neutral-200 bg-neutral-100 p-1">
+            <div className="inline-flex flex-wrap gap-1 rounded-xl border border-neutral-200 bg-neutral-100 p-1 dark:border-white/10 dark:bg-white/[0.04]">
               {templates.map((template) => {
                 const isActive = template.templateKey === activeTemplateKey;
                 return (
@@ -512,8 +513,8 @@ export default function ManageSubmissionEmail() {
                     onClick={() => setActiveTemplateKey(template.templateKey)}
                     className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
                       isActive
-                        ? 'bg-white text-orange-600 shadow-sm'
-                        : 'text-neutral-500 hover:bg-white/70 hover:text-neutral-900'
+                        ? 'bg-white text-orange-600 shadow-sm dark:bg-orange-500/15 dark:text-orange-300 dark:shadow-none'
+                        : 'text-neutral-500 hover:bg-white/70 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-neutral-100'
                     }`}
                   >
                     {template.label}
@@ -522,17 +523,17 @@ export default function ManageSubmissionEmail() {
               })}
             </div>
 
-            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 dark:border-white/10 dark:bg-white/[0.03]">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h4 className="font-bold text-neutral-900">{activeTemplate.label}</h4>
-                  <p className="mt-1 text-sm text-neutral-500">{activeTemplate.description}</p>
+                  <h4 className="font-bold text-neutral-900 dark:text-white">{activeTemplate.label}</h4>
+                  <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{activeTemplate.description}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {(templateVariables[activeTemplate.templateKey] ?? []).map((variable) => (
                     <span
                       key={variable.key}
-                      className="rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700"
+                      className="rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300"
                       title={variable.label}
                     >
                       {`{${variable.key}}`}
@@ -555,20 +556,20 @@ export default function ManageSubmissionEmail() {
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
               <div>
                 <label className={labelClass}>HTML 邮件正文模板</label>
-                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-950">
                   <ReactQuill
                     theme="snow"
                     value={activeTemplate.htmlBodyTemplate}
                     onChange={(value) => updateTemplate('htmlBodyTemplate', value)}
                     modules={quillModules}
-                    className="min-h-[280px] [&_.ql-container]:min-h-[230px] [&_.ql-editor]:min-h-[230px]"
+                    className="min-h-[280px] [&_.ql-container]:min-h-[230px] [&_.ql-container]:border-neutral-200 dark:[&_.ql-container]:border-white/10 [&_.ql-editor]:min-h-[230px] dark:[&_.ql-editor]:bg-neutral-950 dark:[&_.ql-editor]:text-neutral-100 dark:[&_.ql-editor.ql-blank:before]:text-neutral-500 [&_.ql-toolbar]:border-neutral-200 dark:[&_.ql-toolbar]:border-white/10 dark:[&_.ql-toolbar]:bg-neutral-900/80 dark:[&_.ql-toolbar_.ql-fill]:fill-neutral-300 dark:[&_.ql-toolbar_.ql-picker]:text-neutral-300 dark:[&_.ql-toolbar_.ql-stroke]:stroke-neutral-300"
                   />
                 </div>
               </div>
               <div>
                 <label className={labelClass}>预览</label>
-                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-                  <div className="border-b border-neutral-100 px-4 py-3 text-sm font-bold text-neutral-800">
+                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-950">
+                  <div className="border-b border-neutral-100 px-4 py-3 text-sm font-bold text-neutral-800 dark:border-white/10 dark:bg-white/[0.03] dark:text-neutral-100">
                     {activeTemplate.subjectTemplate || '邮件标题预览'}
                   </div>
                   <iframe
@@ -582,7 +583,7 @@ export default function ManageSubmissionEmail() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500">
+          <div className="rounded-2xl border border-dashed border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
             暂无可用邮件模板。
           </div>
         )}
@@ -590,14 +591,14 @@ export default function ManageSubmissionEmail() {
 
       <section className={cardClass}>
         <div className="mb-6">
-          <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
+          <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900 dark:text-white">
             <Mail size={18} className="text-orange-500" />
             邮箱过滤规则
           </h3>
-          <p className="mt-1 text-sm text-neutral-500">支持白名单、黑名单、邮箱后缀、精确邮箱和包含匹配。</p>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">支持白名单、黑名单、邮箱后缀、精确邮箱和包含匹配。</p>
         </div>
 
-        <div className="grid gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 sm:grid-cols-6">
+        <div className="grid gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 dark:border-white/10 dark:bg-white/[0.03] sm:grid-cols-6">
           <select value={newRule.mode} onChange={(event) => setNewRule((current) => ({ ...current, mode: event.target.value as SubmissionEmailRulePayload['mode'] }))} className={inputClass}>
             <option value="whitelist">whitelist</option>
             <option value="blacklist">blacklist</option>
@@ -609,7 +610,7 @@ export default function ManageSubmissionEmail() {
           </select>
           <input value={newRule.pattern} onChange={(event) => setNewRule((current) => ({ ...current, pattern: event.target.value }))} className={`${inputClass} sm:col-span-2`} placeholder="例如 qq.com 或 admin@example.com" />
           <input type="number" value={newRule.priority} onChange={(event) => setNewRule((current) => ({ ...current, priority: Number(event.target.value) }))} className={inputClass} placeholder="priority" />
-          <label className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700">
+          <label className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 dark:border-white/10 dark:bg-black/35 dark:text-neutral-200">
             <input type="checkbox" checked={newRule.enabled} onChange={(event) => setNewRule((current) => ({ ...current, enabled: event.target.checked }))} className="h-4 w-4 accent-orange-500" />
             enabled
           </label>
@@ -617,7 +618,7 @@ export default function ManageSubmissionEmail() {
           <button
             onClick={() => void handleCreateRule()}
             disabled={isCreatingRule}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60 sm:col-span-1"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200 sm:col-span-1"
           >
             <Plus size={16} />
             {isCreatingRule ? '创建中...' : '新增规则'}
@@ -626,12 +627,12 @@ export default function ManageSubmissionEmail() {
 
         <div className="mt-6 space-y-4">
           {rules.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500">
+            <div className="rounded-2xl border border-dashed border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
               当前还没有邮箱过滤规则。
             </div>
           ) : (
             rules.map((rule) => (
-              <div key={rule.id} className="grid gap-3 rounded-2xl border border-neutral-200 bg-white p-4 sm:grid-cols-7">
+              <div key={rule.id} className="grid gap-3 rounded-2xl border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-white/[0.03] sm:grid-cols-7">
                 <select value={rule.mode} onChange={(event) => updateRule(rule.id, { mode: event.target.value as SubmissionEmailRule['mode'] })} className={inputClass}>
                   <option value="whitelist">whitelist</option>
                   <option value="blacklist">blacklist</option>
@@ -643,7 +644,7 @@ export default function ManageSubmissionEmail() {
                 </select>
                 <input value={rule.pattern} onChange={(event) => updateRule(rule.id, { pattern: event.target.value })} className={`${inputClass} sm:col-span-2`} />
                 <input type="number" value={rule.priority} onChange={(event) => updateRule(rule.id, { priority: Number(event.target.value) })} className={inputClass} />
-                <label className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+                <label className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700 dark:border-white/10 dark:bg-black/35 dark:text-neutral-200">
                   <input type="checkbox" checked={rule.enabled} onChange={(event) => updateRule(rule.id, { enabled: event.target.checked })} className="h-4 w-4 accent-orange-500" />
                   enabled
                 </label>
@@ -651,7 +652,7 @@ export default function ManageSubmissionEmail() {
                   <button
                     onClick={() => void handleSaveRule(rule)}
                     disabled={savingRuleIds.includes(rule.id)}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-900 px-3 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-900 px-3 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200"
                   >
                     <Save size={16} />
                     保存
@@ -659,7 +660,7 @@ export default function ManageSubmissionEmail() {
                   <button
                     onClick={() => void handleDeleteRule(rule.id)}
                     disabled={deletingRuleIds.includes(rule.id)}
-                    className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-red-600 disabled:opacity-60"
+                    className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-red-600 transition hover:bg-red-100 disabled:opacity-60 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
                   >
                     <Trash2 size={16} />
                   </button>

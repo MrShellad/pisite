@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   BarChart3,
@@ -132,6 +132,8 @@ function formatDateTime(value?: string | null) {
 
 export default function ManageInstallations() {
   const { notify } = useAdminFeedback();
+  const mappingEditorRef = useRef<HTMLDivElement | null>(null);
+  const mappingMatchInputRef = useRef<HTMLInputElement | null>(null);
   const [stats, setStats] = useState<InstallationStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -259,6 +261,10 @@ export default function ManageInstallations() {
       displayName: mapping.displayName,
       priority: String(mapping.priority),
       enabled: mapping.enabled,
+    });
+    window.requestAnimationFrame(() => {
+      mappingEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      mappingMatchInputRef.current?.focus();
     });
   };
 
@@ -645,8 +651,8 @@ export default function ManageInstallations() {
                 </button>
               </div>
 
-              <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
-          <div className="rounded-2xl border border-neutral-200/80 bg-neutral-50/60 p-4 dark:border-white/10 dark:bg-white/[0.02]">
+              <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(300px,340px)_minmax(0,1fr)]">
+          <div ref={mappingEditorRef} className="rounded-2xl border border-neutral-200/80 bg-neutral-50/60 p-4 dark:border-white/10 dark:bg-white/[0.02]">
             <div className="mb-4 text-sm font-bold text-neutral-900 dark:text-white">
               {editingMappingId ? '编辑映射' : '添加映射'}
             </div>
@@ -654,6 +660,7 @@ export default function ManageInstallations() {
               <label className="block">
                 <span className="mb-1.5 block text-xs font-semibold text-neutral-500">匹配文本</span>
                 <input
+                  ref={mappingMatchInputRef}
                   value={mappingForm.matchText}
                   onChange={event => setMappingForm(form => ({ ...form, matchText: event.target.value }))}
                   placeholder="Phoenix1"
@@ -713,15 +720,15 @@ export default function ManageInstallations() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-neutral-200/80 dark:border-white/10">
-            <table className="w-full min-w-[760px] table-fixed border-separate border-spacing-0">
+          <div className="min-w-0 overflow-x-auto rounded-2xl border border-neutral-200/80 dark:border-white/10">
+            <table className="w-full min-w-[620px] table-fixed border-separate border-spacing-0">
               <thead>
                 <tr>
-                  <th className={`${tableHeaderCellClass} w-[260px]`}>匹配文本</th>
-                  <th className={`${tableHeaderCellClass} w-[180px]`}>显示名称</th>
-                  <th className={`${tableHeaderCellClass} w-[100px]`}>优先级</th>
-                  <th className={`${tableHeaderCellClass} w-[100px]`}>状态</th>
-                  <th className={`${tableHeaderCellClass} w-[120px]`}>操作</th>
+                  <th className={`${tableHeaderCellClass} w-[220px]`}>匹配文本</th>
+                  <th className={`${tableHeaderCellClass} w-[150px]`}>显示名称</th>
+                  <th className={`${tableHeaderCellClass} w-[70px]`}>优先级</th>
+                  <th className={`${tableHeaderCellClass} w-[80px]`}>状态</th>
+                  <th className={`${tableHeaderCellClass} w-[100px]`}>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -733,7 +740,12 @@ export default function ManageInstallations() {
                   </tr>
                 ) : (
                   mappings.map(mapping => (
-                    <tr key={mapping.id} className="transition-colors hover:bg-neutral-50/70 dark:hover:bg-white/[0.03]">
+                    <tr
+                      key={mapping.id}
+                      className={`transition-colors hover:bg-neutral-50/70 dark:hover:bg-white/[0.03] ${
+                        editingMappingId === mapping.id ? 'bg-orange-50/70 dark:bg-orange-500/10' : ''
+                      }`}
+                    >
                       <td className={`${tableCellClass} text-left`}>
                         <span className="block truncate font-mono text-[11px] text-neutral-700 dark:text-neutral-300" title={mapping.matchText}>
                           {mapping.matchText}

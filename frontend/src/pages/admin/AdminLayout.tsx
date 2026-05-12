@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   ChevronDown,
+  FileText,
   GlobeLock,
   HardDrive,
   HeartHandshake,
@@ -55,6 +56,7 @@ const dataNavs: NavLinkItem[] = [
 
 const settingsNavs: NavLinkItem[] = [
   { name: '站点设置', path: '/admin/settings', icon: <LinkIcon size={16} /> },
+  { name: '隐私与条款', path: '/admin/legal', icon: <FileText size={16} /> },
   { name: '邮件模板', path: '/admin/submission-email', icon: <Mail size={16} /> },
   { name: 'API Key 管理', path: '/admin/api-keys', icon: <KeyRound size={16} /> },
   { name: '公网 API 控制', path: '/admin/api-access', icon: <GlobeLock size={16} /> },

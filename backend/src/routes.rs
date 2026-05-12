@@ -28,6 +28,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
         // 2. 全局设置与首屏
         .route("/api/settings", get(handlers::settings::get_settings))
         .route("/api/hero", get(handlers::hero::get_hero))
+        .route(
+            "/api/legal-pages/{slug}",
+            get(handlers::legal_pages::get_public_legal_page),
+        )
         // 3. 核心业务数据 (只返回已启用的前台展示数据)
         .route("/api/features", get(handlers::features::get_features))
         .route(
@@ -146,6 +150,14 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/friends",
             get(handlers::misc::get_admin_friends).put(handlers::misc::update_admin_friends),
+        )
+        .route(
+            "/api/admin/legal-pages",
+            get(handlers::legal_pages::list_admin_legal_pages),
+        )
+        .route(
+            "/api/admin/legal-pages/{slug}",
+            put(handlers::legal_pages::update_admin_legal_page),
         )
         .route(
             "/api/admin/submission-email/config",

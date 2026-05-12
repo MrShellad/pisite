@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Github, Mail, MessageSquare, Twitter, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { api } from '../api/client';
 import { styleTokens } from '../lib/design-tokens';
@@ -111,18 +112,18 @@ export default function Footer() {
         >
           <p>{settings.copyright}</p>
           <div className="flex items-center gap-4">
-            <a
-              href="#"
+            <Link
+              to="/privacy"
               className={`rounded-sm transition-colors hover:text-neutral-800 dark:hover:text-neutral-200 ${styleTokens.focusRing}`}
             >
               {copy.footer.privacyPolicy}
-            </a>
-            <a
-              href="#"
+            </Link>
+            <Link
+              to="/terms"
               className={`rounded-sm transition-colors hover:text-neutral-800 dark:hover:text-neutral-200 ${styleTokens.focusRing}`}
             >
               {copy.footer.termsOfService}
-            </a>
+            </Link>
             <span className="ml-2 flex items-center gap-2">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
               {copy.footer.allSystemsNormal}

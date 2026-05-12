@@ -150,6 +150,13 @@ export interface VerifySubmissionEmailCodeResponse {
   verifiedAt: string;
 }
 
+export interface LegalPage {
+  slug: 'privacy' | 'terms';
+  title: string;
+  contentHtml: string;
+  updatedAt?: string | null;
+}
+
 export interface SubmissionEmailConfig {
   id: string;
   enabled: boolean;

@@ -6,6 +6,7 @@ import { AdminFeedbackProvider } from './pages/admin/components/AdminFeedback';
 
 const Landing = lazy(() => import('./pages/Landing'));
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'));
+const LegalPage = lazy(() => import('./pages/LegalPage'));
 const ServerSubmissionPage = lazy(() => import('./pages/ServerSubmission'));
 const ServerSuccessPreview = lazy(() => import('./pages/ServerSubmission/SuccessPreview'));
 const Login = lazy(() => import('./pages/admin/Login'));
@@ -23,6 +24,7 @@ const ManageDonorUsers = lazy(() => import('./pages/admin/ManageDonorUsers'));
 const ManageApiKeys = lazy(() => import('./pages/admin/ManageApiKeys'));
 const ManageApiAccess = lazy(() => import('./pages/admin/ManageApiAccess'));
 const ManageSettings = lazy(() => import('./pages/admin/ManageSettings'));
+const ManageLegalPages = lazy(() => import('./pages/admin/ManageLegalPages'));
 const ManageSubmissionEmail = lazy(() => import('./pages/admin/ManageSubmissionEmail'));
 const ManageAdminProfile = lazy(() => import('./pages/admin/ManageAdminProfile'));
 const ManageMcCrawler = lazy(() => import('./pages/admin/ManageMcCrawler'));
@@ -47,6 +49,8 @@ function App() {
             <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/changelog" element={<ChangelogPage />} />
+            <Route path="/privacy" element={<LegalPage />} />
+            <Route path="/terms" element={<LegalPage />} />
             <Route path="/servers/submit" element={<ServerSubmissionPage />} />
             <Route path="/admin/login" element={<Login />} />
             <Route path="/admin/setup" element={<Setup />} />
@@ -64,6 +68,7 @@ function App() {
                 <Route path="api-keys" element={<ManageApiKeys />} />
                 <Route path="api-access" element={<ManageApiAccess />} />
                 <Route path="settings" element={<ManageSettings />} />
+                <Route path="legal" element={<ManageLegalPages />} />
                 <Route path="submission-email" element={<ManageSubmissionEmail />} />
                 <Route path="account" element={<ManageAdminProfile />} />
                 <Route path="mccrawler" element={<ManageMcCrawler />} />
