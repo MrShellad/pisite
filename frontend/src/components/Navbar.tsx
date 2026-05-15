@@ -3,10 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { Moon, Sun, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-import { api } from '../api/client';
 import { styleTokens } from '../lib/design-tokens';
+import { getHomeBootstrap } from '../lib/home-bootstrap';
 import { useHomeLocale, type HomeLocale } from '../lib/home-i18n';
-import type { HeroFormData } from '../pages/admin/types/hero';
 
 interface BrandingState {
   logoUrl: string;
@@ -48,30 +47,26 @@ export default function Navbar() {
   useEffect(() => {
     let isMounted = true;
 
-    Promise.allSettled([api.get('/settings'), api.get<HeroFormData>('/hero')]).then(results => {
+    getHomeBootstrap().then(data => {
       if (!isMounted) {
         return;
       }
 
-      const [settingsResult, heroResult] = results;
-
-      if (settingsResult.status === 'fulfilled' && settingsResult.value.data?.siteName) {
-        const nextSiteName = settingsResult.value.data.siteName;
+      if (data.settings?.siteName) {
+        const nextSiteName = data.settings.siteName;
         setSiteName(nextSiteName);
         localStorage.setItem(cachedSiteNameKey, nextSiteName);
       } else {
         setSiteName('FlowCore');
       }
 
-      if (heroResult.status === 'fulfilled') {
-        const nextBranding = {
-          logoUrl: heroResult.value.data.logoUrl || '',
-          logoColor: heroResult.value.data.logoColor || defaultBranding.logoColor,
-        };
-        setBranding(nextBranding);
-        localStorage.setItem(cachedBrandingKey, JSON.stringify(nextBranding));
-      }
-    });
+      const nextBranding = {
+        logoUrl: data.hero.logoUrl || '',
+        logoColor: data.hero.logoColor || defaultBranding.logoColor,
+      };
+      setBranding(nextBranding);
+      localStorage.setItem(cachedBrandingKey, JSON.stringify(nextBranding));
+    }).catch(console.error);
 
     const savedTheme = localStorage.getItem('flowcore_theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -163,6 +158,9 @@ export default function Navbar() {
               <img
                 src={branding.logoUrl}
                 alt={siteName || 'FlowCore'}
+                width={32}
+                height={32}
+                decoding="async"
                 className="h-8 w-8 object-contain"
                 style={{ filter: `drop-shadow(0 0 8px ${branding.logoColor})` }}
               />

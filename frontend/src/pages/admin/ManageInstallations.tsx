@@ -130,6 +130,25 @@ function formatDateTime(value?: string | null) {
   )}:${pad(date.getSeconds())}`;
 }
 
+function parseReportTime(value?: string | null) {
+  if (!value) return null;
+
+  const normalized = value.includes('T') ? value : value.replace(' ', 'T');
+  const time = new Date(normalized).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+function isFirstInstallReport(report: InstallationReport) {
+  const firstInstalledAt = parseReportTime(report.firstInstalledAt);
+  const lastReportedAt = parseReportTime(report.lastReportedAt);
+
+  if (firstInstalledAt === null || lastReportedAt === null) {
+    return report.firstInstalledAt === report.lastReportedAt;
+  }
+
+  return Math.abs(lastReportedAt - firstInstalledAt) <= 60_000;
+}
+
 export default function ManageInstallations() {
   const { notify } = useAdminFeedback();
   const mappingEditorRef = useRef<HTMLDivElement | null>(null);
@@ -564,20 +583,29 @@ export default function ManageInstallations() {
                       <td colSpan={7} className="border-0 p-0" style={{ height: reportVirtualRows.paddingTop }} />
                     </tr>
                   )}
-                  {reportVirtualRows.virtualItems.map(item => (
+                  {reportVirtualRows.virtualItems.map(item => {
+                    const isFirstInstall = isFirstInstallReport(item);
+                    const highlightedTextClass = isFirstInstall
+                      ? 'text-orange-600 dark:text-orange-300'
+                      : 'text-neutral-700 dark:text-neutral-300';
+                    const mutedTextClass = isFirstInstall
+                      ? 'text-orange-500 dark:text-orange-300'
+                      : 'text-neutral-500';
+
+                    return (
                     <tr key={item.installationId} className="transition-colors hover:bg-neutral-50/70 dark:hover:bg-white/[0.03]">
-                      <td className={`${tableCellClass} font-mono text-[11px] text-neutral-700 dark:text-neutral-300`}>
+                      <td className={`${tableCellClass} font-mono text-[11px] ${highlightedTextClass}`}>
                         <button
                           type="button"
                           onClick={() => void copyInstallationId(item.installationId)}
                           className="inline-flex max-w-full items-center justify-center gap-2 rounded-lg px-2 py-1 transition hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-500/10 dark:hover:text-orange-300"
-                          title="复制安装 ID"
+                          title={isFirstInstall ? '首次安装设备，点击复制安装 ID' : '复制安装 ID'}
                         >
-                          <span className="block truncate">{item.installationId}</span>
+                          <span className={`block truncate ${isFirstInstall ? 'font-bold' : ''}`}>{item.installationId}</span>
                           <Copy size={13} className="shrink-0 opacity-60" />
                         </button>
                       </td>
-                      <td className={`${tableCellClass} text-neutral-700 dark:text-neutral-300`}>{item.platform}</td>
+                      <td className={`${tableCellClass} ${highlightedTextClass}`}>{item.platform}</td>
                       <td className={`${tableCellClass} font-mono text-neutral-600 dark:text-neutral-400`}>{formatMemory(item.memoryBytes)}</td>
                       <td className={`${tableCellClass} text-neutral-700 dark:text-neutral-300`}>
                         <span className="block truncate font-semibold" title={item.gpuRaw || item.gpu || '-'}>
@@ -590,10 +618,11 @@ export default function ManageInstallations() {
                         ) : null}
                       </td>
                       <td className={`${tableCellClass} font-mono text-neutral-700 dark:text-neutral-300`}>{item.appVersion || '-'}</td>
-                      <td className={`${tableCellClass} text-[11px] text-neutral-500`}>{formatDateTime(item.firstInstalledAt)}</td>
+                      <td className={`${tableCellClass} text-[11px] font-semibold ${mutedTextClass}`}>{formatDateTime(item.firstInstalledAt)}</td>
                       <td className={`${tableCellClass} text-[11px] text-neutral-500`}>{formatDateTime(item.lastReportedAt)}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {reportVirtualRows.paddingBottom > 0 && (
                     <tr aria-hidden="true">
                       <td colSpan={7} className="border-0 p-0" style={{ height: reportVirtualRows.paddingBottom }} />

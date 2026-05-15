@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Download } from 'lucide-react';
 
 import { api } from '../api/client';
+import { getHomeBootstrap, readCachedHomeBootstrap } from '../lib/home-bootstrap';
 import {
   buttonShineSweep,
   heroFadeDown,
@@ -66,11 +67,16 @@ function resolveOsInfo(config: HeroFormData, changelogPlatforms?: ChangelogPlatf
 
 export default function Hero({ previewConfig }: HeroProps) {
   const { copy, locale } = useHomeLocale();
-  const [config, setConfig] = useState<HeroFormData | null>(previewConfig ?? null);
-  const [latestPlatforms, setLatestPlatforms] = useState<ChangelogPlatforms | null>(null);
+  const cachedBootstrap = previewConfig ? null : readCachedHomeBootstrap();
+  const [config, setConfig] = useState<HeroFormData | null>(previewConfig ?? cachedBootstrap?.hero ?? null);
+  const [latestPlatforms, setLatestPlatforms] = useState<ChangelogPlatforms | null>(
+    cachedBootstrap?.latestRelease?.platforms ?? null,
+  );
   const [osInfo, setOsInfo] = useState<OsInfo>(defaultOsInfo);
-  const [latestVersion, setLatestVersion] = useState<string | null>(null);
-  const [latestDate, setLatestDate] = useState<string | null>(null);
+  const [latestVersion, setLatestVersion] = useState<string | null>(
+    cachedBootstrap?.latestRelease?.version ?? null,
+  );
+  const [latestDate, setLatestDate] = useState<string | null>(cachedBootstrap?.latestRelease?.date ?? null);
 
   const hasDownload = osInfo.url.length > 0;
   const steamDeckSourceUrl = (config?.steamDeckSourceUrl || '').trim();
@@ -113,30 +119,12 @@ export default function Hero({ previewConfig }: HeroProps) {
       return;
     }
 
-    api
-      .get<HeroFormData>('/hero')
-      .then(response => setConfig(response.data))
-      .catch(console.error);
-  }, [previewConfig]);
-
-  useEffect(() => {
-    if (previewConfig) return;
-
-    api
-      .get('/changelog')
-      .then(response => {
-        const logs = response.data as Array<{
-          isLatest?: boolean;
-          version?: string;
-          date?: string;
-          platforms?: ChangelogPlatforms;
-        }>;
-        const latest = logs.find(log => log.isLatest);
-        if (latest) {
-          setLatestPlatforms(latest.platforms ?? null);
-          setLatestVersion(latest.version ?? null);
-          setLatestDate(latest.date ?? null);
-        }
+    getHomeBootstrap()
+      .then(data => {
+        setConfig(data.hero);
+        setLatestPlatforms(data.latestRelease?.platforms ?? null);
+        setLatestVersion(data.latestRelease?.version ?? null);
+        setLatestDate(data.latestRelease?.date ?? null);
       })
       .catch(console.error);
   }, [previewConfig]);
@@ -204,6 +192,10 @@ export default function Hero({ previewConfig }: HeroProps) {
               <img
                 src={config.logoUrl}
                 alt="Hero Logo"
+                width={96}
+                height={96}
+                decoding="async"
+                fetchPriority="high"
                 className="h-full w-full object-contain [filter:drop-shadow(0_18px_28px_rgba(15,23,42,0.16))] dark:[filter:drop-shadow(0_18px_34px_rgba(0,0,0,0.5))]"
               />
             ) : null}

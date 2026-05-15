@@ -47,6 +47,11 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     },
     ApiEndpointCatalogItem {
         method: "GET",
+        path: "/api/home/bootstrap",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
         path: "/api/features",
         group: "public",
     },

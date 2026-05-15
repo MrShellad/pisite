@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 
-import { api } from '../../../api/client';
+import { getHomeBootstrap, readCachedHomeBootstrap } from '../../../lib/home-bootstrap';
+import type { SiteSettings } from '../types/settings';
 
 const cachedSeoKey = 'flowcore_cached_seo';
 
@@ -36,6 +37,14 @@ function applySeo(data: CachedSeo) {
   }
 }
 
+function settingsToSeo(settings: SiteSettings): CachedSeo {
+  return {
+    title: settings.seoTitle,
+    description: settings.seoDescription,
+    keywords: settings.seoKeywords,
+  };
+}
+
 function readCachedSeo(): CachedSeo | null {
   try {
     const cached = localStorage.getItem(cachedSeoKey);
@@ -47,22 +56,17 @@ function readCachedSeo(): CachedSeo | null {
 
 export function useDynamicSEO() {
   useEffect(() => {
-    const cached = readCachedSeo();
+    const cachedSettings = readCachedHomeBootstrap()?.settings;
+    const cached = cachedSettings ? settingsToSeo(cachedSettings) : readCachedSeo();
     if (cached) {
       applySeo(cached);
     }
 
-    api
-      .get('/settings')
-      .then(res => {
-        const data = res.data;
+    getHomeBootstrap()
+      .then(({ settings: data }) => {
         if (!data) return;
 
-        const nextSeo = {
-          title: data.seoTitle,
-          description: data.seoDescription,
-          keywords: data.seoKeywords,
-        };
+        const nextSeo = settingsToSeo(data);
         applySeo(nextSeo);
         localStorage.setItem(cachedSeoKey, JSON.stringify(nextSeo));
       })

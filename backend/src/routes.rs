@@ -29,6 +29,10 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route("/api/settings", get(handlers::settings::get_settings))
         .route("/api/hero", get(handlers::hero::get_hero))
         .route(
+            "/api/home/bootstrap",
+            get(handlers::home::get_home_bootstrap),
+        )
+        .route(
             "/api/legal-pages/{slug}",
             get(handlers::legal_pages::get_public_legal_page),
         )

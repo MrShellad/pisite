@@ -14,6 +14,7 @@ pub mod donor_public;
 pub mod faqs;
 pub mod features;
 pub mod hero;
+pub mod home;
 pub mod image_storage;
 pub mod legal_pages;
 pub mod minecraft_api;
