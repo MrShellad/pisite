@@ -51,7 +51,7 @@ export default function ScreenshotPreview() {
   const goToNext = () => setActiveIndex(current => (current + 1) % screenshots.length);
 
   return (
-    <section className="relative z-10 mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <section className="relative z-10 mx-auto max-w-7xl overflow-hidden px-4 py-16 sm:px-6 lg:px-8">
       <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
         <motion.div
           initial={{ opacity: 0, x: -28 }}
@@ -105,7 +105,7 @@ export default function ScreenshotPreview() {
           </div>
         </motion.div>
 
-        <div className="relative mx-auto h-[280px] w-full max-w-4xl sm:h-[420px] lg:h-[500px]">
+        <div className="relative mx-auto h-[280px] w-[calc(100vw-2rem)] max-w-4xl sm:h-[420px] sm:w-full lg:h-[500px]">
           <motion.div
             className="pointer-events-none absolute -inset-4 rounded-[36px] border border-emerald-200/60 bg-white/20 shadow-[0_40px_120px_rgba(15,118,110,0.18)] backdrop-blur-xl dark:border-emerald-400/10 dark:bg-white/[0.03]"
             animate={{ opacity: [0.45, 0.8, 0.45], scale: [0.985, 1.01, 0.985] }}

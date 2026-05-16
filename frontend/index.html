@@ -97,18 +97,19 @@
 
       .static-home-shell {
         box-sizing: border-box;
-        display: grid;
+        position: relative;
+        display: block;
         min-height: 100vh;
-        align-items: center;
-        gap: 4rem;
-        grid-template-columns: minmax(520px, 1fr) minmax(420px, 0.92fr);
         max-width: 1280px;
         margin: 0 auto;
         padding: 6rem 1.5rem 5rem;
       }
 
       .static-home-copy {
+        position: relative;
+        z-index: 2;
         min-width: 0;
+        max-width: 820px;
       }
 
       .static-home-kicker {
@@ -222,188 +223,77 @@
         line-height: 1.6;
       }
 
-      .static-home-screenshots {
-        position: relative;
-        min-height: 520px;
+      .static-home-logo-stack {
+        position: absolute;
+        top: 41%;
+        right: clamp(1.5rem, 8vw, 7rem);
+        z-index: 1;
+        width: min(680px, 54vw);
+        aspect-ratio: 1;
+        overflow: visible;
+        pointer-events: none;
+        transform: translateY(-50%);
       }
 
-      .static-screenshot-stage {
+      .static-logo-orbit {
+        --static-logo-color: #10b981;
         position: relative;
-        height: min(520px, 48vw);
-        min-height: 400px;
+        height: 100%;
+        width: 100%;
         isolation: isolate;
       }
 
-      .static-screenshot-stage::before {
+      .static-logo-orbit::before {
         position: absolute;
-        inset: 8% 2% 2% 10%;
+        inset: 14%;
         z-index: 0;
-        border-radius: 2rem;
+        border-radius: 999px;
         background:
-          radial-gradient(circle at 20% 18%, rgba(16, 185, 129, 0.34), transparent 18rem),
-          radial-gradient(circle at 86% 82%, rgba(14, 165, 233, 0.24), transparent 20rem);
+          radial-gradient(circle, color-mix(in srgb, var(--static-logo-color) 22%, transparent) 0%, transparent 62%),
+          radial-gradient(circle at 68% 26%, rgba(14, 165, 233, 0.12), transparent 42%);
         content: "";
-        filter: blur(10px);
-        opacity: 0.9;
+        filter: blur(14px);
+        opacity: 0.58;
       }
 
-      .static-screenshot-card {
+      .static-logo-card {
         position: absolute;
         inset: 0;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        border: 1px solid rgba(15, 23, 42, 0.1);
-        border-radius: 1.55rem;
-        background: rgba(255, 255, 255, 0.88);
-        box-shadow: 0 32px 90px rgba(15, 23, 42, 0.18);
-        transform-origin: center;
-        transition: transform 0.55s ease, opacity 0.55s ease, filter 0.55s ease;
+        display: grid;
+        place-items: center;
+        opacity: 0.3;
+        filter: saturate(0.96) contrast(0.98);
       }
 
-      .static-screenshot-card.stack-0 {
-        z-index: 3;
-        opacity: 1;
-        transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-      }
-
-      .static-screenshot-card.stack-1 {
-        z-index: 2;
-        opacity: 0.72;
-        filter: saturate(0.9);
-        transform: translate3d(2.1rem, 1.2rem, 0) rotate(-3deg) scale(0.94);
-      }
-
-      .static-screenshot-card.stack-2 {
-        z-index: 1;
-        opacity: 0.46;
-        filter: saturate(0.8);
-        transform: translate3d(4.1rem, 2.45rem, 0) rotate(-6deg) scale(0.88);
-      }
-
-      .static-screenshot-chrome {
-        display: flex;
-        align-items: center;
-        gap: 0.45rem;
-        min-height: 2.65rem;
-        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-        padding: 0 1rem;
-      }
-
-      .static-screenshot-chrome span {
-        display: block;
-        height: 0.62rem;
-        width: 0.62rem;
-        border-radius: 999px;
-        background: #ef4444;
-      }
-
-      .static-screenshot-chrome span:nth-child(2) {
-        background: #f59e0b;
-      }
-
-      .static-screenshot-chrome span:nth-child(3) {
-        background: #10b981;
-      }
-
-      .static-screenshot-media {
+      .static-logo-mark {
         position: relative;
-        flex: 1;
-        min-height: 0;
-        background:
-          linear-gradient(135deg, rgba(15, 23, 42, 0.08), rgba(16, 185, 129, 0.08)),
-          #eefdf6;
+        z-index: 1;
+        display: grid;
+        width: 88%;
+        aspect-ratio: 1;
+        place-items: center;
       }
 
-      .static-screenshot-media img {
+      .static-logo-mark img {
         display: block;
-        height: 100%;
-        width: 100%;
-        object-fit: cover;
+        max-height: 100%;
+        max-width: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 22px 38px rgba(15, 23, 42, 0.1));
       }
 
-      .static-screenshot-placeholder {
+      .static-logo-fallback {
         display: grid;
         height: 100%;
+        width: 100%;
         place-items: center;
-        padding: 2rem;
-      }
-
-      .static-screenshot-mock {
-        width: min(82%, 25rem);
-      }
-
-      .static-screenshot-mock-line {
-        height: 0.85rem;
-        margin-top: 0.85rem;
-        border-radius: 999px;
-        background: rgba(15, 23, 42, 0.12);
-      }
-
-      .static-screenshot-mock-line:first-child {
-        width: 54%;
-        height: 1.4rem;
-        margin-top: 0;
-        background: rgba(16, 185, 129, 0.36);
-      }
-
-      .static-screenshot-mock-line:nth-child(2) {
-        width: 82%;
-      }
-
-      .static-screenshot-mock-line:nth-child(3) {
-        width: 68%;
-      }
-
-      .static-screenshot-caption {
-        position: absolute;
-        left: 1rem;
-        right: 1rem;
-        bottom: 1rem;
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        border-radius: 1rem;
-        background: rgba(15, 23, 42, 0.76);
-        padding: 0.9rem 1rem;
+        border-radius: 32%;
+        background: linear-gradient(135deg, #059669, #65a30d);
         color: #fff;
-        backdrop-filter: blur(16px);
-      }
-
-      .static-screenshot-caption strong {
-        display: block;
-        font-size: 0.98rem;
-      }
-
-      .static-screenshot-caption span {
-        display: block;
-        margin-top: 0.35rem;
-        color: rgba(255, 255, 255, 0.74);
-        font-size: 0.84rem;
-        line-height: 1.5;
-      }
-
-      .static-screenshot-dots {
-        position: absolute;
-        left: 1.25rem;
-        bottom: 0.5rem;
-        z-index: 5;
-        display: flex;
-        gap: 0.45rem;
-      }
-
-      .static-screenshot-dot {
-        height: 0.48rem;
-        width: 0.48rem;
-        border: 0;
-        border-radius: 999px;
-        background: rgba(15, 23, 42, 0.22);
-        cursor: pointer;
-        padding: 0;
-        transition: background 0.2s ease, transform 0.2s ease, width 0.2s ease;
-      }
-
-      .static-screenshot-dot.is-active {
-        width: 1.45rem;
-        background: #059669;
+        font-size: clamp(2.4rem, 7vw, 5.4rem);
+        font-weight: 950;
+        letter-spacing: 0;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
       }
 
       html.dark #static-home-showcase {
@@ -421,8 +311,7 @@
       html.dark .static-home-theme-toggle,
       html.dark .static-home-kicker,
       html.dark .static-home-point,
-      html.dark .static-home-button.secondary,
-      html.dark .static-screenshot-card {
+      html.dark .static-home-button.secondary {
         border-color: rgba(255, 255, 255, 0.1);
         background: rgba(255, 255, 255, 0.06);
       }
@@ -449,30 +338,13 @@
         color: #f8fafc;
       }
 
-      html.dark .static-screenshot-media {
-        background:
-          linear-gradient(135deg, rgba(16, 185, 129, 0.13), rgba(14, 165, 233, 0.1)),
-          #071426;
+      html.dark .static-logo-card {
+        opacity: 0.24;
+        filter: saturate(0.9) contrast(0.94);
       }
 
-      html.dark .static-screenshot-chrome {
-        border-bottom-color: rgba(255, 255, 255, 0.08);
-      }
-
-      html.dark .static-screenshot-mock-line {
-        background: rgba(255, 255, 255, 0.12);
-      }
-
-      html.dark .static-screenshot-mock-line:first-child {
-        background: rgba(16, 185, 129, 0.34);
-      }
-
-      html.dark .static-screenshot-dot {
-        background: rgba(255, 255, 255, 0.24);
-      }
-
-      html.dark .static-screenshot-dot.is-active {
-        background: #34d399;
+      html.dark .static-logo-mark img {
+        filter: drop-shadow(0 24px 38px rgba(0, 0, 0, 0.24));
       }
 
       @media (prefers-color-scheme: dark) {
@@ -491,8 +363,7 @@
         html:not(.light) .static-home-theme-toggle,
         html:not(.light) .static-home-kicker,
         html:not(.light) .static-home-point,
-        html:not(.light) .static-home-button.secondary,
-        html:not(.light) .static-screenshot-card {
+        html:not(.light) .static-home-button.secondary {
           border-color: rgba(255, 255, 255, 0.1);
           background: rgba(255, 255, 255, 0.06);
         }
@@ -519,56 +390,37 @@
           color: #f8fafc;
         }
 
-        html:not(.light) .static-screenshot-media {
-          background:
-            linear-gradient(135deg, rgba(16, 185, 129, 0.13), rgba(14, 165, 233, 0.1)),
-            #071426;
+        html:not(.light) .static-logo-card {
+          opacity: 0.24;
+          filter: saturate(0.9) contrast(0.94);
         }
 
-        html:not(.light) .static-screenshot-chrome {
-          border-bottom-color: rgba(255, 255, 255, 0.08);
-        }
-
-        html:not(.light) .static-screenshot-mock-line {
-          background: rgba(255, 255, 255, 0.12);
-        }
-
-        html:not(.light) .static-screenshot-mock-line:first-child {
-          background: rgba(16, 185, 129, 0.34);
-        }
-
-        html:not(.light) .static-screenshot-dot {
-          background: rgba(255, 255, 255, 0.24);
-        }
-
-        html:not(.light) .static-screenshot-dot.is-active {
-          background: #34d399;
+        html:not(.light) .static-logo-mark img {
+          filter: drop-shadow(0 24px 38px rgba(0, 0, 0, 0.24));
         }
       }
 
       @media (max-width: 1120px) {
-        .static-home-shell {
-          grid-template-columns: 1fr;
-        }
-
         .static-home-title,
         .static-home-description {
           max-width: 860px;
         }
 
-        .static-home-screenshots {
-          min-height: 470px;
-        }
-
-        .static-screenshot-stage {
-          height: min(520px, 78vw);
-          min-height: 390px;
+        .static-home-logo-stack {
+          right: 1rem;
+          width: min(520px, 52vw);
         }
       }
 
       @media (max-width: 760px) {
         .static-home-shell {
+          position: relative;
           padding: 5rem 1rem 4rem;
+        }
+
+        .static-home-copy {
+          position: relative;
+          z-index: 2;
         }
 
         .static-home-points {
@@ -583,31 +435,39 @@
           font-size: clamp(2.15rem, 11vw, 3.35rem);
         }
 
-        .static-home-screenshots {
-          min-height: 360px;
+        .static-home-description {
+          max-width: none;
         }
 
-        .static-screenshot-stage {
-          height: 340px;
-          min-height: 340px;
+        .static-home-logo-stack {
+          position: absolute;
+          top: 14.9rem;
+          right: 0.2rem;
+          z-index: 1;
+          width: min(42vw, 10rem);
+          overflow: visible;
+          transform: none;
         }
 
-        .static-screenshot-card {
-          border-radius: 1.1rem;
+        .static-logo-orbit {
+          position: relative;
+          height: 100%;
+          width: 100%;
         }
 
-        .static-screenshot-card.stack-1 {
-          transform: translate3d(1rem, 0.9rem, 0) rotate(-2deg) scale(0.94);
+        .static-logo-card {
+          opacity: 0.15;
         }
 
-        .static-screenshot-card.stack-2 {
-          transform: translate3d(1.8rem, 1.75rem, 0) rotate(-4deg) scale(0.88);
+        .static-logo-mark {
+          width: 100%;
         }
+      }
 
-        .static-screenshot-caption {
-          left: 0.75rem;
-          right: 0.75rem;
-          bottom: 0.75rem;
+      @media (max-width: 420px) {
+        .static-home-logo-stack {
+          top: 14.6rem;
+          width: 8.2rem;
         }
       }
     </style>
@@ -683,56 +543,14 @@
             </article>
           </div>
         </div>
-        <aside class="static-home-screenshots" aria-label="PiLauncher screenshots">
-          <div class="static-screenshot-stage" data-static-screenshot-stage>
-            <article class="static-screenshot-card stack-0">
-              <div class="static-screenshot-chrome" aria-hidden="true">
-                <span></span><span></span><span></span>
+        <aside class="static-home-logo-stack" aria-hidden="true">
+          <div class="static-logo-orbit" data-static-logo-stack>
+            <div class="static-logo-card">
+              <div class="static-logo-mark" data-static-logo-mark>
+                <img src="/logo1024.png" alt="" decoding="async" loading="eager" />
               </div>
-              <div class="static-screenshot-media">
-                <div class="static-screenshot-placeholder" aria-hidden="true">
-                  <div class="static-screenshot-mock">
-                    <div class="static-screenshot-mock-line"></div>
-                    <div class="static-screenshot-mock-line"></div>
-                    <div class="static-screenshot-mock-line"></div>
-                  </div>
-                </div>
-                <div class="static-screenshot-caption">
-                  <strong>掌机友好界面</strong>
-                  <span>等待加载后台截图，先展示启动器的核心使用场景。</span>
-                </div>
-              </div>
-            </article>
-            <article class="static-screenshot-card stack-1" aria-hidden="true">
-              <div class="static-screenshot-chrome" aria-hidden="true">
-                <span></span><span></span><span></span>
-              </div>
-              <div class="static-screenshot-media">
-                <div class="static-screenshot-placeholder" aria-hidden="true">
-                  <div class="static-screenshot-mock">
-                    <div class="static-screenshot-mock-line"></div>
-                    <div class="static-screenshot-mock-line"></div>
-                    <div class="static-screenshot-mock-line"></div>
-                  </div>
-                </div>
-              </div>
-            </article>
-            <article class="static-screenshot-card stack-2" aria-hidden="true">
-              <div class="static-screenshot-chrome" aria-hidden="true">
-                <span></span><span></span><span></span>
-              </div>
-              <div class="static-screenshot-media">
-                <div class="static-screenshot-placeholder" aria-hidden="true">
-                  <div class="static-screenshot-mock">
-                    <div class="static-screenshot-mock-line"></div>
-                    <div class="static-screenshot-mock-line"></div>
-                    <div class="static-screenshot-mock-line"></div>
-                  </div>
-                </div>
-              </div>
-            </article>
+            </div>
           </div>
-          <div class="static-screenshot-dots" data-static-screenshot-dots aria-label="截图轮播进度"></div>
         </aside>
       </main>
     </section>
@@ -779,129 +597,64 @@
           syncThemeToggle();
         }
 
-        var screenshotStage = document.querySelector('[data-static-screenshot-stage]');
-        var screenshotDots = document.querySelector('[data-static-screenshot-dots]');
-        var screenshotItems = [
-          {
-            title: '掌机友好界面',
-            description: '为手柄操作和小屏浏览保留清晰层级。',
-            imageUrl: ''
-          },
-          {
-            title: '模组与整合包',
-            description: '把版本、模组和整合包管理放进同一体验。',
-            imageUrl: ''
-          },
-          {
-            title: '快速启动游戏',
-            description: '账号登录、配置选择与启动流程更加顺手。',
-            imageUrl: ''
-          }
-        ];
-        var screenshotIndex = 0;
-        var screenshotTimer = null;
+        var logoStack = document.querySelector('[data-static-logo-stack]');
+        var logoMarks = document.querySelectorAll('[data-static-logo-mark]');
 
-        var escapeHtml = function (value) {
-          return String(value || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-        };
-
-        var getStaticUploadUrl = function (path) {
+        var getStaticAssetUrl = function (path) {
           if (!path) return '';
           if (/^(blob:|data:|https?:\/\/)/i.test(path)) return path;
           return path.charAt(0) === '/' ? path : '/' + path;
         };
 
-        var renderScreenshotCard = function (item, stackIndex) {
-          var title = item.title || item.name || 'PiLauncher 截图';
-          var description = item.description || item.caption || '查看 PiLauncher 的实际界面效果。';
-          var imageUrl = getStaticUploadUrl(item.imageUrl || item.image_url || item.url || '');
-          var media = imageUrl
-            ? '<img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(title) + '" loading="lazy" decoding="async" />'
-            : '<div class="static-screenshot-placeholder" aria-hidden="true"><div class="static-screenshot-mock"><div class="static-screenshot-mock-line"></div><div class="static-screenshot-mock-line"></div><div class="static-screenshot-mock-line"></div></div></div>';
+        var applyStaticLogo = function (logoUrl, logoColor) {
+          var resolvedLogoUrl = getStaticAssetUrl(logoUrl || '/logo1024.png');
+          var resolvedLogoColor = logoColor || '#10b981';
 
-          return (
-            '<article class="static-screenshot-card stack-' + stackIndex + '"' + (stackIndex > 0 ? ' aria-hidden="true"' : '') + '>' +
-              '<div class="static-screenshot-chrome" aria-hidden="true"><span></span><span></span><span></span></div>' +
-              '<div class="static-screenshot-media">' +
-                media +
-                (stackIndex === 0
-                  ? '<div class="static-screenshot-caption"><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(description) + '</span></div>'
-                  : '') +
-              '</div>' +
-            '</article>'
-          );
-        };
-
-        var renderScreenshotDots = function () {
-          if (!screenshotDots) return;
-          screenshotDots.innerHTML = screenshotItems.map(function (_, index) {
-            return '<button class="static-screenshot-dot' + (index === screenshotIndex ? ' is-active' : '') + '" type="button" data-static-screenshot-dot="' + index + '" aria-label="显示第 ' + (index + 1) + ' 张截图"></button>';
-          }).join('');
-        };
-
-        var renderScreenshots = function () {
-          if (!screenshotStage || !screenshotItems.length) return;
-          var visibleCount = Math.min(3, screenshotItems.length);
-          var cards = [];
-
-          for (var offset = visibleCount - 1; offset >= 0; offset -= 1) {
-            var item = screenshotItems[(screenshotIndex + offset) % screenshotItems.length];
-            cards.push(renderScreenshotCard(item, offset));
+          if (logoStack) {
+            logoStack.style.setProperty('--static-logo-color', resolvedLogoColor);
           }
 
-          screenshotStage.innerHTML = cards.join('');
-          renderScreenshotDots();
-        };
-
-        var startScreenshotCarousel = function () {
-          if (screenshotTimer || screenshotItems.length <= 1) return;
-          screenshotTimer = window.setInterval(function () {
-            screenshotIndex = (screenshotIndex + 1) % screenshotItems.length;
-            renderScreenshots();
-          }, 4800);
-        };
-
-        if (screenshotDots) {
-          screenshotDots.addEventListener('click', function (event) {
-            var target = event.target;
-            if (!target || !target.getAttribute) return;
-            var nextIndex = Number(target.getAttribute('data-static-screenshot-dot'));
-            if (Number.isNaN(nextIndex)) return;
-            screenshotIndex = nextIndex;
-            renderScreenshots();
-            if (screenshotTimer) {
-              window.clearInterval(screenshotTimer);
-              screenshotTimer = null;
-              startScreenshotCarousel();
+          logoMarks.forEach(function (mark) {
+            mark.textContent = '';
+            if (resolvedLogoUrl) {
+              var img = document.createElement('img');
+              img.src = resolvedLogoUrl;
+              img.alt = '';
+              img.decoding = 'async';
+              img.loading = 'eager';
+              mark.appendChild(img);
+              return;
             }
+
+            var fallback = document.createElement('div');
+            fallback.className = 'static-logo-fallback';
+            fallback.textContent = 'Pi';
+            mark.appendChild(fallback);
           });
-        }
+        };
 
-        renderScreenshots();
+        try {
+          var cachedBootstrap = localStorage.getItem('flowcore_cached_home_bootstrap');
+          if (cachedBootstrap) {
+            var parsedBootstrap = JSON.parse(cachedBootstrap);
+            if (parsedBootstrap && parsedBootstrap.hero) {
+              applyStaticLogo(parsedBootstrap.hero.logoUrl, parsedBootstrap.hero.logoColor);
+            }
+          }
+        } catch (error) {}
 
-        if (window.fetch && screenshotStage) {
-          fetch('/api/feature-screenshots')
+        if (window.fetch && logoStack) {
+          fetch('/api/home/bootstrap')
             .then(function (response) {
               return response.ok ? response.json() : null;
             })
             .then(function (data) {
-              if (Array.isArray(data) && data.length) {
-                screenshotItems = data;
-                screenshotIndex = 0;
-                renderScreenshots();
+              if (data && data.hero) {
+                localStorage.setItem('flowcore_cached_home_bootstrap', JSON.stringify(data));
+                applyStaticLogo(data.hero.logoUrl, data.hero.logoColor);
               }
-              startScreenshotCarousel();
             })
-            .catch(function () {
-              startScreenshotCarousel();
-            });
-        } else {
-          startScreenshotCarousel();
+            .catch(function () {});
         }
       })();
     </script>
