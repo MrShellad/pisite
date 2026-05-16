@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { api } from '../../../api/client';
+import { DEFAULT_FAQ_ICON } from '../faqIconPresets';
 import { useAdminFeedback } from '../components/AdminFeedback';
 import type { Faq, FaqFormData } from '../types/faq';
 
@@ -8,7 +9,7 @@ const initialFormData: FaqFormData = {
   id: '',
   question: '',
   answer: '',
-  iconSvg: '',
+  iconSvg: DEFAULT_FAQ_ICON.svg,
   iconColor: '#3b82f6',
   priority: 1,
 };
@@ -20,7 +21,7 @@ export function useManageFAQ() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<FaqFormData>(initialFormData);
 
-  const fetchFaqs = async () => {
+  const fetchFaqs = useCallback(async () => {
     try {
       const res = await api.get('/admin/faqs/all');
       setFaqs(res.data);
@@ -30,11 +31,11 @@ export function useManageFAQ() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [notify]);
 
   useEffect(() => {
     void fetchFaqs();
-  }, []);
+  }, [fetchFaqs]);
 
   const handleChange = (field: keyof FaqFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));

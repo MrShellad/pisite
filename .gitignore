@@ -18,3 +18,4 @@ backend/uploads
 docs/*
 !docs/project-feature-gap-analysis.md
 pisiterun.sh
+frontend/scripts/.keep
