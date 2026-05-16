@@ -1,12 +1,601 @@
 <!doctype html>
-<html lang="en" class="scroll-smooth">
+<html lang="zh-CN" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FlowCore</title>
+    <title>PiLauncher</title>
+    <meta name="description" content="PiLauncher 是一款为掌机打造、兼容全平台的 Minecraft 启动器，让模组管理、账号登录和游戏启动更简单。" />
+    <meta name="keywords" content="PiLauncher,Minecraft启动器,MC启动器,掌机,手柄操作,模组管理,跨平台" />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <meta name="theme-color" content="#10b981" />
+    <link rel="canonical" href="https://pil.nav4ai.net/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PiLauncher" />
+    <meta property="og:title" content="PiLauncher - 更简单的 Minecraft 启动与联机体验" />
+    <meta property="og:description" content="支持手柄操作的 MC 启动器。为掌机打造、兼容全平台，让模组管理、账号登录和游戏启动更简单。" />
+    <meta property="og:url" content="https://pil.nav4ai.net/" />
+    <meta property="og:image" content="https://pil.nav4ai.net/og-card.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PiLauncher - 更简单的 Minecraft 启动与联机体验" />
+    <meta name="twitter:description" content="支持手柄操作的 MC 启动器，为掌机打造、兼容全平台。" />
+    <meta name="twitter:image" content="https://pil.nav4ai.net/og-card.svg" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "PiLauncher",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Windows, macOS, Linux",
+        "description": "PiLauncher 是一款为掌机打造、兼容全平台的 Minecraft 启动器，让模组管理、账号登录和游戏启动更简单。",
+        "url": "https://pil.nav4ai.net/"
+      }
+    </script>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      html[data-static-home="hidden"] #static-home-showcase {
+        display: none;
+      }
+
+      html.dark {
+        color-scheme: dark;
+      }
+
+      #static-home-showcase {
+        min-height: 100vh;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 15% 18%, rgba(16, 185, 129, 0.18), transparent 28rem),
+          radial-gradient(circle at 85% 12%, rgba(14, 165, 233, 0.16), transparent 30rem),
+          linear-gradient(135deg, #ecfdf5 0%, #f8fafc 52%, #fffbeb 100%);
+        color: #0f172a;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .static-home-theme-toggle {
+        position: absolute;
+        top: 1.25rem;
+        right: 1.25rem;
+        display: inline-flex;
+        height: 2.75rem;
+        width: 2.75rem;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.78);
+        color: #0f172a;
+        box-shadow: 0 14px 36px rgba(15, 23, 42, 0.1);
+        cursor: pointer;
+        transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+      }
+
+      .static-home-theme-toggle:hover {
+        transform: translateY(-1px);
+        border-color: rgba(16, 185, 129, 0.36);
+      }
+
+      .static-home-theme-toggle svg {
+        height: 1.15rem;
+        width: 1.15rem;
+      }
+
+      .static-home-theme-toggle .moon-icon {
+        display: none;
+      }
+
+      .static-home-shell {
+        box-sizing: border-box;
+        display: grid;
+        min-height: 100vh;
+        align-items: center;
+        gap: 3rem;
+        grid-template-columns: minmax(0, 0.92fr) minmax(360px, 1.08fr);
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 6rem 1.5rem 5rem;
+      }
+
+      .static-home-copy {
+        min-width: 0;
+      }
+
+      .static-home-kicker {
+        display: inline-flex;
+        width: fit-content;
+        align-items: center;
+        gap: 0.5rem;
+        border: 1px solid rgba(16, 185, 129, 0.24);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.74);
+        padding: 0.45rem 0.8rem;
+        color: #047857;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .static-home-title {
+        max-width: 980px;
+        margin: 1.5rem 0 0;
+        font-size: clamp(3.25rem, 7vw, 6.25rem);
+        line-height: 0.94;
+        letter-spacing: 0;
+      }
+
+      .static-home-title span {
+        display: block;
+        margin-top: 0.2em;
+        background: linear-gradient(90deg, #059669, #65a30d);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .static-home-description {
+        max-width: 860px;
+        margin: 1.75rem 0 0;
+        color: #475569;
+        font-size: clamp(1rem, 2.2vw, 1.25rem);
+        line-height: 1.8;
+      }
+
+      .static-home-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.875rem;
+        margin-top: 2.25rem;
+      }
+
+      .static-home-button {
+        display: inline-flex;
+        min-height: 3.25rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 0 1.35rem;
+        border: 1px solid transparent;
+        text-decoration: none;
+        font-size: 0.95rem;
+        font-weight: 800;
+      }
+
+      .static-home-button.primary {
+        background: #064e3b;
+        color: #fff;
+        box-shadow: 0 18px 45px rgba(6, 78, 59, 0.24);
+      }
+
+      .static-home-button.secondary {
+        border-color: rgba(15, 23, 42, 0.12);
+        background: rgba(255, 255, 255, 0.72);
+        color: #0f172a;
+      }
+
+      .static-home-points {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+        margin-top: 3rem;
+      }
+
+      .static-home-point {
+        box-sizing: border-box;
+        min-height: 8rem;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.68);
+        padding: 1.15rem;
+        box-shadow: 0 16px 50px rgba(15, 23, 42, 0.06);
+      }
+
+      .static-home-point strong {
+        display: block;
+        font-size: 0.95rem;
+      }
+
+      .static-home-point span {
+        display: block;
+        margin-top: 0.55rem;
+        color: #64748b;
+        font-size: 0.875rem;
+        line-height: 1.6;
+      }
+
+      .static-home-screenshots {
+        position: relative;
+        min-height: 560px;
+      }
+
+      .static-screenshot-stage {
+        position: relative;
+        height: min(560px, 62vw);
+        min-height: 430px;
+        isolation: isolate;
+      }
+
+      .static-screenshot-stage::before {
+        position: absolute;
+        inset: 8% 2% 2% 10%;
+        z-index: 0;
+        border-radius: 2rem;
+        background:
+          radial-gradient(circle at 20% 18%, rgba(16, 185, 129, 0.34), transparent 18rem),
+          radial-gradient(circle at 86% 82%, rgba(14, 165, 233, 0.24), transparent 20rem);
+        content: "";
+        filter: blur(10px);
+        opacity: 0.9;
+      }
+
+      .static-screenshot-card {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid rgba(15, 23, 42, 0.1);
+        border-radius: 1.55rem;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: 0 32px 90px rgba(15, 23, 42, 0.18);
+        transform-origin: center;
+        transition: transform 0.55s ease, opacity 0.55s ease, filter 0.55s ease;
+      }
+
+      .static-screenshot-card.stack-0 {
+        z-index: 3;
+        opacity: 1;
+        transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+      }
+
+      .static-screenshot-card.stack-1 {
+        z-index: 2;
+        opacity: 0.72;
+        filter: saturate(0.9);
+        transform: translate3d(2.1rem, 1.2rem, 0) rotate(-3deg) scale(0.94);
+      }
+
+      .static-screenshot-card.stack-2 {
+        z-index: 1;
+        opacity: 0.46;
+        filter: saturate(0.8);
+        transform: translate3d(4.1rem, 2.45rem, 0) rotate(-6deg) scale(0.88);
+      }
+
+      .static-screenshot-chrome {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-height: 2.65rem;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+        padding: 0 1rem;
+      }
+
+      .static-screenshot-chrome span {
+        display: block;
+        height: 0.62rem;
+        width: 0.62rem;
+        border-radius: 999px;
+        background: #ef4444;
+      }
+
+      .static-screenshot-chrome span:nth-child(2) {
+        background: #f59e0b;
+      }
+
+      .static-screenshot-chrome span:nth-child(3) {
+        background: #10b981;
+      }
+
+      .static-screenshot-media {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        background:
+          linear-gradient(135deg, rgba(15, 23, 42, 0.08), rgba(16, 185, 129, 0.08)),
+          #eefdf6;
+      }
+
+      .static-screenshot-media img {
+        display: block;
+        height: 100%;
+        width: 100%;
+        object-fit: cover;
+      }
+
+      .static-screenshot-placeholder {
+        display: grid;
+        height: 100%;
+        place-items: center;
+        padding: 2rem;
+      }
+
+      .static-screenshot-mock {
+        width: min(82%, 25rem);
+      }
+
+      .static-screenshot-mock-line {
+        height: 0.85rem;
+        margin-top: 0.85rem;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.12);
+      }
+
+      .static-screenshot-mock-line:first-child {
+        width: 54%;
+        height: 1.4rem;
+        margin-top: 0;
+        background: rgba(16, 185, 129, 0.36);
+      }
+
+      .static-screenshot-mock-line:nth-child(2) {
+        width: 82%;
+      }
+
+      .static-screenshot-mock-line:nth-child(3) {
+        width: 68%;
+      }
+
+      .static-screenshot-caption {
+        position: absolute;
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 1rem;
+        background: rgba(15, 23, 42, 0.76);
+        padding: 0.9rem 1rem;
+        color: #fff;
+        backdrop-filter: blur(16px);
+      }
+
+      .static-screenshot-caption strong {
+        display: block;
+        font-size: 0.98rem;
+      }
+
+      .static-screenshot-caption span {
+        display: block;
+        margin-top: 0.35rem;
+        color: rgba(255, 255, 255, 0.74);
+        font-size: 0.84rem;
+        line-height: 1.5;
+      }
+
+      .static-screenshot-dots {
+        position: absolute;
+        left: 1.25rem;
+        bottom: 0.5rem;
+        z-index: 5;
+        display: flex;
+        gap: 0.45rem;
+      }
+
+      .static-screenshot-dot {
+        height: 0.48rem;
+        width: 0.48rem;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.22);
+        cursor: pointer;
+        padding: 0;
+        transition: background 0.2s ease, transform 0.2s ease, width 0.2s ease;
+      }
+
+      .static-screenshot-dot.is-active {
+        width: 1.45rem;
+        background: #059669;
+      }
+
+      html.dark #static-home-showcase {
+        background:
+          radial-gradient(circle at 15% 18%, rgba(16, 185, 129, 0.14), transparent 28rem),
+          radial-gradient(circle at 85% 12%, rgba(14, 165, 233, 0.12), transparent 30rem),
+          linear-gradient(135deg, #04130a 0%, #071426 58%, #050505 100%);
+        color: #f8fafc;
+      }
+
+      html.dark .static-home-theme-toggle,
+      html.dark .static-home-kicker,
+      html.dark .static-home-point,
+      html.dark .static-home-button.secondary,
+      html.dark .static-screenshot-card {
+        border-color: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      html.dark .static-home-theme-toggle {
+        color: #f8fafc;
+        box-shadow: 0 14px 36px rgba(0, 0, 0, 0.24);
+      }
+
+      html.dark .static-home-theme-toggle .sun-icon {
+        display: none;
+      }
+
+      html.dark .static-home-theme-toggle .moon-icon {
+        display: block;
+      }
+
+      html.dark .static-home-description,
+      html.dark .static-home-point span {
+        color: #94a3b8;
+      }
+
+      html.dark .static-home-button.secondary {
+        color: #f8fafc;
+      }
+
+      html.dark .static-screenshot-media {
+        background:
+          linear-gradient(135deg, rgba(16, 185, 129, 0.13), rgba(14, 165, 233, 0.1)),
+          #071426;
+      }
+
+      html.dark .static-screenshot-chrome {
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+      }
+
+      html.dark .static-screenshot-mock-line {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      html.dark .static-screenshot-mock-line:first-child {
+        background: rgba(16, 185, 129, 0.34);
+      }
+
+      html.dark .static-screenshot-dot {
+        background: rgba(255, 255, 255, 0.24);
+      }
+
+      html.dark .static-screenshot-dot.is-active {
+        background: #34d399;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        html:not(.light) #static-home-showcase {
+          background:
+            radial-gradient(circle at 15% 18%, rgba(16, 185, 129, 0.14), transparent 28rem),
+            radial-gradient(circle at 85% 12%, rgba(14, 165, 233, 0.12), transparent 30rem),
+            linear-gradient(135deg, #04130a 0%, #071426 58%, #050505 100%);
+          color: #f8fafc;
+        }
+
+        html:not(.light) .static-home-theme-toggle,
+        html:not(.light) .static-home-kicker,
+        html:not(.light) .static-home-point,
+        html:not(.light) .static-home-button.secondary,
+        html:not(.light) .static-screenshot-card {
+          border-color: rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.06);
+        }
+
+        html:not(.light) .static-home-theme-toggle {
+          color: #f8fafc;
+          box-shadow: 0 14px 36px rgba(0, 0, 0, 0.24);
+        }
+
+        html:not(.light) .static-home-theme-toggle .sun-icon {
+          display: none;
+        }
+
+        html:not(.light) .static-home-theme-toggle .moon-icon {
+          display: block;
+        }
+
+        html:not(.light) .static-home-description,
+        html:not(.light) .static-home-point span {
+          color: #94a3b8;
+        }
+
+        html:not(.light) .static-home-button.secondary {
+          color: #f8fafc;
+        }
+
+        html:not(.light) .static-screenshot-media {
+          background:
+            linear-gradient(135deg, rgba(16, 185, 129, 0.13), rgba(14, 165, 233, 0.1)),
+            #071426;
+        }
+
+        html:not(.light) .static-screenshot-chrome {
+          border-bottom-color: rgba(255, 255, 255, 0.08);
+        }
+
+        html:not(.light) .static-screenshot-mock-line {
+          background: rgba(255, 255, 255, 0.12);
+        }
+
+        html:not(.light) .static-screenshot-mock-line:first-child {
+          background: rgba(16, 185, 129, 0.34);
+        }
+
+        html:not(.light) .static-screenshot-dot {
+          background: rgba(255, 255, 255, 0.24);
+        }
+
+        html:not(.light) .static-screenshot-dot.is-active {
+          background: #34d399;
+        }
+      }
+
+      @media (max-width: 1040px) {
+        .static-home-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .static-home-screenshots {
+          min-height: 470px;
+        }
+
+        .static-screenshot-stage {
+          height: min(520px, 78vw);
+          min-height: 390px;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .static-home-shell {
+          padding: 5rem 1rem 4rem;
+        }
+
+        .static-home-points {
+          grid-template-columns: 1fr;
+        }
+
+        .static-home-screenshots {
+          min-height: 360px;
+        }
+
+        .static-screenshot-stage {
+          height: 340px;
+          min-height: 340px;
+        }
+
+        .static-screenshot-card {
+          border-radius: 1.1rem;
+        }
+
+        .static-screenshot-card.stack-1 {
+          transform: translate3d(1rem, 0.9rem, 0) rotate(-2deg) scale(0.94);
+        }
+
+        .static-screenshot-card.stack-2 {
+          transform: translate3d(1.8rem, 1.75rem, 0) rotate(-4deg) scale(0.88);
+        }
+
+        .static-screenshot-caption {
+          left: 0.75rem;
+          right: 0.75rem;
+          bottom: 0.75rem;
+        }
+      }
+    </style>
     <script>
       try {
+        var savedTheme = localStorage.getItem('flowcore_theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var shouldUseDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+        document.documentElement.classList.toggle('dark', shouldUseDark);
+        document.documentElement.classList.toggle('light', !shouldUseDark);
+
+        var staticHomePath = window.location.pathname.replace(/\/+$/, '') || '/';
+        document.documentElement.setAttribute(
+          'data-static-home',
+          staticHomePath === '/' ? 'visible' : 'hidden'
+        );
+
         var cachedSeo = localStorage.getItem('flowcore_cached_seo');
         if (cachedSeo) {
           var parsedSeo = JSON.parse(cachedSeo);
@@ -16,7 +605,274 @@
     </script>
   </head>
   <body>
+    <section id="static-home-showcase" aria-label="PiLauncher static introduction">
+      <button class="static-home-theme-toggle" type="button" data-static-theme-toggle aria-label="切换暗色模式" aria-pressed="false">
+        <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2"></path>
+          <path d="M12 20v2"></path>
+          <path d="m4.93 4.93 1.41 1.41"></path>
+          <path d="m17.66 17.66 1.41 1.41"></path>
+          <path d="M2 12h2"></path>
+          <path d="M20 12h2"></path>
+          <path d="m6.34 17.66-1.41 1.41"></path>
+          <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>
+        <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20.99 13.49A9 9 0 1 1 10.51 3.01 7 7 0 0 0 20.99 13.49Z"></path>
+        </svg>
+      </button>
+      <main class="static-home-shell">
+        <div class="static-home-copy">
+          <div class="static-home-kicker">Gamepad-compatible Minecraft launcher</div>
+          <h1 class="static-home-title">
+            PiLauncher
+            <span>支持手柄操作的MC启动器</span>
+          </h1>
+          <p class="static-home-description">
+            PiLauncher 是一款为掌机打造、兼容全平台的 Minecraft 启动器。让模组管理、账号登录和游戏启动更简单，也让玩家能更自然地在桌面、掌机与客厅场景之间切换。
+          </p>
+          <div class="static-home-actions" aria-label="页面操作">
+            <a class="static-home-button primary" href="#root">立即下载PiLauncher</a>
+            <a class="static-home-button secondary" href="/changelog">查看更新日志</a>
+          </div>
+          <div class="static-home-points" aria-label="核心能力">
+            <article class="static-home-point">
+              <strong>掌机友好</strong>
+              <span>围绕手柄操作与移动场景优化，减少启动器在小屏设备上的操作负担。</span>
+            </article>
+            <article class="static-home-point">
+              <strong>模组管理</strong>
+              <span>面向 Minecraft 玩家整理模组、整合包和版本流程，让配置更直观。</span>
+            </article>
+            <article class="static-home-point">
+              <strong>快速启动</strong>
+              <span>账号登录、游戏启动与后续更新保持在同一体验里，少一点跳转，多一点顺手。</span>
+            </article>
+          </div>
+        </div>
+        <aside class="static-home-screenshots" aria-label="PiLauncher screenshots">
+          <div class="static-screenshot-stage" data-static-screenshot-stage>
+            <article class="static-screenshot-card stack-0">
+              <div class="static-screenshot-chrome" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="static-screenshot-media">
+                <div class="static-screenshot-placeholder" aria-hidden="true">
+                  <div class="static-screenshot-mock">
+                    <div class="static-screenshot-mock-line"></div>
+                    <div class="static-screenshot-mock-line"></div>
+                    <div class="static-screenshot-mock-line"></div>
+                  </div>
+                </div>
+                <div class="static-screenshot-caption">
+                  <strong>掌机友好界面</strong>
+                  <span>等待加载后台截图，先展示启动器的核心使用场景。</span>
+                </div>
+              </div>
+            </article>
+            <article class="static-screenshot-card stack-1" aria-hidden="true">
+              <div class="static-screenshot-chrome" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="static-screenshot-media">
+                <div class="static-screenshot-placeholder" aria-hidden="true">
+                  <div class="static-screenshot-mock">
+                    <div class="static-screenshot-mock-line"></div>
+                    <div class="static-screenshot-mock-line"></div>
+                    <div class="static-screenshot-mock-line"></div>
+                  </div>
+                </div>
+              </div>
+            </article>
+            <article class="static-screenshot-card stack-2" aria-hidden="true">
+              <div class="static-screenshot-chrome" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="static-screenshot-media">
+                <div class="static-screenshot-placeholder" aria-hidden="true">
+                  <div class="static-screenshot-mock">
+                    <div class="static-screenshot-mock-line"></div>
+                    <div class="static-screenshot-mock-line"></div>
+                    <div class="static-screenshot-mock-line"></div>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+          <div class="static-screenshot-dots" data-static-screenshot-dots aria-label="截图轮播进度"></div>
+        </aside>
+      </main>
+    </section>
     <div id="root"></div>
+    <script>
+      (function () {
+        var updateStaticHomeVisibility = function () {
+          var path = window.location.pathname.replace(/\/+$/, '') || '/';
+          document.documentElement.setAttribute(
+            'data-static-home',
+            path === '/' ? 'visible' : 'hidden'
+          );
+        };
+
+        var wrapHistoryMethod = function (methodName) {
+          var original = window.history[methodName];
+          window.history[methodName] = function () {
+            var result = original.apply(this, arguments);
+            window.dispatchEvent(new Event('flowcore-route-change'));
+            return result;
+          };
+        };
+
+        wrapHistoryMethod('pushState');
+        wrapHistoryMethod('replaceState');
+        window.addEventListener('popstate', updateStaticHomeVisibility);
+        window.addEventListener('flowcore-route-change', updateStaticHomeVisibility);
+        updateStaticHomeVisibility();
+
+        var themeToggle = document.querySelector('[data-static-theme-toggle]');
+        var syncThemeToggle = function () {
+          if (!themeToggle) return;
+          themeToggle.setAttribute('aria-pressed', document.documentElement.classList.contains('dark') ? 'true' : 'false');
+        };
+
+        if (themeToggle) {
+          themeToggle.addEventListener('click', function () {
+            var nextIsDark = !document.documentElement.classList.contains('dark');
+            document.documentElement.classList.toggle('dark', nextIsDark);
+            document.documentElement.classList.toggle('light', !nextIsDark);
+            localStorage.setItem('flowcore_theme', nextIsDark ? 'dark' : 'light');
+            syncThemeToggle();
+          });
+          syncThemeToggle();
+        }
+
+        var screenshotStage = document.querySelector('[data-static-screenshot-stage]');
+        var screenshotDots = document.querySelector('[data-static-screenshot-dots]');
+        var screenshotItems = [
+          {
+            title: '掌机友好界面',
+            description: '为手柄操作和小屏浏览保留清晰层级。',
+            imageUrl: ''
+          },
+          {
+            title: '模组与整合包',
+            description: '把版本、模组和整合包管理放进同一体验。',
+            imageUrl: ''
+          },
+          {
+            title: '快速启动游戏',
+            description: '账号登录、配置选择与启动流程更加顺手。',
+            imageUrl: ''
+          }
+        ];
+        var screenshotIndex = 0;
+        var screenshotTimer = null;
+
+        var escapeHtml = function (value) {
+          return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        };
+
+        var getStaticUploadUrl = function (path) {
+          if (!path) return '';
+          if (/^(blob:|data:|https?:\/\/)/i.test(path)) return path;
+          return path.charAt(0) === '/' ? path : '/' + path;
+        };
+
+        var renderScreenshotCard = function (item, stackIndex) {
+          var title = item.title || item.name || 'PiLauncher 截图';
+          var description = item.description || item.caption || '查看 PiLauncher 的实际界面效果。';
+          var imageUrl = getStaticUploadUrl(item.imageUrl || item.image_url || item.url || '');
+          var media = imageUrl
+            ? '<img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(title) + '" loading="lazy" decoding="async" />'
+            : '<div class="static-screenshot-placeholder" aria-hidden="true"><div class="static-screenshot-mock"><div class="static-screenshot-mock-line"></div><div class="static-screenshot-mock-line"></div><div class="static-screenshot-mock-line"></div></div></div>';
+
+          return (
+            '<article class="static-screenshot-card stack-' + stackIndex + '"' + (stackIndex > 0 ? ' aria-hidden="true"' : '') + '>' +
+              '<div class="static-screenshot-chrome" aria-hidden="true"><span></span><span></span><span></span></div>' +
+              '<div class="static-screenshot-media">' +
+                media +
+                (stackIndex === 0
+                  ? '<div class="static-screenshot-caption"><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(description) + '</span></div>'
+                  : '') +
+              '</div>' +
+            '</article>'
+          );
+        };
+
+        var renderScreenshotDots = function () {
+          if (!screenshotDots) return;
+          screenshotDots.innerHTML = screenshotItems.map(function (_, index) {
+            return '<button class="static-screenshot-dot' + (index === screenshotIndex ? ' is-active' : '') + '" type="button" data-static-screenshot-dot="' + index + '" aria-label="显示第 ' + (index + 1) + ' 张截图"></button>';
+          }).join('');
+        };
+
+        var renderScreenshots = function () {
+          if (!screenshotStage || !screenshotItems.length) return;
+          var visibleCount = Math.min(3, screenshotItems.length);
+          var cards = [];
+
+          for (var offset = visibleCount - 1; offset >= 0; offset -= 1) {
+            var item = screenshotItems[(screenshotIndex + offset) % screenshotItems.length];
+            cards.push(renderScreenshotCard(item, offset));
+          }
+
+          screenshotStage.innerHTML = cards.join('');
+          renderScreenshotDots();
+        };
+
+        var startScreenshotCarousel = function () {
+          if (screenshotTimer || screenshotItems.length <= 1) return;
+          screenshotTimer = window.setInterval(function () {
+            screenshotIndex = (screenshotIndex + 1) % screenshotItems.length;
+            renderScreenshots();
+          }, 4800);
+        };
+
+        if (screenshotDots) {
+          screenshotDots.addEventListener('click', function (event) {
+            var target = event.target;
+            if (!target || !target.getAttribute) return;
+            var nextIndex = Number(target.getAttribute('data-static-screenshot-dot'));
+            if (Number.isNaN(nextIndex)) return;
+            screenshotIndex = nextIndex;
+            renderScreenshots();
+            if (screenshotTimer) {
+              window.clearInterval(screenshotTimer);
+              screenshotTimer = null;
+              startScreenshotCarousel();
+            }
+          });
+        }
+
+        renderScreenshots();
+
+        if (window.fetch && screenshotStage) {
+          fetch('/api/feature-screenshots')
+            .then(function (response) {
+              return response.ok ? response.json() : null;
+            })
+            .then(function (data) {
+              if (Array.isArray(data) && data.length) {
+                screenshotItems = data;
+                screenshotIndex = 0;
+                renderScreenshots();
+              }
+              startScreenshotCarousel();
+            })
+            .catch(function () {
+              startScreenshotCarousel();
+            });
+        } else {
+          startScreenshotCarousel();
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
