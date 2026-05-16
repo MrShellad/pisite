@@ -27,7 +27,6 @@ import {
 } from 'recharts';
 
 import { api } from '../../api/client';
-import { useVirtualList } from '../../hooks/useVirtualList';
 import { useAdminFeedback } from './components/AdminFeedback';
 
 type InstallationReport = {
@@ -151,6 +150,7 @@ function isFirstInstallReport(report: InstallationReport) {
 
 export default function ManageInstallations() {
   const { notify } = useAdminFeedback();
+  const reportTableContainerRef = useRef<HTMLDivElement | null>(null);
   const mappingEditorRef = useRef<HTMLDivElement | null>(null);
   const mappingMatchInputRef = useRef<HTMLInputElement | null>(null);
   const [stats, setStats] = useState<InstallationStats | null>(null);
@@ -169,7 +169,6 @@ export default function ManageInstallations() {
     const start = (currentPage - 1) * pageSize;
     return reports.slice(start, start + pageSize);
   }, [currentPage, pageSize, reports]);
-  const reportVirtualRows = useVirtualList(paginatedReports, 68, 6);
 
   const fetchStats = async () => {
     setIsLoading(true);
@@ -207,8 +206,8 @@ export default function ManageInstallations() {
   }, [currentPage, totalPages]);
 
   useEffect(() => {
-    reportVirtualRows.containerRef.current?.scrollTo({ top: 0 });
-  }, [currentPage, pageSize, reportVirtualRows.containerRef]);
+    reportTableContainerRef.current?.scrollTo({ top: 0 });
+  }, [currentPage, pageSize]);
 
   const weekTotal = useMemo(
     () => stats?.weekComparison.reduce((sum, item) => sum + item.thisWeek, 0) ?? 0,
@@ -553,8 +552,7 @@ export default function ManageInstallations() {
           </div>
         </div>
         <div
-          ref={reportVirtualRows.containerRef}
-          onScroll={reportVirtualRows.handleScroll}
+          ref={reportTableContainerRef}
           className="max-h-[620px] overflow-auto rounded-2xl border border-neutral-200/80 dark:border-white/10"
         >
           <table className="w-full min-w-[1230px] table-fixed border-separate border-spacing-0">
@@ -578,12 +576,7 @@ export default function ManageInstallations() {
                 </tr>
               ) : (
                 <>
-                  {reportVirtualRows.paddingTop > 0 && (
-                    <tr aria-hidden="true">
-                      <td colSpan={7} className="border-0 p-0" style={{ height: reportVirtualRows.paddingTop }} />
-                    </tr>
-                  )}
-                  {reportVirtualRows.virtualItems.map(item => {
+                  {paginatedReports.map(item => {
                     const isFirstInstall = isFirstInstallReport(item);
                     const highlightedTextClass = isFirstInstall
                       ? 'text-orange-600 dark:text-orange-300'
@@ -623,11 +616,6 @@ export default function ManageInstallations() {
                     </tr>
                     );
                   })}
-                  {reportVirtualRows.paddingBottom > 0 && (
-                    <tr aria-hidden="true">
-                      <td colSpan={7} className="border-0 p-0" style={{ height: reportVirtualRows.paddingBottom }} />
-                    </tr>
-                  )}
                 </>
               )}
             </tbody>

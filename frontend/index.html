@@ -100,8 +100,8 @@
         display: grid;
         min-height: 100vh;
         align-items: center;
-        gap: 3rem;
-        grid-template-columns: minmax(0, 0.92fr) minmax(360px, 1.08fr);
+        gap: 4rem;
+        grid-template-columns: minmax(520px, 1fr) minmax(420px, 0.92fr);
         max-width: 1280px;
         margin: 0 auto;
         padding: 6rem 1.5rem 5rem;
@@ -128,16 +128,24 @@
       }
 
       .static-home-title {
-        max-width: 980px;
+        max-width: 720px;
         margin: 1.5rem 0 0;
-        font-size: clamp(3.25rem, 7vw, 6.25rem);
-        line-height: 0.94;
+        color: #0f172a;
+        font-size: clamp(3.5rem, 6.2vw, 5.75rem);
+        line-height: 0.92;
         letter-spacing: 0;
       }
 
-      .static-home-title span {
+      .static-home-subtitle {
         display: block;
-        margin-top: 0.2em;
+        margin-top: 0.26em;
+        font-size: clamp(2.7rem, 4.8vw, 4.4rem);
+        line-height: 1.04;
+      }
+
+      .static-home-subtitle span {
+        display: block;
+        width: fit-content;
         background: linear-gradient(90deg, #059669, #65a30d);
         -webkit-background-clip: text;
         background-clip: text;
@@ -145,11 +153,11 @@
       }
 
       .static-home-description {
-        max-width: 860px;
+        max-width: 620px;
         margin: 1.75rem 0 0;
         color: #475569;
-        font-size: clamp(1rem, 2.2vw, 1.25rem);
-        line-height: 1.8;
+        font-size: clamp(1rem, 1.6vw, 1.15rem);
+        line-height: 1.85;
       }
 
       .static-home-actions {
@@ -216,13 +224,13 @@
 
       .static-home-screenshots {
         position: relative;
-        min-height: 560px;
+        min-height: 520px;
       }
 
       .static-screenshot-stage {
         position: relative;
-        height: min(560px, 62vw);
-        min-height: 430px;
+        height: min(520px, 48vw);
+        min-height: 400px;
         isolation: isolate;
       }
 
@@ -406,6 +414,10 @@
         color: #f8fafc;
       }
 
+      html.dark .static-home-title {
+        color: #f8fafc;
+      }
+
       html.dark .static-home-theme-toggle,
       html.dark .static-home-kicker,
       html.dark .static-home-point,
@@ -472,6 +484,10 @@
           color: #f8fafc;
         }
 
+        html:not(.light) .static-home-title {
+          color: #f8fafc;
+        }
+
         html:not(.light) .static-home-theme-toggle,
         html:not(.light) .static-home-kicker,
         html:not(.light) .static-home-point,
@@ -530,9 +546,14 @@
         }
       }
 
-      @media (max-width: 1040px) {
+      @media (max-width: 1120px) {
         .static-home-shell {
           grid-template-columns: 1fr;
+        }
+
+        .static-home-title,
+        .static-home-description {
+          max-width: 860px;
         }
 
         .static-home-screenshots {
@@ -552,6 +573,14 @@
 
         .static-home-points {
           grid-template-columns: 1fr;
+        }
+
+        .static-home-title {
+          font-size: clamp(3rem, 15vw, 4.4rem);
+        }
+
+        .static-home-subtitle {
+          font-size: clamp(2.15rem, 11vw, 3.35rem);
         }
 
         .static-home-screenshots {
@@ -627,7 +656,10 @@
           <div class="static-home-kicker">Gamepad-compatible Minecraft launcher</div>
           <h1 class="static-home-title">
             PiLauncher
-            <span>支持手柄操作的MC启动器</span>
+            <span class="static-home-subtitle">
+              <span>支持手柄操作的</span>
+              <span>MC启动器</span>
+            </span>
           </h1>
           <p class="static-home-description">
             PiLauncher 是一款为掌机打造、兼容全平台的 Minecraft 启动器。让模组管理、账号登录和游戏启动更简单，也让玩家能更自然地在桌面、掌机与客厅场景之间切换。
