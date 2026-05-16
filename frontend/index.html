@@ -24,6 +24,9 @@
     <meta name="twitter:title" content="PiLauncher - 更简单的 Minecraft 启动与联机体验" />
     <meta name="twitter:description" content="支持手柄操作的 MC 启动器，为掌机打造、兼容全平台。" />
     <meta name="twitter:image" content="https://pil.nav4ai.net/og-card.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -38,6 +41,7 @@
     <style>
       :root {
         color-scheme: light dark;
+        --static-pixel-font: "Pixelify Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
       body {
@@ -95,6 +99,68 @@
         display: none;
       }
 
+      .static-home-locale-toggle {
+        position: absolute;
+        top: 1.25rem;
+        left: 1.25rem;
+        right: 4.55rem;
+        z-index: 2;
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        max-width: calc(100vw - 7rem);
+        overflow-x: auto;
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.78);
+        padding: 0.22rem;
+        box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+        scrollbar-width: none;
+        white-space: nowrap;
+      }
+
+      .static-home-locale-toggle::-webkit-scrollbar {
+        display: none;
+      }
+
+      .static-home-locale-toggle button {
+        min-width: 2.35rem;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: #64748b;
+        cursor: pointer;
+        font-size: 0.75rem;
+        font-weight: 850;
+        line-height: 1;
+        padding: 0.63rem 0.55rem;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+
+      .static-home-locale-toggle button.is-active {
+        background: #059669;
+        color: #fff;
+      }
+
+      #static-home-showcase[dir="rtl"] .static-home-copy {
+        margin-left: auto;
+        text-align: right;
+      }
+
+      #static-home-showcase[dir="rtl"] .static-home-actions {
+        justify-content: flex-start;
+      }
+
+      #static-home-showcase[dir="rtl"] .static-home-subtitle span,
+      #static-home-showcase[dir="rtl"] .static-home-kicker {
+        margin-left: auto;
+      }
+
+      #static-home-showcase[dir="rtl"] .static-home-logo-stack {
+        right: auto;
+        left: clamp(1.5rem, 8vw, 7rem);
+      }
+
       .static-home-shell {
         box-sizing: border-box;
         position: relative;
@@ -109,7 +175,7 @@
         position: relative;
         z-index: 2;
         min-width: 0;
-        max-width: 820px;
+        max-width: min(1080px, calc(100vw - 3rem));
       }
 
       .static-home-kicker {
@@ -132,8 +198,10 @@
         max-width: 720px;
         margin: 1.5rem 0 0;
         color: #0f172a;
+        font-family: var(--static-pixel-font);
+        font-weight: 700;
         font-size: clamp(3.5rem, 6.2vw, 5.75rem);
-        line-height: 0.92;
+        line-height: 0.96;
         letter-spacing: 0;
       }
 
@@ -141,7 +209,7 @@
         display: block;
         margin-top: 0.26em;
         font-size: clamp(2.7rem, 4.8vw, 4.4rem);
-        line-height: 1.04;
+        line-height: 1.08;
       }
 
       .static-home-subtitle span {
@@ -159,6 +227,7 @@
         color: #475569;
         font-size: clamp(1rem, 1.6vw, 1.15rem);
         line-height: 1.85;
+        white-space: pre-line;
       }
 
       .static-home-actions {
@@ -177,6 +246,7 @@
         padding: 0 1.35rem;
         border: 1px solid transparent;
         text-decoration: none;
+        font-family: var(--static-pixel-font);
         font-size: 0.95rem;
         font-weight: 800;
       }
@@ -198,6 +268,7 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 1rem;
         margin-top: 3rem;
+        max-width: 1040px;
       }
 
       .static-home-point {
@@ -309,6 +380,7 @@
       }
 
       html.dark .static-home-theme-toggle,
+      html.dark .static-home-locale-toggle,
       html.dark .static-home-kicker,
       html.dark .static-home-point,
       html.dark .static-home-button.secondary {
@@ -338,6 +410,15 @@
         color: #f8fafc;
       }
 
+      html.dark .static-home-locale-toggle button {
+        color: #94a3b8;
+      }
+
+      html.dark .static-home-locale-toggle button.is-active {
+        background: #10b981;
+        color: #022c22;
+      }
+
       html.dark .static-logo-card {
         opacity: 0.24;
         filter: saturate(0.9) contrast(0.94);
@@ -361,6 +442,7 @@
         }
 
         html:not(.light) .static-home-theme-toggle,
+        html:not(.light) .static-home-locale-toggle,
         html:not(.light) .static-home-kicker,
         html:not(.light) .static-home-point,
         html:not(.light) .static-home-button.secondary {
@@ -390,6 +472,15 @@
           color: #f8fafc;
         }
 
+        html:not(.light) .static-home-locale-toggle button {
+          color: #94a3b8;
+        }
+
+        html:not(.light) .static-home-locale-toggle button.is-active {
+          background: #10b981;
+          color: #022c22;
+        }
+
         html:not(.light) .static-logo-card {
           opacity: 0.24;
           filter: saturate(0.9) contrast(0.94);
@@ -413,6 +504,18 @@
       }
 
       @media (max-width: 760px) {
+        .static-home-theme-toggle {
+          top: 1rem;
+          right: 1rem;
+        }
+
+        .static-home-locale-toggle {
+          top: 1rem;
+          left: 1rem;
+          right: 4.1rem;
+          max-width: calc(100vw - 5.8rem);
+        }
+
         .static-home-shell {
           position: relative;
           padding: 5rem 1rem 4rem;
@@ -425,6 +528,7 @@
 
         .static-home-points {
           grid-template-columns: 1fr;
+          max-width: none;
         }
 
         .static-home-title {
@@ -447,6 +551,11 @@
           width: min(42vw, 10rem);
           overflow: visible;
           transform: none;
+        }
+
+        #static-home-showcase[dir="rtl"] .static-home-logo-stack {
+          right: auto;
+          left: 0.2rem;
         }
 
         .static-logo-orbit {
@@ -495,6 +604,17 @@
   </head>
   <body>
     <section id="static-home-showcase" aria-label="PiLauncher static introduction">
+      <div class="static-home-locale-toggle" aria-label="切换语言">
+        <button type="button" data-static-locale-option="zh-CN">中</button>
+        <button type="button" data-static-locale-option="en">EN</button>
+        <button type="button" data-static-locale-option="zh-TW">繁</button>
+        <button type="button" data-static-locale-option="ja">日</button>
+        <button type="button" data-static-locale-option="ko">한</button>
+        <button type="button" data-static-locale-option="fr">FR</button>
+        <button type="button" data-static-locale-option="ru">RU</button>
+        <button type="button" data-static-locale-option="es">ES</button>
+        <button type="button" data-static-locale-option="ar">AR</button>
+      </div>
       <button class="static-home-theme-toggle" type="button" data-static-theme-toggle aria-label="切换暗色模式" aria-pressed="false">
         <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="4"></circle>
@@ -513,33 +633,34 @@
       </button>
       <main class="static-home-shell">
         <div class="static-home-copy">
-          <div class="static-home-kicker">Gamepad-compatible Minecraft launcher</div>
+          <div class="static-home-kicker" data-static-i18n="kicker">Gamepad-compatible Minecraft launcher</div>
           <h1 class="static-home-title">
             PiLauncher
             <span class="static-home-subtitle">
-              <span>支持手柄操作的</span>
-              <span>MC启动器</span>
+              <span data-static-i18n="subtitleLine1">支持手柄操作的</span>
+              <span data-static-i18n="subtitleLine2">MC启动器</span>
             </span>
           </h1>
-          <p class="static-home-description">
-            PiLauncher 是一款为掌机打造、兼容全平台的 Minecraft 启动器。让模组管理、账号登录和游戏启动更简单，也让玩家能更自然地在桌面、掌机与客厅场景之间切换。
+          <p class="static-home-description" data-static-i18n="description">
+            PiLauncher 是一款为掌机打造、兼容全平台的 Minecraft 启动器。
+            让模组管理、账号登录和游戏启动更简单，也让玩家能更自然地在桌面、掌机与客厅场景之间切换。
           </p>
           <div class="static-home-actions" aria-label="页面操作">
-            <a class="static-home-button primary" href="#root">立即下载PiLauncher</a>
-            <a class="static-home-button secondary" href="/changelog">查看更新日志</a>
+            <a class="static-home-button primary" href="#root" data-static-dynamic-trigger data-static-i18n="primaryAction">立即下载PiLauncher</a>
+            <a class="static-home-button secondary" href="/changelog" data-static-i18n="secondaryAction">查看更新日志</a>
           </div>
           <div class="static-home-points" aria-label="核心能力">
             <article class="static-home-point">
-              <strong>掌机友好</strong>
-              <span>围绕手柄操作与移动场景优化，减少启动器在小屏设备上的操作负担。</span>
+              <strong data-static-i18n="pointOneTitle">掌机友好</strong>
+              <span data-static-i18n="pointOneText">围绕手柄操作与移动场景优化，减少启动器在小屏设备上的操作负担。</span>
             </article>
             <article class="static-home-point">
-              <strong>模组管理</strong>
-              <span>面向 Minecraft 玩家整理模组、整合包和版本流程，让配置更直观。</span>
+              <strong data-static-i18n="pointTwoTitle">模组管理</strong>
+              <span data-static-i18n="pointTwoText">面向 Minecraft 玩家整理模组、整合包和版本流程，让配置更直观。</span>
             </article>
             <article class="static-home-point">
-              <strong>快速启动</strong>
-              <span>账号登录、游戏启动与后续更新保持在同一体验里，少一点跳转，多一点顺手。</span>
+              <strong data-static-i18n="pointThreeTitle">快速启动</strong>
+              <span data-static-i18n="pointThreeText">账号登录、游戏启动与后续更新保持在同一体验里，少一点跳转，多一点顺手。</span>
             </article>
           </div>
         </div>
@@ -596,6 +717,273 @@
           });
           syncThemeToggle();
         }
+
+        var staticCopy = {
+          'zh-CN': {
+            lang: 'zh-CN',
+            dir: 'ltr',
+            ariaLabel: 'PiLauncher 静态介绍',
+            localeLabel: '切换语言',
+            themeLabel: '切换暗色模式',
+            actionLabel: '页面操作',
+            pointsLabel: '核心能力',
+            kicker: 'Gamepad-compatible Minecraft launcher',
+            subtitleLine1: '支持手柄操作的',
+            subtitleLine2: 'MC启动器',
+            description: 'PiLauncher 是一款为掌机打造、兼容全平台的 Minecraft 启动器。\n让模组管理、账号登录和游戏启动更简单，也让玩家能更自然地在桌面、掌机与客厅场景之间切换。',
+            primaryAction: '立即下载PiLauncher',
+            secondaryAction: '查看更新日志',
+            pointOneTitle: '掌机友好',
+            pointOneText: '围绕手柄操作与移动场景优化，减少启动器在小屏设备上的操作负担。',
+            pointTwoTitle: '模组管理',
+            pointTwoText: '面向 Minecraft 玩家整理模组、整合包和版本流程，让配置更直观。',
+            pointThreeTitle: '快速启动',
+            pointThreeText: '账号登录、游戏启动与后续更新保持在同一体验里，少一点跳转，多一点顺手。'
+          },
+          en: {
+            lang: 'en',
+            dir: 'ltr',
+            ariaLabel: 'PiLauncher static introduction',
+            localeLabel: 'Switch language',
+            themeLabel: 'Toggle dark mode',
+            actionLabel: 'Page actions',
+            pointsLabel: 'Core capabilities',
+            kicker: 'Gamepad-compatible Minecraft launcher',
+            subtitleLine1: 'A gamepad-friendly',
+            subtitleLine2: 'MC launcher',
+            description: 'PiLauncher is a cross-platform Minecraft launcher designed for handheld gaming devices.\nIt makes mod management, account login, and game launching simpler across desktop, handheld, and couch-play scenarios.',
+            primaryAction: 'Download PiLauncher',
+            secondaryAction: 'View changelog',
+            pointOneTitle: 'Handheld ready',
+            pointOneText: 'Optimized for gamepad controls and compact screens, reducing friction on handheld devices.',
+            pointTwoTitle: 'Mod management',
+            pointTwoText: 'Organize Minecraft versions, mods, and modpacks with a clearer configuration flow.',
+            pointThreeTitle: 'Fast launch',
+            pointThreeText: 'Keep login, version selection, launching, and updates in one smooth experience.'
+          },
+          'zh-TW': {
+            lang: 'zh-Hant',
+            dir: 'ltr',
+            ariaLabel: 'PiLauncher 靜態介紹',
+            localeLabel: '切換語言',
+            themeLabel: '切換深色模式',
+            actionLabel: '頁面操作',
+            pointsLabel: '核心能力',
+            kicker: 'Gamepad-compatible Minecraft launcher',
+            subtitleLine1: '支援手把操作的',
+            subtitleLine2: 'MC 啟動器',
+            description: 'PiLauncher 是一款為掌機打造、兼容全平台的 Minecraft 啟動器。\n讓模組管理、帳號登入和遊戲啟動更簡單，也讓玩家能更自然地在桌面、掌機與客廳場景之間切換。',
+            primaryAction: '立即下載 PiLauncher',
+            secondaryAction: '查看更新日誌',
+            pointOneTitle: '掌機友好',
+            pointOneText: '圍繞手把操作與小螢幕場景最佳化，減少掌機上的操作負擔。',
+            pointTwoTitle: '模組管理',
+            pointTwoText: '為 Minecraft 玩家整理模組、整合包和版本流程，讓設定更直覺。',
+            pointThreeTitle: '快速啟動',
+            pointThreeText: '帳號登入、遊戲啟動與後續更新整合在同一體驗中，少一點跳轉，多一點順手。'
+          },
+          ja: {
+            lang: 'ja',
+            dir: 'ltr',
+            ariaLabel: 'PiLauncher の静的紹介',
+            localeLabel: '言語を切り替え',
+            themeLabel: 'ダークモードを切り替え',
+            actionLabel: 'ページ操作',
+            pointsLabel: '主な機能',
+            kicker: 'Gamepad-compatible Minecraft launcher',
+            subtitleLine1: 'ゲームパッド対応の',
+            subtitleLine2: 'MC ランチャー',
+            description: 'PiLauncher は携帯ゲーミングデバイス向けに作られた、全プラットフォーム対応の Minecraft ランチャーです。\nMod 管理、アカウントログイン、ゲーム起動をよりシンプルにし、デスクトップ、携帯機、リビング環境を自然に行き来できます。',
+            primaryAction: 'PiLauncher をダウンロード',
+            secondaryAction: '更新履歴を見る',
+            pointOneTitle: '携帯機に最適',
+            pointOneText: 'ゲームパッド操作と小さな画面に合わせて最適化し、携帯機での操作負担を減らします。',
+            pointTwoTitle: 'Mod 管理',
+            pointTwoText: 'Minecraft のバージョン、Mod、Mod パックの流れを整理し、設定をわかりやすくします。',
+            pointThreeTitle: 'すばやく起動',
+            pointThreeText: 'ログイン、起動、更新をひとつの体験にまとめ、移動を減らして使いやすくします。'
+          },
+          ko: {
+            lang: 'ko',
+            dir: 'ltr',
+            ariaLabel: 'PiLauncher 정적 소개',
+            localeLabel: '언어 전환',
+            themeLabel: '다크 모드 전환',
+            actionLabel: '페이지 작업',
+            pointsLabel: '핵심 기능',
+            kicker: 'Gamepad-compatible Minecraft launcher',
+            subtitleLine1: '게임패드 친화적인',
+            subtitleLine2: 'MC 런처',
+            description: 'PiLauncher는 휴대용 게이밍 기기를 위해 설계된 크로스 플랫폼 Minecraft 런처입니다.\n모드 관리, 계정 로그인, 게임 실행을 더 단순하게 만들고 데스크톱, 휴대용 기기, 거실 환경을 자연스럽게 오갈 수 있게 합니다.',
+            primaryAction: 'PiLauncher 다운로드',
+            secondaryAction: '변경 로그 보기',
+            pointOneTitle: '휴대용 기기 친화',
+            pointOneText: '게임패드 조작과 작은 화면에 맞게 최적화해 휴대용 기기에서의 조작 부담을 줄입니다.',
+            pointTwoTitle: '모드 관리',
+            pointTwoText: 'Minecraft 버전, 모드, 모드팩 흐름을 정리해 설정을 더 직관적으로 만듭니다.',
+            pointThreeTitle: '빠른 실행',
+            pointThreeText: '로그인, 실행, 업데이트를 하나의 경험으로 묶어 이동은 줄이고 사용성은 높입니다.'
+          },
+          fr: {
+            lang: 'fr',
+            dir: 'ltr',
+            ariaLabel: 'Présentation statique de PiLauncher',
+            localeLabel: 'Changer de langue',
+            themeLabel: 'Basculer le mode sombre',
+            actionLabel: 'Actions de page',
+            pointsLabel: 'Fonctions clés',
+            kicker: 'Gamepad-compatible Minecraft launcher',
+            subtitleLine1: 'Un lanceur MC',
+            subtitleLine2: 'compatible manette',
+            description: 'PiLauncher est un lanceur Minecraft multiplateforme conçu pour les consoles portables.\nIl simplifie la gestion des mods, la connexion aux comptes et le lancement du jeu, du bureau à la console portable jusqu’au salon.',
+            primaryAction: 'Télécharger PiLauncher',
+            secondaryAction: 'Voir le changelog',
+            pointOneTitle: 'Pensé pour le portable',
+            pointOneText: 'Optimisé pour la manette et les petits écrans afin de réduire les frictions sur les appareils portables.',
+            pointTwoTitle: 'Gestion des mods',
+            pointTwoText: 'Organise les versions Minecraft, les mods et les modpacks dans un flux plus clair.',
+            pointThreeTitle: 'Lancement rapide',
+            pointThreeText: 'Regroupe connexion, lancement et mises à jour dans une expérience plus fluide.'
+          },
+          ru: {
+            lang: 'ru',
+            dir: 'ltr',
+            ariaLabel: 'Статическое описание PiLauncher',
+            localeLabel: 'Сменить язык',
+            themeLabel: 'Переключить тёмную тему',
+            actionLabel: 'Действия страницы',
+            pointsLabel: 'Основные возможности',
+            kicker: 'Gamepad-compatible Minecraft launcher',
+            subtitleLine1: 'MC-лаунчер',
+            subtitleLine2: 'с поддержкой геймпада',
+            description: 'PiLauncher — кроссплатформенный лаунчер Minecraft, созданный для портативных игровых устройств.\nОн упрощает управление модами, вход в аккаунт и запуск игры на ПК, портативных устройствах и в гостиной.',
+            primaryAction: 'Скачать PiLauncher',
+            secondaryAction: 'Смотреть журнал изменений',
+            pointOneTitle: 'Удобно на портативных устройствах',
+            pointOneText: 'Оптимизирован для геймпада и небольших экранов, чтобы снизить лишние действия.',
+            pointTwoTitle: 'Управление модами',
+            pointTwoText: 'Упорядочивает версии Minecraft, моды и модпаки в более понятный процесс.',
+            pointThreeTitle: 'Быстрый запуск',
+            pointThreeText: 'Объединяет вход, запуск и обновления в один плавный сценарий.'
+          },
+          es: {
+            lang: 'es',
+            dir: 'ltr',
+            ariaLabel: 'Introducción estática de PiLauncher',
+            localeLabel: 'Cambiar idioma',
+            themeLabel: 'Cambiar modo oscuro',
+            actionLabel: 'Acciones de página',
+            pointsLabel: 'Funciones clave',
+            kicker: 'Gamepad-compatible Minecraft launcher',
+            subtitleLine1: 'Un lanzador de MC',
+            subtitleLine2: 'compatible con mando',
+            description: 'PiLauncher es un lanzador de Minecraft multiplataforma diseñado para dispositivos portátiles de juego.\nSimplifica la gestión de mods, el inicio de sesión y el lanzamiento del juego en escritorio, portátil y sala de estar.',
+            primaryAction: 'Descargar PiLauncher',
+            secondaryAction: 'Ver registro de cambios',
+            pointOneTitle: 'Listo para portátiles',
+            pointOneText: 'Optimizado para mando y pantallas pequeñas, con menos fricción en dispositivos portátiles.',
+            pointTwoTitle: 'Gestión de mods',
+            pointTwoText: 'Organiza versiones de Minecraft, mods y modpacks en un flujo más claro.',
+            pointThreeTitle: 'Inicio rápido',
+            pointThreeText: 'Une inicio de sesión, lanzamiento y actualizaciones en una experiencia más fluida.'
+          },
+          ar: {
+            lang: 'ar',
+            dir: 'rtl',
+            ariaLabel: 'تعريف ثابت بـ PiLauncher',
+            localeLabel: 'تغيير اللغة',
+            themeLabel: 'تبديل الوضع الداكن',
+            actionLabel: 'إجراءات الصفحة',
+            pointsLabel: 'القدرات الأساسية',
+            kicker: 'مشغل Minecraft متوافق مع أذرع التحكم',
+            subtitleLine1: 'مشغل MC',
+            subtitleLine2: 'مناسب لذراع التحكم',
+            description: 'PiLauncher هو مشغل Minecraft متعدد المنصات صمم لأجهزة اللعب المحمولة.\nيجعل إدارة الإضافات وتسجيل الحساب وتشغيل اللعبة أبسط بين سطح المكتب والجهاز المحمول وغرفة المعيشة.',
+            primaryAction: 'تنزيل PiLauncher',
+            secondaryAction: 'عرض سجل التغييرات',
+            pointOneTitle: 'مناسب للأجهزة المحمولة',
+            pointOneText: 'محسن لأذرع التحكم والشاشات الصغيرة لتقليل عبء الاستخدام على الأجهزة المحمولة.',
+            pointTwoTitle: 'إدارة الإضافات',
+            pointTwoText: 'ينظم إصدارات Minecraft والإضافات وحزم الإضافات في مسار أوضح.',
+            pointThreeTitle: 'تشغيل سريع',
+            pointThreeText: 'يجمع تسجيل الدخول والتشغيل والتحديثات في تجربة واحدة أكثر سلاسة.'
+          }
+        };
+
+        var localeButtons = document.querySelectorAll('[data-static-locale-option]');
+        var staticSection = document.getElementById('static-home-showcase');
+        var staticActionGroup = document.querySelector('.static-home-actions');
+        var staticPointsGroup = document.querySelector('.static-home-points');
+        var staticLocaleGroup = document.querySelector('.static-home-locale-toggle');
+
+        var getInitialStaticLocale = function () {
+          try {
+            var savedStaticLocale = localStorage.getItem('flowcore_static_locale');
+            if (staticCopy[savedStaticLocale]) return savedStaticLocale;
+
+            var savedLocale = localStorage.getItem('flowcore_locale');
+            if (staticCopy[savedLocale]) return savedLocale;
+          } catch (error) {}
+
+          var browserLocales = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+          for (var index = 0; index < browserLocales.length; index += 1) {
+            var browserLocale = String(browserLocales[index] || '').toLowerCase();
+            if (!browserLocale) continue;
+            if (browserLocale.indexOf('zh-tw') === 0 || browserLocale.indexOf('zh-hk') === 0 || browserLocale.indexOf('zh-mo') === 0 || browserLocale.indexOf('hant') !== -1) return 'zh-TW';
+            if (browserLocale.indexOf('zh') === 0) return 'zh-CN';
+            if (browserLocale.indexOf('ja') === 0) return 'ja';
+            if (browserLocale.indexOf('ko') === 0) return 'ko';
+            if (browserLocale.indexOf('fr') === 0) return 'fr';
+            if (browserLocale.indexOf('ru') === 0) return 'ru';
+            if (browserLocale.indexOf('es') === 0) return 'es';
+            if (browserLocale.indexOf('ar') === 0) return 'ar';
+            if (browserLocale.indexOf('en') === 0) return 'en';
+          }
+
+          return 'en';
+        };
+
+        var applyStaticLocale = function (locale) {
+          var nextLocale = staticCopy[locale] ? locale : 'en';
+          var copy = staticCopy[nextLocale];
+          document.documentElement.lang = copy.lang;
+          document.documentElement.setAttribute('data-static-locale', nextLocale);
+
+          if (staticSection) {
+            staticSection.setAttribute('aria-label', copy.ariaLabel);
+            staticSection.setAttribute('dir', copy.dir || 'ltr');
+          }
+          if (staticLocaleGroup) staticLocaleGroup.setAttribute('aria-label', copy.localeLabel);
+          if (themeToggle) themeToggle.setAttribute('aria-label', copy.themeLabel);
+          if (staticActionGroup) staticActionGroup.setAttribute('aria-label', copy.actionLabel);
+          if (staticPointsGroup) staticPointsGroup.setAttribute('aria-label', copy.pointsLabel);
+
+          document.querySelectorAll('[data-static-i18n]').forEach(function (node) {
+            var key = node.getAttribute('data-static-i18n');
+            if (key && copy[key]) node.textContent = copy[key];
+          });
+
+          localeButtons.forEach(function (button) {
+            var isActive = button.getAttribute('data-static-locale-option') === nextLocale;
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+          });
+
+          try {
+            localStorage.setItem('flowcore_static_locale', nextLocale);
+            if (nextLocale === 'zh-CN' || nextLocale === 'en') {
+              localStorage.setItem('flowcore_locale', nextLocale);
+            }
+          } catch (error) {}
+        };
+
+        localeButtons.forEach(function (button) {
+          button.addEventListener('click', function () {
+            applyStaticLocale(button.getAttribute('data-static-locale-option'));
+          });
+        });
+
+        applyStaticLocale(getInitialStaticLocale());
 
         var logoStack = document.querySelector('[data-static-logo-stack]');
         var logoMarks = document.querySelectorAll('[data-static-logo-mark]');
@@ -658,6 +1046,35 @@
         }
       })();
     </script>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module">
+      var flowcoreDynamicHomeLoaded = false;
+
+      function loadFlowcoreDynamicHome() {
+        if (flowcoreDynamicHomeLoaded) return;
+        flowcoreDynamicHomeLoaded = true;
+        import('/src/main.tsx');
+      }
+
+      window.__flowcoreLoadDynamicHome = loadFlowcoreDynamicHome;
+
+      var flowcorePath = window.location.pathname.replace(/\/+$/, '') || '/';
+      if (flowcorePath !== '/') {
+        loadFlowcoreDynamicHome();
+      } else {
+        document.querySelectorAll('[data-static-dynamic-trigger]').forEach(function (node) {
+          node.addEventListener('click', loadFlowcoreDynamicHome, { once: true });
+        });
+
+        window.addEventListener('scroll', function () {
+          if (window.scrollY > 120) loadFlowcoreDynamicHome();
+        }, { once: true, passive: true });
+
+        if ('requestIdleCallback' in window) {
+          window.requestIdleCallback(loadFlowcoreDynamicHome, { timeout: 2600 });
+        } else {
+          window.setTimeout(loadFlowcoreDynamicHome, 1600);
+        }
+      }
+    </script>
   </body>
 </html>
