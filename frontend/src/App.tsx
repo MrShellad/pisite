@@ -34,7 +34,7 @@ const ManageSignalingServers = lazy(() => import('./pages/admin/ManageSignalingS
 
 function RouteLoader() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-emerald-50 via-lime-50/40 to-stone-50 text-sm font-medium text-emerald-700 dark:from-[#04130a] dark:via-[#07180d] dark:to-[#050505] dark:text-emerald-300">
+    <div className="static-pixel-text flex min-h-screen items-center justify-center bg-gradient-to-b from-emerald-50 via-lime-50/40 to-stone-50 text-sm font-medium text-emerald-700 dark:from-[#04130a] dark:via-[#07180d] dark:to-[#050505] dark:text-emerald-300">
       Loading page...
     </div>
   );

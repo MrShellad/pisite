@@ -1,3 +1,51 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+  font-family: 'Fusion Pixel 12px';
+  src: url('/fonts/fusion-pixel-12px-monospaced-latin.ttf.woff2') format('woff2');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400 900;
+  unicode-range: U+0000-00FF, U+0100-024F, U+2000-206F, U+20A0-20CF, U+2100-214F;
+}
+
+@font-face {
+  font-family: 'Fusion Pixel 12px';
+  src: url('/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf.woff2') format('woff2');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400 900;
+  unicode-range: U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF;
+}
+
+@font-face {
+  font-family: 'Fusion Pixel 12px';
+  src: url('/fonts/fusion-pixel-12px-monospaced-ja.ttf.woff2') format('woff2');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400 900;
+  unicode-range: U+3040-309F, U+30A0-30FF, U+31F0-31FF;
+}
+
+@font-face {
+  font-family: 'Fusion Pixel 12px';
+  src: url('/fonts/fusion-pixel-12px-monospaced-ko.ttf.woff2') format('woff2');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400 900;
+  unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7AF;
+}
+
+.static-pixel-text,
+.static-pixel-text .font-sans,
+.static-pixel-text .font-mono,
+.static-pixel-text .prose,
+.home-pixel-text,
+.home-pixel-text .font-sans,
+.home-pixel-text .font-mono,
+.home-pixel-text .prose {
+  font-family: 'Fusion Pixel 12px', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-synthesis: none;
+}

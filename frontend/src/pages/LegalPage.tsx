@@ -40,7 +40,7 @@ export default function LegalPage() {
   const fallbackTitle = useMemo(() => (legalSlug === 'privacy' ? '隐私政策' : '服务条款'), [legalSlug]);
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-sky-50/45 to-amber-50/30 px-4 py-10 text-neutral-900 transition-colors duration-500 dark:from-[#04130a] dark:via-[#071426] dark:to-[#050505] dark:text-neutral-100 sm:px-6">
+    <main className="static-pixel-text min-h-screen bg-gradient-to-b from-emerald-50 via-sky-50/45 to-amber-50/30 px-4 py-10 text-neutral-900 transition-colors duration-500 dark:from-[#04130a] dark:via-[#071426] dark:to-[#050505] dark:text-neutral-100 sm:px-6">
       <div className="mx-auto max-w-4xl">
         <Link
           to="/"
