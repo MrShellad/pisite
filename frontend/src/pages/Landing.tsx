@@ -29,7 +29,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="static-pixel-text min-h-screen bg-gradient-to-b from-emerald-50 via-sky-50/45 to-amber-50/30 transition-colors duration-500 dark:from-[#04130a] dark:via-[#071426] dark:to-[#050505]">
+    <div className="static-pixel-text min-h-screen bg-white transition-colors duration-500 dark:bg-gradient-to-b dark:from-[#04130a] dark:via-[#071426] dark:to-[#050505]">
       <Navbar />
       <Hero />
 
