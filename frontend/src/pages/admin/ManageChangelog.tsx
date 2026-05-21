@@ -32,6 +32,7 @@ export default function ManageChangelog() {
     isPackageManagerOpen,
     setIsPackageManagerOpen,
     isManualUploading,
+    remoteDownloadingKey,
     isSubmitting,
     isUploadingPackage,
     isUploadingSig,
@@ -46,6 +47,8 @@ export default function ManageChangelog() {
     cancelPackageUpload,
     handlePackageUpload,
     handleManualPackageUpload,
+    handleManualRemotePackageDownload,
+    handleRemotePackageDownload,
     copyDownloadLink,
     renamePackageAsset,
     deletePackageAsset,
@@ -91,6 +94,15 @@ export default function ManageChangelog() {
               disabled={isManualUploading}
             />
           </label>
+          <button
+            type="button"
+            onClick={() => void handleManualRemotePackageDownload()}
+            disabled={remoteDownloadingKey !== null}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Download size={15} />
+            {remoteDownloadingKey === 'manual' ? '下载中...' : '远程下载安装包'}
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -192,6 +204,20 @@ export default function ManageChangelog() {
                             disabled={isUploadingPackage[platform]}
                           />
                         </label>
+                        <button
+                          type="button"
+                          onClick={() => void handleRemotePackageDownload(platform)}
+                          disabled={remoteDownloadingKey !== null}
+                          className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-bold text-neutral-700 transition-all hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+                        >
+                          {remoteDownloadingKey === platform ? (
+                            '下载中...'
+                          ) : (
+                            <span className="inline-flex items-center gap-1">
+                              <Download size={13} /> 远程下载
+                            </span>
+                          )}
+                        </button>
                         <label className="cursor-pointer rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-bold text-neutral-700 transition-all hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10">
                           {isUploadingSig[platform] ? (
                             '解析中...'
@@ -633,6 +659,15 @@ export default function ManageChangelog() {
                     disabled={isManualUploading}
                   />
                 </label>
+                <button
+                  type="button"
+                  onClick={() => void handleManualRemotePackageDownload()}
+                  disabled={remoteDownloadingKey !== null}
+                  className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-bold text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+                >
+                  <Download size={15} />
+                  {remoteDownloadingKey === 'manual' ? '下载中...' : '远程下载'}
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsPackageManagerOpen(false)}

@@ -32,6 +32,14 @@ pub struct RenamePackageAssetPayload {
     pub file_name: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemotePackageAssetPayload {
+    pub url: String,
+    #[serde(default)]
+    pub file_name: Option<String>,
+}
+
 fn sanitize_file_name(raw: &str) -> String {
     let clean = raw
         .trim()
@@ -185,6 +193,35 @@ async fn unique_file_path(dir: &FsPath, file_name: &str) -> PathBuf {
     dir.join(format!("{}-copy", file_name))
 }
 
+fn file_name_from_url(url: &reqwest::Url) -> String {
+    url.path_segments()
+        .and_then(|mut segments| segments.next_back())
+        .map(sanitize_file_name)
+        .filter(|value| value != "package.bin")
+        .unwrap_or_else(|| "package.bin".to_string())
+}
+
+fn remote_download_client() -> Result<reqwest::Client, (StatusCode, String)> {
+    reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::limited(10))
+        .build()
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))
+}
+
+fn validate_remote_url(raw: &str) -> Result<reqwest::Url, (StatusCode, String)> {
+    let url = reqwest::Url::parse(raw.trim())
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid remote URL.".to_string()))?;
+
+    if !matches!(url.scheme(), "http" | "https") {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Only HTTP and HTTPS package URLs are supported.".to_string(),
+        ));
+    }
+
+    Ok(url)
+}
+
 pub async fn upload_package_asset(
     _claims: Claims,
     State(pool): State<SqlitePool>,
@@ -244,6 +281,92 @@ pub async fn upload_package_asset(
     if written == 0 {
         let _ = tokio::fs::remove_file(&target_path).await;
         return Err((StatusCode::BAD_REQUEST, "Empty file.".to_string()));
+    }
+
+    Ok(Json(
+        package_asset_from_path(&pool, &date, &target_file_name).await?,
+    ))
+}
+
+pub async fn download_remote_package_asset(
+    _claims: Claims,
+    State(pool): State<SqlitePool>,
+    Json(payload): Json<RemotePackageAssetPayload>,
+) -> Result<Json<PackageAsset>, (StatusCode, String)> {
+    let url = validate_remote_url(&payload.url)?;
+    let client = remote_download_client()?;
+    let response = client
+        .get(url.clone())
+        .send()
+        .await
+        .map_err(|error| (StatusCode::BAD_GATEWAY, error.to_string()))?;
+
+    if !response.status().is_success() {
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            format!("Remote server returned HTTP {}.", response.status()),
+        ));
+    }
+
+    if let Some(length) = response.content_length() {
+        if length > MAX_PACKAGE_BYTES {
+            return Err((
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "Package file must be 1GB or smaller.".to_string(),
+            ));
+        }
+    }
+
+    let original_name = payload
+        .file_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(sanitize_file_name)
+        .unwrap_or_else(|| file_name_from_url(&url));
+    let date = current_date(&pool).await?;
+    let dir = package_root().join(&date);
+    tokio::fs::create_dir_all(&dir)
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+
+    let target_path = unique_file_path(&dir, &original_name).await;
+    let target_file_name = target_path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or(&original_name)
+        .to_string();
+    let mut file = tokio::fs::File::create(&target_path)
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+    let mut written = 0_u64;
+    let mut response = response;
+
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|error| (StatusCode::BAD_GATEWAY, error.to_string()))?
+    {
+        written += chunk.len() as u64;
+        if written > MAX_PACKAGE_BYTES {
+            let _ = tokio::fs::remove_file(&target_path).await;
+            return Err((
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "Package file must be 1GB or smaller.".to_string(),
+            ));
+        }
+        file.write_all(&chunk)
+            .await
+            .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+    }
+
+    file.flush()
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+
+    if written == 0 {
+        let _ = tokio::fs::remove_file(&target_path).await;
+        return Err((StatusCode::BAD_REQUEST, "Empty remote file.".to_string()));
     }
 
     Ok(Json(

@@ -26,6 +26,7 @@ export function useManageChangelog() {
   const [packageAssets, setPackageAssets] = useState<PackageAsset[]>([]);
   const [isPackageManagerOpen, setIsPackageManagerOpen] = useState(false);
   const [isManualUploading, setIsManualUploading] = useState(false);
+  const [remoteDownloadingKey, setRemoteDownloadingKey] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingPackage, setIsUploadingPackage] = useState<Record<PlatformKey, boolean>>({
     darwin: false,
@@ -135,6 +136,60 @@ export function useManageChangelog() {
     uploadAbortControllerRef.current?.abort();
   };
 
+  const suggestFileNameFromUrl = (rawUrl: string) => {
+    try {
+      const parsed = new URL(rawUrl);
+      const lastSegment = parsed.pathname.split('/').filter(Boolean).pop() ?? '';
+      return decodeURIComponent(lastSegment);
+    } catch {
+      return '';
+    }
+  };
+
+  const downloadRemotePackageAsset = async (remoteKey: string, title: string) => {
+    const url = await requestInput({
+      title,
+      description: '粘贴 GitHub Release、CDN 或其它服务器上的安装包直链，服务器会下载到本地安装包目录。',
+      inputLabel: '远程下载 URL',
+      placeholder: 'https://github.com/.../releases/download/.../FlowCore.msi',
+      confirmLabel: '继续',
+    });
+    if (!url?.trim()) return null;
+
+    const suggestedName = suggestFileNameFromUrl(url.trim());
+    const fileName = await requestInput({
+      title: '保存文件名',
+      description: '可以自定义保存到服务器上的文件名；留空会使用 URL 末尾的文件名。',
+      initialValue: suggestedName,
+      inputLabel: '文件名',
+      placeholder: 'FlowCore-1.2.0-windows.msi',
+      confirmLabel: '开始下载',
+    });
+    if (fileName === null) return null;
+
+    setRemoteDownloadingKey(remoteKey);
+    markAdminActivity();
+    try {
+      const response = await api.post<PackageAsset>(
+        '/admin/package-assets/remote',
+        {
+          url: url.trim(),
+          fileName: fileName.trim() || undefined,
+        },
+        { timeout: 0 },
+      );
+      await fetchPackageAssets();
+      notify('远程安装包已下载', response.data.fileName, 'success');
+      return response.data;
+    } catch (error) {
+      notify('远程下载失败', getErrorMessage(error, '请检查 URL 是否可由服务器访问。'), 'error');
+      return null;
+    } finally {
+      setRemoteDownloadingKey(null);
+      markAdminActivity();
+    }
+  };
+
   const handlePackageUpload = async (
     event: ChangeEvent<HTMLInputElement>,
     platform: PlatformKey,
@@ -177,6 +232,20 @@ export function useManageChangelog() {
     } finally {
       setIsManualUploading(false);
       setUploadProgress(null);
+    }
+  };
+
+  const handleManualRemotePackageDownload = async () => {
+    const asset = await downloadRemotePackageAsset('manual', '远程下载安装包');
+    if (asset) {
+      setIsPackageManagerOpen(true);
+    }
+  };
+
+  const handleRemotePackageDownload = async (platform: PlatformKey) => {
+    const asset = await downloadRemotePackageAsset(platform, `远程下载 ${platformLabels[platform]} 安装包`);
+    if (asset) {
+      updatePlatformField(platform, 'url', asset.downloadUrl || getUploadUrl(asset.url));
     }
   };
 
@@ -365,6 +434,7 @@ export function useManageChangelog() {
     isPackageManagerOpen,
     setIsPackageManagerOpen,
     isManualUploading,
+    remoteDownloadingKey,
     isSubmitting,
     isUploadingPackage,
     isUploadingSig,
@@ -380,6 +450,8 @@ export function useManageChangelog() {
     cancelPackageUpload,
     handlePackageUpload,
     handleManualPackageUpload,
+    handleManualRemotePackageDownload,
+    handleRemotePackageDownload,
     copyDownloadLink,
     renamePackageAsset,
     deletePackageAsset,
