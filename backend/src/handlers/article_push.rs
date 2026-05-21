@@ -1,10 +1,15 @@
+use ammonia::{Builder, UrlRelative};
 use axum::{
     Json,
     extract::{Path, Query, State},
     http::StatusCode,
 };
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde::Deserialize;
 use sqlx::{QueryBuilder, Sqlite, SqlitePool};
+use std::borrow::Cow;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use tokio::time::{Duration, sleep};
 use uuid::Uuid;
@@ -26,6 +31,161 @@ fn clean_text(value: &str) -> String {
     value.trim().to_string()
 }
 
+static HTML_TAG_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?is)<[^>]*>").expect("valid html tag regex"));
+
+fn class_set() -> HashSet<&'static str> {
+    [
+        "ql-align-center",
+        "ql-align-right",
+        "ql-align-justify",
+        "ql-direction-rtl",
+        "ql-font-serif",
+        "ql-font-monospace",
+        "ql-size-small",
+        "ql-size-large",
+        "ql-size-huge",
+        "ql-video",
+        "ql-indent-1",
+        "ql-indent-2",
+        "ql-indent-3",
+        "ql-indent-4",
+        "ql-indent-5",
+        "ql-indent-6",
+        "ql-indent-7",
+        "ql-indent-8",
+    ]
+    .into_iter()
+    .collect()
+}
+
+fn allowed_quill_classes() -> HashMap<&'static str, HashSet<&'static str>> {
+    [
+        "p",
+        "div",
+        "span",
+        "a",
+        "blockquote",
+        "pre",
+        "ol",
+        "ul",
+        "li",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "img",
+        "iframe",
+    ]
+    .into_iter()
+    .map(|tag| (tag, class_set()))
+    .collect()
+}
+
+fn allowed_style_properties() -> HashSet<&'static str> {
+    [
+        "background-color",
+        "color",
+        "font-family",
+        "font-size",
+        "font-style",
+        "font-weight",
+        "text-align",
+        "text-decoration",
+    ]
+    .into_iter()
+    .collect()
+}
+
+fn sanitize_media_attribute<'a>(
+    element: &str,
+    attribute: &str,
+    value: &'a str,
+) -> Option<Cow<'a, str>> {
+    if attribute.starts_with("on") {
+        return None;
+    }
+
+    if element == "iframe" && attribute == "src" {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+        return Some(trimmed.into());
+    }
+
+    Some(value.into())
+}
+
+fn sanitize_article_push_html(value: &str) -> String {
+    Builder::new()
+        .add_tags(&["iframe", "video", "source"])
+        .add_generic_attributes(&["style"])
+        .add_tag_attributes("a", &["target"])
+        .add_tag_attributes(
+            "iframe",
+            &[
+                "allow",
+                "allowfullscreen",
+                "frameborder",
+                "height",
+                "loading",
+                "referrerpolicy",
+                "sandbox",
+                "src",
+                "title",
+                "width",
+            ],
+        )
+        .add_tag_attributes(
+            "video",
+            &["controls", "height", "poster", "preload", "src", "width"],
+        )
+        .add_tag_attributes("source", &["src", "type"])
+        .allowed_classes(allowed_quill_classes())
+        .filter_style_properties(allowed_style_properties())
+        .set_tag_attribute_value("a", "target", "_blank")
+        .set_tag_attribute_value("iframe", "loading", "lazy")
+        .set_tag_attribute_value(
+            "iframe",
+            "referrerpolicy",
+            "strict-origin-when-cross-origin",
+        )
+        .set_tag_attribute_value(
+            "iframe",
+            "sandbox",
+            "allow-scripts allow-same-origin allow-presentation",
+        )
+        .url_relative(UrlRelative::PassThrough)
+        .attribute_filter(sanitize_media_attribute)
+        .clean(value)
+        .to_string()
+        .trim()
+        .to_string()
+}
+
+fn article_push_content_has_body(content: &str) -> bool {
+    let lower = content.to_ascii_lowercase();
+    if lower.contains("<img") || lower.contains("<iframe") || lower.contains("<video") {
+        return true;
+    }
+
+    let without_tags = HTML_TAG_RE.replace_all(content, "");
+    let normalized = without_tags
+        .replace("&nbsp;", " ")
+        .replace("&#160;", " ")
+        .replace('\u{00a0}', " ");
+    !normalized.trim().is_empty()
+}
+
+fn sanitize_article_push_rows(rows: &mut [ArticlePush]) {
+    for row in rows {
+        row.content = sanitize_article_push_html(&row.content);
+    }
+}
+
 fn clean_optional_datetime(value: Option<&str>) -> Option<String> {
     value
         .map(str::trim)
@@ -33,11 +193,14 @@ fn clean_optional_datetime(value: Option<&str>) -> Option<String> {
         .map(|value| value.replace('T', " "))
 }
 
-fn validate_payload(payload: &ArticlePushPayload) -> Result<(), (StatusCode, String)> {
+fn validate_payload(
+    payload: &ArticlePushPayload,
+    content: &str,
+) -> Result<(), (StatusCode, String)> {
     if clean_text(&payload.title).is_empty() {
         return Err((StatusCode::BAD_REQUEST, "标题不能为空".to_string()));
     }
-    if clean_text(&payload.content).is_empty() {
+    if !article_push_content_has_body(content) {
         return Err((StatusCode::BAD_REQUEST, "内容不能为空".to_string()));
     }
     if clean_text(&payload.category).is_empty() {
@@ -92,6 +255,10 @@ async fn query_article_pushes(
         .build_query_as::<ArticlePush>()
         .fetch_all(pool)
         .await
+        .map(|mut rows| {
+            sanitize_article_push_rows(&mut rows);
+            rows
+        })
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
@@ -117,6 +284,10 @@ pub async fn get_latest_public_article_push(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     latest
+        .map(|mut item| {
+            item.content = sanitize_article_push_html(&item.content);
+            item
+        })
         .map(Json)
         .ok_or((StatusCode::NOT_FOUND, "暂无活动 PUSH".to_string()))
 }
@@ -135,7 +306,8 @@ pub async fn create_article_push(
     State(pool): State<SqlitePool>,
     Json(payload): Json<ArticlePushPayload>,
 ) -> Result<(StatusCode, Json<ArticlePush>), (StatusCode, String)> {
-    validate_payload(&payload)?;
+    let content = sanitize_article_push_html(&payload.content);
+    validate_payload(&payload, &content)?;
 
     let id = Uuid::new_v4().to_string();
     sqlx::query(
@@ -145,7 +317,7 @@ pub async fn create_article_push(
     .bind(&id)
     .bind(clean_text(&payload.title))
     .bind(clean_text(&payload.cover))
-    .bind(clean_text(&payload.content))
+    .bind(content)
     .bind(clean_text(&payload.related_link))
     .bind(clean_text(&payload.category))
     .bind(payload.enabled.unwrap_or(true))
@@ -154,7 +326,7 @@ pub async fn create_article_push(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let created = sqlx::query_as::<_, ArticlePush>(
+    let mut created = sqlx::query_as::<_, ArticlePush>(
         "SELECT id, title, cover, content, related_link, category, enabled, expires_at, created_at, updated_at \
          FROM article_pushes WHERE id = ?",
     )
@@ -162,6 +334,8 @@ pub async fn create_article_push(
     .fetch_one(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    created.content = sanitize_article_push_html(&created.content);
 
     Ok((StatusCode::CREATED, Json(created)))
 }
@@ -172,7 +346,8 @@ pub async fn update_article_push(
     Path(id): Path<String>,
     Json(payload): Json<ArticlePushPayload>,
 ) -> Result<Json<ArticlePush>, (StatusCode, String)> {
-    validate_payload(&payload)?;
+    let content = sanitize_article_push_html(&payload.content);
+    validate_payload(&payload, &content)?;
 
     let previous_cover =
         sqlx::query_as::<_, (String,)>("SELECT cover FROM article_pushes WHERE id = ?")
@@ -190,7 +365,7 @@ pub async fn update_article_push(
     )
     .bind(clean_text(&payload.title))
     .bind(clean_text(&payload.cover))
-    .bind(clean_text(&payload.content))
+    .bind(content)
     .bind(clean_text(&payload.related_link))
     .bind(clean_text(&payload.category))
     .bind(payload.enabled.unwrap_or(true))
@@ -204,7 +379,7 @@ pub async fn update_article_push(
         return Err((StatusCode::NOT_FOUND, "活动 PUSH 不存在".to_string()));
     }
 
-    let updated = sqlx::query_as::<_, ArticlePush>(
+    let mut updated = sqlx::query_as::<_, ArticlePush>(
         "SELECT id, title, cover, content, related_link, category, enabled, expires_at, created_at, updated_at \
          FROM article_pushes WHERE id = ?",
     )
@@ -216,6 +391,8 @@ pub async fn update_article_push(
     if previous_cover != updated.cover {
         remove_local_cover_if_unshared(&pool, &previous_cover).await;
     }
+
+    updated.content = sanitize_article_push_html(&updated.content);
 
     Ok(Json(updated))
 }
@@ -326,5 +503,48 @@ pub async fn article_push_cleanup_daemon(pool: SqlitePool) {
             }
         }
         sleep(Duration::from_secs(60)).await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{article_push_content_has_body, sanitize_article_push_html};
+
+    #[test]
+    fn article_push_html_keeps_rich_media_and_removes_scripts() {
+        let html = r#"
+            <p class="ql-align-center" style="font-size: 24px; color: red; position: fixed" onclick="alert(1)">
+                <strong>活动开始</strong>
+            </p>
+            <img src="/uploads/admin/banner.webp" onerror="alert(1)">
+            <iframe class="ql-video" src="https://example.com/embed/1" onload="alert(1)"></iframe>
+            <script>alert(1)</script>
+        "#;
+
+        let sanitized = sanitize_article_push_html(html);
+
+        assert!(sanitized.contains("ql-align-center"));
+        assert!(sanitized.contains("font-size:24px"));
+        assert!(sanitized.contains("color:red"));
+        assert!(sanitized.contains("<img"));
+        assert!(sanitized.contains("<iframe"));
+        assert!(
+            sanitized.contains("sandbox=\"allow-scripts allow-same-origin allow-presentation\"")
+        );
+        assert!(!sanitized.contains("position"));
+        assert!(!sanitized.contains("onclick"));
+        assert!(!sanitized.contains("onerror"));
+        assert!(!sanitized.contains("<script"));
+    }
+
+    #[test]
+    fn article_push_html_blank_quill_document_is_empty() {
+        assert!(!article_push_content_has_body("<p><br></p>"));
+        assert!(article_push_content_has_body(
+            "<p><strong>hello</strong></p>"
+        ));
+        assert!(article_push_content_has_body(
+            r#"<img src="/uploads/admin/a.webp">"#
+        ));
     }
 }

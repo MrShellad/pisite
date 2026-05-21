@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import {
   BarChart2,
@@ -16,6 +16,8 @@ import {
   Save,
   Trash2,
 } from 'lucide-react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 import { api, getUploadUrl } from '../../api/client';
 import { useAdminFeedback } from './components/AdminFeedback';
@@ -64,6 +66,35 @@ type ArticlePushForm = {
 };
 
 type ActiveSection = 'push' | 'crawler';
+
+type QuillSelection = { index: number; length: number };
+type QuillToolbarContext = {
+  quill: {
+    getSelection: (focus?: boolean) => QuillSelection | null;
+    insertEmbed: (index: number, type: string, value: string, source?: string) => void;
+    setSelection: (index: number, length?: number, source?: string) => void;
+  };
+};
+
+const richTextFormats = [
+  'header',
+  'font',
+  'size',
+  'bold',
+  'italic',
+  'underline',
+  'strike',
+  'blockquote',
+  'color',
+  'background',
+  'list',
+  'bullet',
+  'indent',
+  'align',
+  'link',
+  'image',
+  'video',
+];
 
 function getDefaultBeijingExpiresAt() {
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
@@ -120,6 +151,64 @@ export default function ManageMcCrawler() {
 
   const enabledPushCount = useMemo(() => pushes.filter(item => item.enabled).length, [pushes]);
   const coverPreviewSrc = coverPreviewUrl ?? (form.cover ? getUploadUrl(form.cover) : '');
+
+  const uploadInlineAsset = useCallback(async (file: File) => {
+    const body = new FormData();
+    body.append('file', file);
+    const response = await api.post<{ url: string }>('/admin/upload', body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return getUploadUrl(response.data.url);
+  }, []);
+
+  const richTextModules = useMemo(
+    () => ({
+      toolbar: {
+        container: [
+          [{ header: [1, 2, 3, false] }],
+          [{ font: [] }, { size: ['small', false, 'large', 'huge'] }],
+          ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+          [{ color: [] }, { background: [] }],
+          [{ align: [] }],
+          [{ list: 'ordered' }, { list: 'bullet' }, { indent: '-1' }, { indent: '+1' }],
+          ['link', 'image', 'video'],
+          ['clean'],
+        ],
+        handlers: {
+          image(this: QuillToolbarContext) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = () => {
+              const file = input.files?.[0];
+              if (!file) return;
+              const range = this.quill.getSelection(true);
+              void uploadInlineAsset(file)
+                .then((url) => {
+                  const insertIndex = range?.index ?? 0;
+                  this.quill.insertEmbed(insertIndex, 'image', url, 'user');
+                  this.quill.setSelection(insertIndex + 1, 0, 'user');
+                })
+                .catch((error) => {
+                  console.error(error);
+                  notify('内嵌图片上传失败', '请重新选择图片后再试。', 'error');
+                });
+            };
+            input.click();
+          },
+          video(this: QuillToolbarContext) {
+            const url = window.prompt('粘贴视频嵌入地址，例如 YouTube / Bilibili iframe 的 src 地址');
+            if (!url?.trim()) return;
+            const range = this.quill.getSelection(true);
+            const insertIndex = range?.index ?? 0;
+            this.quill.insertEmbed(insertIndex, 'video', url.trim(), 'user');
+            this.quill.setSelection(insertIndex + 1, 0, 'user');
+          },
+        },
+      },
+    }),
+    [notify, uploadInlineAsset],
+  );
 
   const fetchCrawlerData = async () => {
     const [confRes, updRes] = await Promise.all([
@@ -408,12 +497,23 @@ export default function ManageMcCrawler() {
             </div>
 
             <div>
-              <label className={labelClass}>内容</label>
+              <label className={labelClass}>内容（HTML 富文本）</label>
+              <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-950">
+                <ReactQuill
+                  theme="snow"
+                  value={form.content}
+                  onChange={value => handlePushFieldChange('content', value)}
+                  modules={richTextModules}
+                  formats={richTextFormats}
+                  placeholder="填写客户端展示的 PUSH 内容，可设置字体、字号、对齐、图片和视频"
+                  className="min-h-[260px] [&_.ql-container]:min-h-[200px] [&_.ql-container]:border-neutral-200 dark:[&_.ql-container]:border-white/10 [&_.ql-editor]:min-h-[200px] dark:[&_.ql-editor]:bg-neutral-950 dark:[&_.ql-editor]:text-neutral-100 dark:[&_.ql-editor.ql-blank:before]:text-neutral-500 [&_.ql-toolbar]:border-neutral-200 dark:[&_.ql-toolbar]:border-white/10 dark:[&_.ql-toolbar]:bg-neutral-900/80 dark:[&_.ql-toolbar_.ql-fill]:fill-neutral-300 dark:[&_.ql-toolbar_.ql-picker]:text-neutral-300 dark:[&_.ql-toolbar_.ql-stroke]:stroke-neutral-300"
+                />
+              </div>
               <textarea
                 value={form.content}
                 onChange={event => handlePushFieldChange('content', event.target.value)}
-                className={`${inputClass} min-h-36 resize-y leading-6`}
-                placeholder="填写客户端展示的 PUSH 内容"
+                className={`${inputClass} mt-3 min-h-28 resize-y font-mono text-xs leading-5`}
+                placeholder="HTML 源码，可直接粘贴 iframe、img、p、ul 等片段"
               />
             </div>
 
@@ -472,7 +572,12 @@ export default function ManageMcCrawler() {
                             </span>
                           </div>
                           <h4 className="line-clamp-2 text-lg font-bold leading-tight text-neutral-900 dark:text-white">{item.title}</h4>
-                          <p className="mt-2 line-clamp-3 text-sm leading-6 text-neutral-500 dark:text-neutral-400">{item.content}</p>
+                          <div className="ql-snow mt-3 max-h-44 overflow-hidden text-sm text-neutral-600 dark:text-neutral-300">
+                            <div
+                              className="ql-editor !p-0"
+                              dangerouslySetInnerHTML={{ __html: item.content }}
+                            />
+                          </div>
                         </div>
                       </div>
 
