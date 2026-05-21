@@ -49,3 +49,25 @@
   font-family: 'Fusion Pixel 12px', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   font-synthesis: none;
 }
+
+.push-rich-preview .ql-editor {
+  overflow-wrap: anywhere;
+}
+
+.push-rich-preview .ql-editor img,
+.push-rich-preview .ql-editor video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.push-rich-preview .ql-editor iframe {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 0;
+  border-radius: 8px;
+}

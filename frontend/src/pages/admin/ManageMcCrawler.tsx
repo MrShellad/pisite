@@ -96,6 +96,45 @@ const richTextFormats = [
   'video',
 ];
 
+function isAvifFile(file: File) {
+  return file.type === 'image/avif' || file.name.toLowerCase().endsWith('.avif');
+}
+
+async function transcodeAvifToWebp(file: File): Promise<File> {
+  if (!isAvifFile(file)) return file;
+
+  const bitmap = await createImageBitmap(file);
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('当前浏览器无法创建图片转换画布');
+    }
+
+    context.drawImage(bitmap, 0, 0);
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) => {
+          if (result) resolve(result);
+          else reject(new Error('AVIF 转 WebP 失败'));
+        },
+        'image/webp',
+        0.92,
+      );
+    });
+
+    const webpName = file.name.replace(/\.[^.]+$/, '') || 'image';
+    return new File([blob], `${webpName}.webp`, {
+      type: 'image/webp',
+      lastModified: Date.now(),
+    });
+  } finally {
+    bitmap.close();
+  }
+}
+
 function getDefaultBeijingExpiresAt() {
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
   const beijingOffsetMs = 8 * 60 * 60 * 1000;
@@ -153,8 +192,9 @@ export default function ManageMcCrawler() {
   const coverPreviewSrc = coverPreviewUrl ?? (form.cover ? getUploadUrl(form.cover) : '');
 
   const uploadInlineAsset = useCallback(async (file: File) => {
+    const uploadFile = await transcodeAvifToWebp(file);
     const body = new FormData();
-    body.append('file', file);
+    body.append('file', uploadFile);
     const response = await api.post<{ url: string }>('/admin/upload', body, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -271,8 +311,9 @@ export default function ManageMcCrawler() {
 
   const uploadSelectedCover = async () => {
     if (!coverFile) return form.cover.trim();
+    const uploadFile = await transcodeAvifToWebp(coverFile);
     const body = new FormData();
-    body.append('file', coverFile);
+    body.append('file', uploadFile);
     setIsUploadingCover(true);
     try {
       const response = await api.post<{ url: string }>('/admin/upload', body, {
@@ -515,6 +556,17 @@ export default function ManageMcCrawler() {
                 className={`${inputClass} mt-3 min-h-28 resize-y font-mono text-xs leading-5`}
                 placeholder="HTML 源码，可直接粘贴 iframe、img、p、ul 等片段"
               />
+              <div className="mt-3 rounded-lg border border-dashed border-neutral-200 bg-neutral-50 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                <div className="mb-3 text-xs font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                  完整预览
+                </div>
+                <div className="ql-snow push-rich-preview text-sm text-neutral-700 dark:text-neutral-200">
+                  <div
+                    className="ql-editor !p-0"
+                    dangerouslySetInnerHTML={{ __html: form.content || '<p class="text-neutral-400">暂无内容。</p>' }}
+                  />
+                </div>
+              </div>
             </div>
 
             <label className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200">
@@ -572,7 +624,7 @@ export default function ManageMcCrawler() {
                             </span>
                           </div>
                           <h4 className="line-clamp-2 text-lg font-bold leading-tight text-neutral-900 dark:text-white">{item.title}</h4>
-                          <div className="ql-snow mt-3 max-h-44 overflow-hidden text-sm text-neutral-600 dark:text-neutral-300">
+                          <div className="ql-snow push-rich-preview mt-3 text-sm text-neutral-600 dark:text-neutral-300">
                             <div
                               className="ql-editor !p-0"
                               dangerouslySetInnerHTML={{ __html: item.content }}
