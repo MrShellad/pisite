@@ -5,7 +5,8 @@ use jsonwebtoken::{EncodingKey, Header, encode};
 use sqlx::SqlitePool;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::auth::JWT_SECRET;
+use crate::auth::{ADMIN_ROLE, JWT_SECRET};
+use crate::handlers::admin_security::{get_session_timeout_minutes, verify_admin_login_turnstile};
 use crate::models::{AdminUser, AuthResponse, InitPayload, LoginPayload};
 
 // ==================== 身份验证与初始化模块 ====================
@@ -68,13 +69,16 @@ pub async fn login(
 
     if let Some(user) = user {
         if verify(&payload.password, &user.password_hash).unwrap_or(false) {
+            verify_admin_login_turnstile(&pool, payload.turnstile_token.as_deref()).await?;
+            let session_timeout_minutes = get_session_timeout_minutes(&pool).await;
             let expiration = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs()
-                + 24 * 3600;
+                + (session_timeout_minutes as u64 * 60);
             let claims = crate::models::Claims {
                 sub: user.email,
+                role: ADMIN_ROLE.to_string(),
                 exp: expiration as usize,
             };
             let token = encode(

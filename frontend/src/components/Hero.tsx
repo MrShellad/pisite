@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Download } from 'lucide-react';
 
 import { api } from '../api/client';
+import { getHomeBootstrap, readCachedHomeBootstrap } from '../lib/home-bootstrap';
 import {
   buttonShineSweep,
   heroFadeDown,
@@ -64,17 +65,18 @@ function resolveOsInfo(config: HeroFormData, changelogPlatforms?: ChangelogPlatf
   return { name: osName, svg, url };
 }
 
-function hasHtmlMarkup(text: string): boolean {
-  return /<\/?[a-z][\s\S]*>/i.test(text);
-}
-
 export default function Hero({ previewConfig }: HeroProps) {
-  const { copy } = useHomeLocale();
-  const [config, setConfig] = useState<HeroFormData | null>(previewConfig ?? null);
-  const [latestPlatforms, setLatestPlatforms] = useState<ChangelogPlatforms | null>(null);
+  const { copy, locale } = useHomeLocale();
+  const cachedBootstrap = previewConfig ? null : readCachedHomeBootstrap();
+  const [config, setConfig] = useState<HeroFormData | null>(previewConfig ?? cachedBootstrap?.hero ?? null);
+  const [latestPlatforms, setLatestPlatforms] = useState<ChangelogPlatforms | null>(
+    cachedBootstrap?.latestRelease?.platforms ?? null,
+  );
   const [osInfo, setOsInfo] = useState<OsInfo>(defaultOsInfo);
-  const [latestVersion, setLatestVersion] = useState<string | null>(null);
-  const [latestDate, setLatestDate] = useState<string | null>(null);
+  const [latestVersion, setLatestVersion] = useState<string | null>(
+    cachedBootstrap?.latestRelease?.version ?? null,
+  );
+  const [latestDate, setLatestDate] = useState<string | null>(cachedBootstrap?.latestRelease?.date ?? null);
 
   const hasDownload = osInfo.url.length > 0;
   const steamDeckSourceUrl = (config?.steamDeckSourceUrl || '').trim();
@@ -117,30 +119,12 @@ export default function Hero({ previewConfig }: HeroProps) {
       return;
     }
 
-    api
-      .get<HeroFormData>('/hero')
-      .then(response => setConfig(response.data))
-      .catch(console.error);
-  }, [previewConfig]);
-
-  useEffect(() => {
-    if (previewConfig) return;
-
-    api
-      .get('/changelog')
-      .then(response => {
-        const logs = response.data as Array<{
-          isLatest?: boolean;
-          version?: string;
-          date?: string;
-          platforms?: ChangelogPlatforms;
-        }>;
-        const latest = logs.find(log => log.isLatest);
-        if (latest) {
-          setLatestPlatforms(latest.platforms ?? null);
-          setLatestVersion(latest.version ?? null);
-          setLatestDate(latest.date ?? null);
-        }
+    getHomeBootstrap()
+      .then(data => {
+        setConfig(data.hero);
+        setLatestPlatforms(data.latestRelease?.platforms ?? null);
+        setLatestVersion(data.latestRelease?.version ?? null);
+        setLatestDate(data.latestRelease?.date ?? null);
       })
       .catch(console.error);
   }, [previewConfig]);
@@ -151,18 +135,35 @@ export default function Hero({ previewConfig }: HeroProps) {
   }, [config, latestPlatforms, previewConfig]);
 
   if (!config) {
-    return null;
+    return (
+      <section className="relative min-h-[560px] overflow-hidden pb-20 pt-16 md:min-h-[720px] md:pb-40 md:pt-28" aria-busy="true">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-emerald-400/20 blur-[128px] dark:bg-emerald-500/10" />
+          <div className="absolute -right-40 top-20 h-96 w-96 rounded-full bg-lime-400/20 blur-[128px] dark:bg-lime-500/10" />
+        </div>
+        <div className="relative z-10 mx-auto flex max-w-5xl animate-pulse flex-col items-center px-4 text-center sm:px-6">
+          <div className="mb-8 h-16 w-16 rounded-3xl bg-white/70 shadow-sm dark:bg-white/10 md:h-24 md:w-24" />
+          <div className="mb-5 h-12 w-full max-w-[620px] rounded-3xl bg-white/70 dark:bg-white/10 md:mb-6 md:h-20" />
+          <div className="mb-10 h-16 w-full max-w-2xl rounded-2xl bg-white/55 dark:bg-white/5 md:mb-12" />
+          <div className="h-14 w-full max-w-xs rounded-full bg-emerald-500/20 dark:bg-emerald-400/10" />
+        </div>
+      </section>
+    );
   }
 
   const displayDate = latestDate || config.updateDate;
-  const normalizedDescription = (config.description || '').replace(/\r\n?/g, '\n');
-  const useHtmlDescription = hasHtmlMarkup(normalizedDescription);
+  const localizedTitle = locale === 'en' && config.titleEn.trim() ? config.titleEn : config.title;
+  const localizedSubtitle = locale === 'en' && config.subtitleEn.trim() ? config.subtitleEn : config.subtitle;
+  const localizedDescription =
+    locale === 'en' && config.descriptionEn.trim() ? config.descriptionEn : config.description;
+  const localizedButtonText =
+    locale === 'en' && config.buttonTextEn.trim() ? config.buttonTextEn : config.buttonText;
+  const normalizedDescription = (localizedDescription || '').replace(/\r\n?/g, '\n');
 
   return (
     <section className="relative overflow-hidden pb-20 pt-16 md:pb-40 md:pt-28">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-emerald-400/20 blur-[128px] dark:bg-emerald-500/10" />
-        <div className="absolute -right-40 top-20 h-96 w-96 rounded-full bg-lime-400/20 blur-[128px] dark:bg-lime-500/10" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/70 to-transparent" />
       </div>
 
       <motion.div
@@ -173,15 +174,29 @@ export default function Hero({ previewConfig }: HeroProps) {
       >
         <motion.div
           variants={logoEntry}
-          className="mb-8 transition-transform hover:scale-105"
+          className="relative mb-8 transition-transform hover:scale-105"
           style={{ color: config.logoColor }}
         >
-          <div className="flex h-16 w-16 items-center justify-center md:h-24 md:w-24">
+          <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2">
+            <motion.div
+              className="h-44 w-44 rounded-full blur-3xl md:h-64 md:w-64"
+              style={{
+                background: `radial-gradient(circle, ${config.logoColor}66 0%, ${config.logoColor}2e 42%, transparent 74%)`,
+              }}
+              animate={{ opacity: [0.45, 0.82, 0.45], scale: [0.92, 1.18, 0.92] }}
+              transition={{ duration: 5.2, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          </div>
+          <div className="relative z-10 flex h-16 w-16 items-center justify-center md:h-24 md:w-24">
             {config.logoUrl ? (
               <img
                 src={config.logoUrl}
                 alt="Hero Logo"
-                className="h-full w-full object-contain drop-shadow-[0_0_12px_currentColor]"
+                width={96}
+                height={96}
+                decoding="async"
+                fetchPriority="high"
+                className="h-full w-full object-contain [filter:drop-shadow(0_18px_28px_rgba(15,23,42,0.16))] dark:[filter:drop-shadow(0_18px_34px_rgba(0,0,0,0.5))]"
               />
             ) : null}
           </div>
@@ -191,26 +206,18 @@ export default function Hero({ previewConfig }: HeroProps) {
           variants={heroFadeDown}
           className="mb-5 text-4xl font-extrabold leading-[1.2] tracking-tighter text-neutral-900 dark:text-white sm:text-5xl md:mb-6 md:text-7xl md:leading-[1.15]"
         >
-          {config.title}
+          {localizedTitle}
           <span className="mt-1 block bg-gradient-to-r from-emerald-500 to-lime-500 bg-clip-text text-transparent md:mt-2">
-            {config.subtitle}
+            {localizedSubtitle}
           </span>
         </motion.h1>
 
-        {useHtmlDescription ? (
-          <motion.div
-            variants={heroFadeDown}
-            className={`mb-10 max-w-2xl text-base leading-relaxed sm:text-lg md:mb-12 md:text-xl ${styleTokens.textSecondary}`}
-            dangerouslySetInnerHTML={{ __html: normalizedDescription.replace(/\n/g, '<br />') }}
-          />
-        ) : (
-          <motion.p
-            variants={heroFadeDown}
-            className={`mb-10 max-w-2xl whitespace-pre-line text-base leading-relaxed sm:text-lg md:mb-12 md:text-xl ${styleTokens.textSecondary}`}
-          >
-            {normalizedDescription}
-          </motion.p>
-        )}
+        <motion.p
+          variants={heroFadeDown}
+          className={`mb-10 max-w-2xl whitespace-pre-line text-base leading-relaxed sm:text-lg md:mb-12 md:text-xl ${styleTokens.textSecondary}`}
+        >
+          {normalizedDescription}
+        </motion.p>
 
         <motion.div variants={heroFadeDown} className="flex w-full flex-col items-center sm:w-auto">
           {hasDownload ? (
@@ -221,7 +228,7 @@ export default function Hero({ previewConfig }: HeroProps) {
               whileHover="hover"
             >
               <Download className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
-              <span className="font-bold">{config.buttonText}</span>
+              <span className="font-bold">{localizedButtonText}</span>
 
               <motion.span
                 className="pointer-events-none absolute top-0 h-full w-32 -skew-x-[25deg] bg-gradient-to-r from-transparent via-white/60 to-transparent blur-md"

@@ -16,7 +16,7 @@
   Upload,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
@@ -28,7 +28,10 @@ import type { ServerTagDict } from '@/pages/ServerSubmission/useServerSubmission
 import { useManageServerSubmissions } from './useManageServerSubmissions';
 
 export default function ManageServerSubmissions() {
+  const heroLogoInputRef = useRef<HTMLInputElement | null>(null);
+  const heroCoverInputRef = useRef<HTMLInputElement | null>(null);
   const {
+    submissions,
     filteredSubmissions,
     selectedId,
     formData,
@@ -53,25 +56,40 @@ export default function ManageServerSubmissions() {
     setSearchQuery,
     filterStatus,
     setFilterStatus,
+    verifyingIds,
     fetchData,
     handleSelect,
     handleUpload,
     handleSave,
     handleSendEmail,
     handleDelete,
+    deleteTargetId,
+    confirmDelete,
+    cancelDelete,
     handleToggleVerify,
     addSocialLink,
     updateSocialLink,
     removeSocialLink,
+    toasts,
+    dismissToast,
   } = useManageServerSubmissions();
 
   const [isPingModalOpen, setIsPingModalOpen] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const deleteTarget = submissions.find((item) => item.id === deleteTargetId);
 
   const inputClass =
-    'w-full rounded-xl border border-neutral-200 bg-neutral-100/60 px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-orange-500 focus:bg-white';
-  const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-500';
-  const cardClass = 'rounded-2xl border border-neutral-200/70 bg-white/85 p-6 shadow-sm backdrop-blur';
+    'w-full rounded-xl border border-neutral-200 bg-neutral-100/60 px-4 py-3 text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-orange-500 focus:bg-white dark:border-white/10 dark:bg-black/35 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:focus:bg-orange-500/5';
+  const labelClass = 'mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400';
+  const cardClass =
+    'rounded-2xl border border-neutral-200/70 bg-white/85 p-6 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/[0.03] dark:shadow-none';
+  const detailSections = [
+    { id: 'media', label: '媒体' },
+    { id: 'basic', label: '基础' },
+    { id: 'tags', label: '标签' },
+    { id: 'social', label: '社交' },
+    { id: 'save', label: '保存' },
+  ];
 
   if (isLoading) {
     return <div className="animate-pulse p-8 text-neutral-500">Loading submissions...</div>;
@@ -81,17 +99,17 @@ export default function ManageServerSubmissions() {
     <div className="space-y-8 pb-12">
       <div className="flex flex-wrap items-center justify-between gap-6">
         <div>
-          <h2 className="flex items-center gap-2 text-2xl font-bold text-neutral-900">
+          <h2 className="flex items-center gap-2 text-2xl font-bold text-neutral-900 dark:text-white">
             <Server className="text-orange-500" />
             服务器提交管理
           </h2>
-          <p className="mt-2 text-sm text-neutral-500">审核、编辑并维护服务器提交内容与在线状态缓存。</p>
+          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">审核、编辑并维护服务器提交内容与在线状态缓存。</p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsPingModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:border-orange-400 dark:hover:bg-orange-500/10 dark:hover:text-orange-300"
           >
             <Settings2 size={16} />
             Ping 计划任务
@@ -101,7 +119,7 @@ export default function ManageServerSubmissions() {
               setIsLoading(true);
               void fetchData();
             }}
-            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:border-orange-400 dark:hover:bg-orange-500/10 dark:hover:text-orange-300"
           >
             <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
             刷新
@@ -121,18 +139,18 @@ export default function ManageServerSubmissions() {
               placeholder="搜索名称或 IP"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10"
+              className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-sm text-neutral-900 outline-none transition-all placeholder:text-neutral-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 dark:border-white/10 dark:bg-black/35 dark:text-neutral-100 dark:placeholder:text-neutral-600"
             />
           </div>
 
           <div className="mb-5 flex items-center justify-between">
-            <div className="flex rounded-xl bg-neutral-100 p-1">
+            <div className="flex rounded-xl bg-neutral-100 p-1 dark:bg-white/5">
               {(['all', 'pending', 'verified'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setFilterStatus(s)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                    filterStatus === s ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'
+                    filterStatus === s ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-800 dark:text-white' : 'text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
                   }`}
                 >
                   {s === 'all' ? '全部' : s === 'pending' ? '待审' : '已审'}
@@ -146,7 +164,7 @@ export default function ManageServerSubmissions() {
 
           <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto pr-2">
             {filteredSubmissions.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500">暂无记录</div>
+              <div className="rounded-2xl border border-dashed border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">暂无记录</div>
             ) : (
               filteredSubmissions.map((item) => {
                 const isActive = item.id === selectedId;
@@ -164,8 +182,8 @@ export default function ManageServerSubmissions() {
                     key={item.id}
                     className={`group relative rounded-2xl border transition-all ${
                       isActive
-                        ? 'border-orange-300 bg-orange-50/50'
-                        : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300 hover:bg-white'
+                        ? 'border-orange-300 bg-orange-50/50 dark:border-orange-400/50 dark:bg-orange-500/10'
+                        : 'border-neutral-200 bg-neutral-50 hover:border-neutral-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20 dark:hover:bg-white/[0.06]'
                     }`}
                   >
                     <button onClick={() => handleSelect(item)} className="w-full px-4 py-4 text-left">
@@ -173,19 +191,19 @@ export default function ManageServerSubmissions() {
                         <div className="flex gap-3">
                           <img
                             src={getUploadUrl(item.icon) || '/placeholder-icon.png'}
-                            className="h-10 w-10 rounded-xl border border-neutral-200 object-cover"
+                            className="h-10 w-16 rounded-xl border border-neutral-200 bg-white object-contain p-1 dark:border-white/10 dark:bg-white/5"
                             alt=""
                           />
                           <div>
                             <div className="flex items-center gap-2">
-                              <div className="line-clamp-1 text-sm font-bold text-neutral-900">{item.name || '未命名'}</div>
-                              <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 font-mono text-[10px] text-neutral-500">
+                              <div className="line-clamp-1 text-sm font-bold text-neutral-900 dark:text-white">{item.name || '未命名'}</div>
+                              <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 font-mono text-[10px] text-neutral-500 dark:bg-white/10 dark:text-neutral-400">
                                 #{item.sortId ?? 0}
                               </span>
                             </div>
-                            <div className="mt-1 font-mono text-xs text-neutral-500">{item.ip}:{item.port}</div>
-                            <div className="mt-1 flex items-center gap-2 text-[11px] text-neutral-500">
-                              <span className={`inline-block h-2 w-2 rounded-full ${statusOnline ? 'bg-emerald-500' : 'bg-neutral-300'}`} />
+                            <div className="mt-1 font-mono text-xs text-neutral-500 dark:text-neutral-400">{item.ip}:{item.port}</div>
+                            <div className="mt-1 flex items-center gap-2 text-[11px] text-neutral-500 dark:text-neutral-400">
+                              <span className={`inline-block h-2 w-2 rounded-full ${statusOnline ? 'bg-emerald-500' : 'bg-neutral-600'}`} />
                               <span>{statusOnline ? '在线' : '离线/过期'}</span>
                               <span className="font-mono">{onlinePlayers}/{maxPlayers}</span>
                             </div>
@@ -194,15 +212,16 @@ export default function ManageServerSubmissions() {
                       </div>
                     </button>
 
-                    <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-xl bg-white/85 shadow-sm backdrop-blur transition-opacity dark:bg-neutral-950/80">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleSelect(item);
                           setIsEmailModalOpen(true);
                         }}
-                        className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                        className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-500/10 dark:hover:text-blue-300"
                         title="给提交者发送邮件"
+                        aria-label={`给 ${item.name || '提交者'} 发送邮件`}
                       >
                         <Mail size={18} />
                       </button>
@@ -211,20 +230,23 @@ export default function ManageServerSubmissions() {
                           e.stopPropagation();
                           void handleToggleVerify(item.id, item.verified);
                         }}
+                        disabled={verifyingIds.has(item.id)}
                         className={`rounded-lg p-2 transition-colors ${
-                          item.verified ? 'text-emerald-500 hover:bg-emerald-50' : 'text-neutral-400 hover:bg-neutral-100'
-                        }`}
-                        title={item.verified ? '撤销审核' : '标记通过'}
+                          item.verified ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-300' : 'text-neutral-400 hover:bg-neutral-100 dark:hover:bg-white/10 dark:hover:text-neutral-200'
+                        } disabled:cursor-not-allowed disabled:opacity-50`}
+                        title={item.verified ? '撤销审核' : '审核通过'}
+                        aria-label={item.verified ? `撤销 ${item.name || '服务器'} 的审核` : `通过 ${item.name || '服务器'} 的审核`}
                       >
-                        {item.verified ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                        {verifyingIds.has(item.id) ? <Clock3 size={18} /> : item.verified ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                       </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           void handleDelete(item.id);
                         }}
-                        className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                        className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-300"
                         title="删除"
+                        aria-label={`删除 ${item.name || '服务器记录'}`}
                       >
                         <Trash2 size={18} />
                       </button>
@@ -238,19 +260,19 @@ export default function ManageServerSubmissions() {
 
         <section className={`${cardClass} custom-scrollbar overflow-y-visible xl:h-[calc(100vh-180px)] xl:overflow-y-auto`}>
           {!formData ? (
-            <div className="flex h-full flex-col items-center justify-center space-y-4 text-neutral-400">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-100">
+            <div className="flex h-full flex-col items-center justify-center space-y-4 text-neutral-400 dark:text-neutral-500">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5">
                 <Server size={32} />
               </div>
               <p className="text-sm font-medium">请在左侧选择一条记录后再编辑。</p>
             </div>
           ) : (
             <div className="space-y-8">
-              <div className="sticky top-0 z-10 flex items-center justify-between rounded-2xl border border-orange-200 bg-orange-50 p-5 backdrop-blur-md">
+              <div className="sticky top-0 z-10 flex items-center justify-between rounded-2xl border border-orange-200 bg-orange-50 p-5 backdrop-blur-md dark:border-orange-500/20 dark:bg-orange-500/10">
                 <div>
-                  <h4 className="text-sm font-bold text-orange-800">审核控制</h4>
-                  <p className="mt-1 text-xs text-orange-600">审核通过后可在公开列表展示。</p>
-                  <p className="mt-2 text-xs text-neutral-600">
+                  <h4 className="text-sm font-bold text-orange-800 dark:text-orange-200">审核控制</h4>
+                  <p className="mt-1 text-xs text-orange-600 dark:text-orange-300">审核通过后可在公开列表展示。</p>
+                  <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
                     邮箱验证: {formData.emailVerified ? `已验证${formData.emailVerifiedAt ? ` (${formData.emailVerifiedAt})` : ''}` : '未验证'}
                   </p>
                 </div>
@@ -261,78 +283,95 @@ export default function ManageServerSubmissions() {
                         void handleToggleVerify(selectedId, formData.verified);
                       }
                     }}
+                    disabled={!!selectedId && verifyingIds.has(selectedId)}
                     className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-all ${
                       formData.verified
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                        : 'border-orange-200 bg-white text-orange-700'
-                    }`}
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'
+                        : 'border-orange-200 bg-white text-orange-700 dark:border-orange-500/20 dark:bg-neutral-950 dark:text-orange-300'
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
                   >
-                    {formData.verified ? <ShieldCheck size={18} /> : <Circle size={18} />}
-                    {formData.verified ? '已通过' : '设为待审'}
+                    {selectedId && verifyingIds.has(selectedId) ? <Clock3 size={18} /> : formData.verified ? <ShieldCheck size={18} /> : <Circle size={18} />}
+                    {selectedId && verifyingIds.has(selectedId) ? '处理中' : formData.verified ? '已通过' : '审核通过'}
                   </button>
-                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-xs font-bold text-neutral-600">
-                    <input
-                      type="checkbox"
-                      checked={formData.verified}
-                      onChange={(e) =>
-                        setFormData((prev) => (prev ? { ...prev, verified: e.target.checked } : prev))
-                      }
-                      className="h-4 w-4 accent-emerald-500"
-                    />
-                    手动切换
-                  </label>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="sticky top-[88px] z-10 -mx-1 flex gap-2 overflow-x-auto rounded-xl border border-neutral-200 bg-white/90 p-2 text-xs font-semibold text-neutral-600 shadow-sm backdrop-blur dark:border-white/10 dark:bg-neutral-950/85 dark:text-neutral-300 dark:shadow-none">
+                {detailSections.map(section => (
+                  <a
+                    key={section.id}
+                    href={`#server-submission-${section.id}`}
+                    className="shrink-0 rounded-lg px-3 py-2 transition hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-500/10 dark:hover:text-orange-300"
+                  >
+                    {section.label}
+                  </a>
+                ))}
+              </div>
+
+              <div id="server-submission-media" className="grid scroll-mt-40 grid-cols-2 gap-6">
                 <div>
-                  <label className={labelClass}>服务器图标</label>
-                  <label className="group relative block h-24 w-24 cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white">
+                  <label className={labelClass}>Hero Logo</label>
+                  <button
+                    type="button"
+                    onClick={() => heroLogoInputRef.current?.click()}
+                    disabled={!!isUploading}
+                    className="group relative block h-24 w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-orange-400 dark:hover:bg-white/[0.06]"
+                  >
                     {formData.icon ? (
-                      <img src={formData.icon} className="h-full w-full object-cover" alt="icon" />
+                      <img src={formData.icon} className="h-full w-full object-contain p-3" alt="hero logo" />
                     ) : (
                       <div className="flex h-full items-center justify-center">
-                        <ImagePlus size={24} className="text-neutral-300" />
+                        <ImagePlus size={24} className="text-neutral-300 dark:text-neutral-600" />
                       </div>
                     )}
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
                       <Upload size={18} />
                     </div>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => handleUpload(e, 'icon')}
-                      disabled={!!isUploading}
-                      accept="image/*"
-                    />
-                  </label>
+                  </button>
+                  <input
+                    ref={heroLogoInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => handleUpload(e, 'icon')}
+                    disabled={!!isUploading}
+                    accept="image/*"
+                  />
+                  <p className="mt-2 text-xs leading-5 text-neutral-500 dark:text-neutral-400">
+                    不限制图片比例，建议上传类似 MC 官方 Hero 区使用的透明 Logo。
+                  </p>
                 </div>
 
                 <div>
                   <label className={labelClass}>Hero 封面</label>
-                  <label className="group relative block h-24 w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white">
+                  <button
+                    type="button"
+                    onClick={() => heroCoverInputRef.current?.click()}
+                    disabled={!!isUploading}
+                    className="group relative block h-24 w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-neutral-200 bg-neutral-50 transition-all hover:border-orange-500 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-orange-400 dark:hover:bg-white/[0.06]"
+                  >
                     {formData.hero ? (
                       <img src={formData.hero} className="h-full w-full object-cover" alt="hero" />
                     ) : (
                       <div className="flex h-full items-center justify-center">
-                        <ImagePlus size={24} className="text-neutral-300" />
+                        <ImagePlus size={24} className="text-neutral-300 dark:text-neutral-600" />
                       </div>
                     )}
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
                       <Upload size={18} />
                     </div>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => handleUpload(e, 'hero')}
-                      disabled={!!isUploading}
-                      accept="image/*"
-                    />
-                  </label>
+                  </button>
+                  <input
+                    ref={heroCoverInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => handleUpload(e, 'hero')}
+                    disabled={!!isUploading}
+                    accept="image/*"
+                  />
                 </div>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-4">
+              <div id="server-submission-basic" className="grid scroll-mt-40 gap-6 sm:grid-cols-4">
                 <div>
                   <label className={labelClass}>排序 ID</label>
                   <input
@@ -382,7 +421,7 @@ export default function ManageServerSubmissions() {
 
               <div>
                 <label className={labelClass}>详情介绍</label>
-                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-colors focus-within:border-orange-500">
+                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-colors focus-within:border-orange-500 dark:border-white/10 dark:bg-neutral-950 [&_.ql-container]:border-neutral-200 [&_.ql-container]:dark:border-white/10 [&_.ql-editor]:dark:text-neutral-100 [&_.ql-toolbar]:border-neutral-200 [&_.ql-toolbar]:dark:border-white/10 [&_.ql-toolbar]:dark:bg-white/5 [&_.ql-stroke]:dark:stroke-neutral-300 [&_.ql-fill]:dark:fill-neutral-300 [&_.ql-picker]:dark:text-neutral-300">
                   <ReactQuill
                     theme="snow"
                     value={formData.description}
@@ -427,7 +466,7 @@ export default function ManageServerSubmissions() {
                 </div>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-2">
+              <div id="server-submission-tags" className="grid scroll-mt-40 gap-6 sm:grid-cols-2">
                 <div>
                   <label className={labelClass}>兼容版本</label>
                   <StringTagEditor
@@ -481,7 +520,7 @@ export default function ManageServerSubmissions() {
                         setFormData((prev) => (prev ? { ...prev, hasPaidContent: e.target.checked } : prev))
                       }
                     />
-                    <span className="text-sm font-bold text-neutral-700">包含付费内容</span>
+                    <span className="text-sm font-bold text-neutral-700 dark:text-neutral-300">包含付费内容</span>
                   </label>
                 </div>
               </div>
@@ -522,16 +561,16 @@ export default function ManageServerSubmissions() {
                 )}
               </div>
 
-              <div className="space-y-5 rounded-3xl border border-neutral-200 bg-neutral-50 p-6">
+              <div id="server-submission-social" className="space-y-5 scroll-mt-40 rounded-3xl border border-neutral-200 bg-neutral-50 p-6 dark:border-white/10 dark:bg-white/[0.03]">
                 <div className="flex items-center justify-between">
-                  <h4 className="flex items-center gap-2 text-sm font-bold text-neutral-800">
+                  <h4 className="flex items-center gap-2 text-sm font-bold text-neutral-800 dark:text-neutral-100">
                     <Plus size={16} className="text-orange-500" />
                     社交渠道
                   </h4>
                   <button
                     type="button"
                     onClick={addSocialLink}
-                    className="rounded-lg px-3 py-1.5 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-50"
+                    className="rounded-lg px-3 py-1.5 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-50 dark:text-orange-300 dark:hover:bg-orange-500/10"
                   >
                     添加
                   </button>
@@ -560,19 +599,19 @@ export default function ManageServerSubmissions() {
                       <button
                         type="button"
                         onClick={() => removeSocialLink(idx)}
-                        className="rounded-xl p-2.5 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                        className="rounded-xl p-2.5 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-300"
                       >
                         <Trash2 size={18} />
                       </button>
                     </div>
                   ))}
                   {formData.socialLinks.length === 0 && (
-                    <p className="py-2 text-center text-xs text-neutral-400">暂无社交链接</p>
+                    <p className="py-2 text-center text-xs text-neutral-400 dark:text-neutral-500">暂无社交链接</p>
                   )}
                 </div>
 
-                <div className="mt-5 border-t border-neutral-200 pt-5">
-                  <label className="group flex cursor-pointer items-center gap-2 text-sm font-bold text-neutral-700">
+                <div className="mt-5 border-t border-neutral-200 pt-5 dark:border-white/10">
+                  <label className="group flex cursor-pointer items-center gap-2 text-sm font-bold text-neutral-700 dark:text-neutral-300">
                     <input
                       type="checkbox"
                       checked={formData.hasVoiceChat}
@@ -612,9 +651,9 @@ export default function ManageServerSubmissions() {
 
               <div className="space-y-6 pt-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-px flex-1 bg-neutral-100" />
+                  <div className="h-px flex-1 bg-neutral-100 dark:bg-white/10" />
                   <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-400">业务标签</h3>
-                  <div className="h-px flex-1 bg-neutral-100" />
+                  <div className="h-px flex-1 bg-neutral-100 dark:bg-white/10" />
                 </div>
 
                 <div className="grid gap-6">
@@ -649,7 +688,7 @@ export default function ManageServerSubmissions() {
                 </div>
               </div>
 
-              <div className="sticky bottom-0 -mx-6 -mb-6 flex items-center justify-between rounded-b-[28px] border-t border-neutral-100 bg-white/80 p-6 backdrop-blur-xl shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)]">
+              <div id="server-submission-save" className="sticky bottom-0 -mx-6 -mb-6 flex scroll-mt-40 items-center justify-between rounded-b-[28px] border-t border-neutral-100 bg-white/80 p-6 backdrop-blur-xl shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)] dark:border-white/10 dark:bg-neutral-950/85 dark:shadow-none">
                 <div className="flex items-center gap-2 text-neutral-400">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
                   <span className="text-xs font-medium">当前编辑内容尚未保存</span>
@@ -658,7 +697,7 @@ export default function ManageServerSubmissions() {
                   type="button"
                   onClick={() => void handleSave()}
                   disabled={isSaving}
-                  className="inline-flex items-center gap-3 rounded-2xl bg-neutral-900 px-10 py-4 text-sm font-bold tracking-wider text-white transition-all hover:-translate-y-1 hover:bg-neutral-800 hover:shadow-2xl active:translate-y-0 disabled:opacity-50"
+                  className="inline-flex items-center gap-3 rounded-2xl bg-neutral-900 px-10 py-4 text-sm font-bold tracking-wider text-white transition-all hover:-translate-y-1 hover:bg-neutral-800 hover:shadow-2xl active:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200"
                 >
                   {isSaving ? <RefreshCw size={20} className="animate-spin" /> : <Save size={20} />}
                   {isSaving ? '保存中...' : '保存修改'}
@@ -671,19 +710,19 @@ export default function ManageServerSubmissions() {
 
       {isPingModalOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/45 p-4">
-          <div className="w-full max-w-3xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-3xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-neutral-950">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
+                <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900 dark:text-white">
                   <Clock3 size={18} className="text-orange-500" />
                   Server List Ping 计划任务
                 </h3>
-                <p className="mt-1 text-sm text-neutral-500">支持开关、分批抓取、TTL 过期和手动触发。</p>
+                <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">支持开关、分批抓取、TTL 过期和手动触发。</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsPingModalOpen(false)}
-                className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+                className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white"
               >
                 <X size={18} />
               </button>
@@ -692,7 +731,7 @@ export default function ManageServerSubmissions() {
             {pingConfig ? (
               <>
                 <div className="grid gap-4 sm:grid-cols-5">
-                  <label className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700">
+                  <label className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300">
                     <input
                       type="checkbox"
                       checked={pingConfig.enabled}
@@ -701,44 +740,44 @@ export default function ManageServerSubmissions() {
                     />
                     启用任务
                   </label>
-                  <label className="text-xs text-neutral-600">
+                  <label className="text-xs text-neutral-600 dark:text-neutral-400">
                     间隔(秒)
                     <input
                       type="number"
                       min={10}
                       value={pingConfig.intervalSeconds}
                       onChange={(e) => updatePingConfigField('intervalSeconds', Number(e.target.value))}
-                      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
+                      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500 dark:border-white/10 dark:bg-black/35 dark:text-neutral-100"
                     />
                   </label>
-                  <label className="text-xs text-neutral-600">
+                  <label className="text-xs text-neutral-600 dark:text-neutral-400">
                     批次大小
                     <input
                       type="number"
                       min={1}
                       value={pingConfig.batchSize}
                       onChange={(e) => updatePingConfigField('batchSize', Number(e.target.value))}
-                      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
+                      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500 dark:border-white/10 dark:bg-black/35 dark:text-neutral-100"
                     />
                   </label>
-                  <label className="text-xs text-neutral-600">
+                  <label className="text-xs text-neutral-600 dark:text-neutral-400">
                     超时(ms)
                     <input
                       type="number"
                       min={500}
                       value={pingConfig.timeoutMs}
                       onChange={(e) => updatePingConfigField('timeoutMs', Number(e.target.value))}
-                      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
+                      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500 dark:border-white/10 dark:bg-black/35 dark:text-neutral-100"
                     />
                   </label>
-                  <label className="text-xs text-neutral-600">
+                  <label className="text-xs text-neutral-600 dark:text-neutral-400">
                     TTL(秒)
                     <input
                       type="number"
                       min={10}
                       value={pingConfig.ttlSeconds}
                       onChange={(e) => updatePingConfigField('ttlSeconds', Number(e.target.value))}
-                      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500"
+                      className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-orange-500 dark:border-white/10 dark:bg-black/35 dark:text-neutral-100"
                     />
                   </label>
                 </div>
@@ -747,7 +786,7 @@ export default function ManageServerSubmissions() {
                     type="button"
                     onClick={() => void handleRunPingBatch()}
                     disabled={isRunningPingJob}
-                    className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:border-orange-300 hover:text-orange-600 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:border-orange-300 hover:text-orange-600 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:border-orange-400 dark:hover:text-orange-300"
                   >
                     {isRunningPingJob ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
                     手动执行一批
@@ -756,7 +795,7 @@ export default function ManageServerSubmissions() {
                     type="button"
                     onClick={() => void handleSavePingConfig()}
                     disabled={isSavingPingConfig}
-                    className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-neutral-950"
                   >
                     {isSavingPingConfig ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
                     保存计划
@@ -764,7 +803,7 @@ export default function ManageServerSubmissions() {
                 </div>
               </>
             ) : (
-              <div className="rounded-xl border border-dashed border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500">
+              <div className="rounded-xl border border-dashed border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
                 暂无计划任务配置
               </div>
             )}
@@ -772,23 +811,87 @@ export default function ManageServerSubmissions() {
         </div>
       )}
 
+      <div className="pointer-events-none fixed right-6 top-6 z-[60] flex w-full max-w-sm flex-col gap-3">
+        {toasts.map((toast) => {
+          const toneClassName =
+            toast.tone === 'error'
+              ? 'border-red-200 bg-white text-red-700 shadow-red-100/60 dark:border-red-500/20 dark:bg-neutral-950 dark:text-red-300'
+              : toast.tone === 'success'
+                ? 'border-emerald-200 bg-white text-emerald-700 shadow-emerald-100/60 dark:border-emerald-500/20 dark:bg-neutral-950 dark:text-emerald-300'
+                : 'border-blue-200 bg-white text-blue-700 shadow-blue-100/60 dark:border-blue-500/20 dark:bg-neutral-950 dark:text-blue-300';
+
+          return (
+            <div
+              key={toast.id}
+              className={`pointer-events-auto overflow-hidden rounded-2xl border px-4 py-3 shadow-lg backdrop-blur ${toneClassName}`}
+            >
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold">{toast.title}</div>
+                  {toast.description && <div className="mt-1 text-xs leading-5 opacity-90">{toast.description}</div>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => dismissToast(toast.id)}
+                  className="rounded-full p-1 opacity-70 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/5"
+                  aria-label="关闭提示"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {deleteTargetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-neutral-950">
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-white">删除服务器记录</h3>
+            <p className="mt-3 text-sm leading-6 text-neutral-500 dark:text-neutral-400">
+              确定要删除
+              <span className="mx-1 font-bold text-neutral-800 dark:text-neutral-100">
+                {deleteTarget?.name || '该服务器'}
+              </span>
+              吗？此操作不可逆。
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={cancelDelete}
+                className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDelete()}
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+              >
+                确认删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isEmailModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-2xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-neutral-950">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
+                <h3 className="flex items-center gap-2 text-lg font-bold text-neutral-900 dark:text-white">
                   <Mail size={18} className="text-blue-600" />
                   给提交者发送邮件
                 </h3>
-                <p className="mt-1 text-sm text-neutral-500">
+                <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
                   {formData?.name ? `当前服务器：${formData.name}` : '未选择服务器'}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsEmailModalOpen(false)}
-                className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+                className="rounded-lg p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white"
               >
                 <X size={18} />
               </button>
@@ -817,7 +920,7 @@ export default function ManageServerSubmissions() {
                 <button
                   type="button"
                   onClick={() => setIsEmailModalOpen(false)}
-                  className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+                  className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
                 >
                   取消
                 </button>
@@ -830,7 +933,7 @@ export default function ManageServerSubmissions() {
                     }
                   }}
                   disabled={isSendingEmail || !selectedId}
-                  className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-neutral-950"
                 >
                   {isSendingEmail ? <RefreshCw size={16} className="animate-spin" /> : <Mail size={16} />}
                   {isSendingEmail ? '发送中...' : '发送邮件'}

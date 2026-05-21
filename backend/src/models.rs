@@ -41,11 +41,28 @@ pub struct FriendLinkPayload {
     pub enabled: bool,
 }
 
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct LegalPage {
+    pub slug: String,
+    pub title: String,
+    pub content_html: String,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LegalPagePayload {
+    pub title: String,
+    pub content_html: String,
+}
+
 // 1. JWT 中包含的载荷 (Payload) 结构
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String, // subject (通常是用户名或用户ID)
-    pub exp: usize,  // expiration (过期时间的时间戳)
+    pub role: String,
+    pub exp: usize, // expiration (过期时间的时间戳)
 }
 
 // 2. 前端发送的登录请求体
@@ -53,6 +70,8 @@ pub struct Claims {
 pub struct LoginPayload {
     pub email: String, // 【新增】
     pub password: String,
+    #[serde(default)]
+    pub turnstile_token: Option<String>,
 }
 
 // 3. 返回给前端的登录结果
@@ -73,6 +92,36 @@ pub struct UpdateAdminProfilePayload {
     pub currentPassword: String,
     pub newEmail: String,
     pub newPassword: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminSecurityConfig {
+    pub id: String,
+    pub session_timeout_minutes: i32,
+    pub turnstile_enabled: bool,
+    pub turnstile_site_key: String,
+    pub has_turnstile_secret: bool,
+    pub turnstile_secret_preview: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicAdminSecurityConfig {
+    pub session_timeout_minutes: i32,
+    pub turnstile_enabled: bool,
+    pub turnstile_site_key: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAdminSecurityConfigPayload {
+    pub session_timeout_minutes: i32,
+    pub turnstile_enabled: bool,
+    pub turnstile_site_key: String,
+    pub turnstile_secret_key: Option<String>,
+    pub clear_turnstile_secret: bool,
 }
 
 // 【新增】第一次初始化的请求体
@@ -277,6 +326,25 @@ pub struct Feature {
     pub enabled: bool,
 }
 
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct FeatureScreenshot {
+    pub id: String,
+    pub image_url: String,
+    pub title: String,
+    pub caption: String,
+    pub priority: i32,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeatureScreenshotPayload {
+    pub image_url: String,
+    pub title: String,
+    pub caption: String,
+    pub priority: i32,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ChangeItem {
@@ -322,6 +390,10 @@ pub struct HeroConfig {
     pub subtitle: String,
     pub description: String,
     pub button_text: String,
+    pub title_en: String,
+    pub subtitle_en: String,
+    pub description_en: String,
+    pub button_text_en: String,
     pub update_date: String,
     pub dl_mac: String,
     pub dl_win: String,
@@ -389,9 +461,33 @@ pub struct ClientInstallationReportRow {
     pub platform: String,
     pub memory_bytes: Option<i64>,
     pub gpu: String,
+    pub gpu_raw: String,
     pub app_version: String,
     pub first_installed_at: String,
     pub last_reported_at: String,
+}
+
+#[derive(Serialize, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct GpuNameMapping {
+    pub id: String,
+    pub match_text: String,
+    pub display_name: String,
+    pub priority: i64,
+    pub enabled: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GpuNameMappingPayload {
+    pub match_text: String,
+    pub display_name: String,
+    #[serde(default)]
+    pub priority: Option<i64>,
+    #[serde(default)]
+    pub enabled: Option<bool>,
 }
 
 #[derive(Serialize, FromRow)]
@@ -489,8 +585,6 @@ pub struct SubmissionEmailConfig {
     pub code_ttl_minutes: i32,
     pub resend_cooldown_seconds: i32,
     pub max_verify_attempts: i32,
-    pub email_subject_template: String,
-    pub email_body_template: String,
     pub updated_at: Option<String>,
 }
 
@@ -511,8 +605,29 @@ pub struct UpdateSubmissionEmailConfigPayload {
     pub code_ttl_minutes: i32,
     pub resend_cooldown_seconds: i32,
     pub max_verify_attempts: i32,
-    pub email_subject_template: String,
-    pub email_body_template: String,
+    #[serde(default)]
+    pub email_subject_template: Option<String>,
+    #[serde(default)]
+    pub email_body_template: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct SubmissionEmailTemplate {
+    pub template_key: String,
+    pub label: String,
+    pub description: String,
+    pub subject_template: String,
+    pub html_body_template: String,
+    pub variables: String,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSubmissionEmailTemplatePayload {
+    pub subject_template: String,
+    pub html_body_template: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, FromRow)]
@@ -605,6 +720,35 @@ pub struct McCrawlerConfig {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateMcCrawlerConfig {
     pub interval_minutes: i32,
+}
+
+// ==================== Article Push Data ====================
+
+#[derive(Serialize, Deserialize, Clone, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct ArticlePush {
+    pub id: String,
+    pub title: String,
+    pub cover: String,
+    pub content: String,
+    pub related_link: String,
+    pub category: String,
+    pub enabled: bool,
+    pub expires_at: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArticlePushPayload {
+    pub title: String,
+    pub cover: String,
+    pub content: String,
+    pub related_link: String,
+    pub category: String,
+    pub enabled: Option<bool>,
+    pub expires_at: Option<String>,
 }
 
 // ==================== Tauri Updater 发行模型 ====================
@@ -744,7 +888,7 @@ pub struct CreateServerSubmissionPayload {
     pub tags: Vec<String>,
 }
 
-// 4. 更新服务器的请求体 (比创建多了 verified 字段)
+// 4. 更新服务器的请求体。审核状态只通过审核接口修改。
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateServerSubmissionPayload {
@@ -774,7 +918,6 @@ pub struct UpdateServerSubmissionPayload {
     pub community: Vec<IconTag>,
     pub tags: Vec<String>,
     pub sort_id: i32,
-    pub verified: bool,
 }
 
 #[derive(Deserialize)]

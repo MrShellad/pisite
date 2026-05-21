@@ -4,8 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, ShieldCheck } from 'lucide-react';
 import { styleTokens } from '../../lib/design-tokens';
 import { api } from '../../api/client';
+import { useAdminFeedback } from './components/AdminFeedback';
+import { AdminThemeToggle } from './components/AdminThemeToggle';
 
 export default function Setup() {
+  const { notify } = useAdminFeedback();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -34,7 +37,7 @@ export default function Setup() {
     setIsLoading(true);
     try {
       await api.post('/auth/init', { email, password });
-      alert('初始化成功！请使用新账号登录。');
+      notify('初始化成功', '请使用新账号登录。', 'success');
       navigate('/admin/login', { replace: true });
     } catch (err: any) {
       setError(err.response?.data || '设置失败，请重试');
@@ -45,6 +48,7 @@ export default function Setup() {
 
   return (
     <div className={`min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950 ${styleTokens.textPrimary}`}>
+      <AdminThemeToggle className="absolute right-5 top-5 z-20" />
       <div className="absolute inset-0 bg-gradient-to-br from-blue-100/30 to-purple-100/30 dark:from-blue-900/10 dark:to-purple-900/10 pointer-events-none"></div>
 
       <div className={`relative w-full max-w-md p-8 sm:p-10 z-10 ${styleTokens.cardFrosted}`}>

@@ -9,8 +9,11 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::models::{
-    AppReleaseRow, ChangeItem, ChangelogEntry, Claims, PublishReleasePayload, UpdaterParams,
+use crate::{
+    handlers::svg_sanitizer::sanitize_svg,
+    models::{
+        AppReleaseRow, ChangeItem, ChangelogEntry, Claims, PublishReleasePayload, UpdaterParams,
+    },
 };
 
 #[derive(Deserialize)]
@@ -34,7 +37,35 @@ fn parse_platforms_json(raw: &str) -> serde_json::Value {
 }
 
 fn parse_changes_json(raw: &str) -> Vec<ChangeItem> {
-    serde_json::from_str(raw).unwrap_or_default()
+    let mut changes: Vec<ChangeItem> = serde_json::from_str(raw).unwrap_or_default();
+    sanitize_change_items(&mut changes);
+    changes
+}
+
+fn sanitize_change_items(changes: &mut [ChangeItem]) {
+    for item in changes {
+        item.icon_svg = sanitize_svg(&item.icon_svg);
+    }
+}
+
+fn sanitize_changes_value(mut value: serde_json::Value) -> serde_json::Value {
+    if let Some(items) = value.as_array_mut() {
+        for item in items {
+            let Some(object) = item.as_object_mut() else {
+                continue;
+            };
+
+            for key in ["iconSvg", "icon_svg"] {
+                if let Some(icon_value) = object.get_mut(key) {
+                    if let Some(icon_svg) = icon_value.as_str() {
+                        *icon_value = serde_json::Value::String(sanitize_svg(icon_svg));
+                    }
+                }
+            }
+        }
+    }
+
+    value
 }
 
 fn platform_has_assets(platform: &serde_json::Value) -> bool {
@@ -274,7 +305,7 @@ pub async fn get_admin_changelogs(
                 "allowedRegions": row.allowed_regions,
                 "status": row.status,
                 "platforms": parse_platforms_json(&row.platforms_json),
-                "changes": serde_json::from_str::<serde_json::Value>(&row.changes_json).unwrap_or_default()
+                "changes": parse_changes_json(&row.changes_json)
             })
         })
         .collect();
@@ -289,7 +320,8 @@ pub async fn add_changelog(
 ) -> Result<StatusCode, (StatusCode, String)> {
     let id = Uuid::new_v4().to_string();
     let platforms_str = serde_json::to_string(&payload.platforms).unwrap_or_default();
-    let changes_str = serde_json::to_string(&payload.changes).unwrap_or_default();
+    let changes_str =
+        serde_json::to_string(&sanitize_changes_value(payload.changes)).unwrap_or_default();
 
     sqlx::query(
         "INSERT INTO app_releases (id, version, display_version, date, channel, rollout_type, rollout_value, allowed_regions, status, platforms_json, changes_json)

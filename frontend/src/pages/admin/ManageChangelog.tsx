@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   Copy,
   Download,
@@ -19,420 +19,54 @@ import {
   X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api, getUploadUrl } from '../../api/client';
 
-type PlatformKey = 'darwin' | 'windows' | 'linux';
-type ReleaseChannel = 'stable' | 'preview' | 'beta';
-type RolloutType = 'all' | 'grayscale' | 'targeted';
-
-type PlatformAsset = {
-  url: string;
-  signature: string;
-};
-
-type ChangeDraft = {
-  iconSvg: string;
-  iconColor: string;
-  text: string;
-};
-
-type PublishForm = {
-  versionId: string;
-  displayVersion: string;
-  date: string;
-  channel: ReleaseChannel;
-  rolloutType: RolloutType;
-  rolloutValue: string;
-  allowedRegions: string;
-  platforms: Record<PlatformKey, PlatformAsset>;
-  changes: ChangeDraft[];
-};
-
-type ReleaseLog = {
-  id: string;
-  version: string;
-  versionId?: string;
-  displayVersion?: string;
-  date: string;
-  channel: string;
-  rolloutType: string;
-  rolloutValue: string;
-  allowedRegions?: string;
-  status: string;
-  changes: ChangeDraft[];
-  platforms?: Partial<Record<PlatformKey, Partial<PlatformAsset>>>;
-};
-
-type PackageAsset = {
-  date: string;
-  fileName: string;
-  sizeBytes: number;
-  url: string;
-  downloadUrl: string;
-  uploadedAt?: number | null;
-};
-
-const PRESET_ICONS = [
-  {
-    name: 'Feature',
-    svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
-    color: '#3b82f6',
-  },
-  {
-    name: 'Bugfix',
-    svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="8" height="14" x="8" y="6" rx="4"/><path d="m19 7-3 2"/><path d="m5 7 3 2"/><path d="m19 19-3-2"/><path d="m5 19 3-2"/><path d="M20 13h-4"/><path d="M4 13h4"/></svg>',
-    color: '#ef4444',
-  },
-  {
-    name: 'Performance',
-    svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
-    color: '#eab308',
-  },
-  {
-    name: 'Security',
-    svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>',
-    color: '#10b981',
-  },
-  {
-    name: 'UI/UX',
-    svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>',
-    color: '#8b5cf6',
-  },
-];
-
-const platformLabels: Record<PlatformKey, string> = {
-  darwin: 'macOS',
-  windows: 'Windows',
-  linux: 'Linux',
-};
-
-const emptyChange: ChangeDraft = {
-  iconSvg: PRESET_ICONS[0].svg,
-  iconColor: PRESET_ICONS[0].color,
-  text: '',
-};
-
-const createInitialForm = (): PublishForm => ({
-  versionId: '',
-  displayVersion: '',
-  date: new Date().toISOString().slice(0, 10),
-  channel: 'stable',
-  rolloutType: 'all',
-  rolloutValue: '',
-  allowedRegions: 'ALL',
-  platforms: {
-    darwin: { url: '', signature: '' },
-    windows: { url: '', signature: '' },
-    linux: { url: '', signature: '' },
-  },
-  changes: [{ ...emptyChange }],
-});
-
-function parseSigFromText(raw: string) {
-  const trimmed = raw.trim();
-  if (!trimmed) return '';
-
-  try {
-    const parsed = JSON.parse(trimmed) as { signature?: string; sig?: string } | string;
-    if (typeof parsed === 'string') return parsed.trim();
-    if (typeof parsed.signature === 'string' && parsed.signature.trim()) {
-      return parsed.signature.trim();
-    }
-    if (typeof parsed.sig === 'string' && parsed.sig.trim()) {
-      return parsed.sig.trim();
-    }
-  } catch {
-    // not json, keep parsing by line below
-  }
-
-  const lines = trimmed
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(Boolean)
-    .filter(line => !line.startsWith('untrusted comment:') && !line.startsWith('trusted comment:'));
-
-  const likelySig = lines.find(line => /^[A-Za-z0-9+/=_-]{40,}$/.test(line));
-  if (likelySig) return likelySig;
-
-  return lines[0] ?? trimmed;
-}
-
-function formatFileSize(sizeBytes: number) {
-  if (sizeBytes >= 1024 * 1024 * 1024) {
-    return `${(sizeBytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
-  }
-  if (sizeBytes >= 1024 * 1024) {
-    return `${(sizeBytes / 1024 / 1024).toFixed(1)} MB`;
-  }
-  if (sizeBytes >= 1024) {
-    return `${(sizeBytes / 1024).toFixed(1)} KB`;
-  }
-  return `${sizeBytes} B`;
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  const responseData = (error as { response?: { data?: unknown } })?.response?.data;
-  return typeof responseData === 'string' && responseData.trim() ? responseData : fallback;
-}
+import { PRESET_ICONS, platformLabels } from './changelog/constants';
+import { useManageChangelog } from './changelog/hooks/useManageChangelog';
+import type { PlatformKey, ReleaseChannel } from './changelog/types';
+import { formatFileSize } from './changelog/utils';
 
 export default function ManageChangelog() {
-  const [logs, setLogs] = useState<ReleaseLog[]>([]);
-  const [packageAssets, setPackageAssets] = useState<PackageAsset[]>([]);
-  const [isPackageManagerOpen, setIsPackageManagerOpen] = useState(false);
-  const [isManualUploading, setIsManualUploading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadingPackage, setIsUploadingPackage] = useState<Record<PlatformKey, boolean>>({
-    darwin: false,
-    windows: false,
-    linux: false,
-  });
-  const [isUploadingSig, setIsUploadingSig] = useState<Record<PlatformKey, boolean>>({
-    darwin: false,
-    windows: false,
-    linux: false,
-  });
-  const [isPushing, setIsPushing] = useState<Record<string, boolean>>({});
-  const [formData, setFormData] = useState<PublishForm>(() => createInitialForm());
+  const {
+    logs,
+    packageAssets,
+    isPackageManagerOpen,
+    setIsPackageManagerOpen,
+    isManualUploading,
+    isSubmitting,
+    isUploadingPackage,
+    isUploadingSig,
+    uploadProgress,
+    isPushing,
+    formData,
+    setFormData,
+    firstTargetUuid,
+    fetchLogs,
+    fetchPackageAssets,
+    updatePlatformField,
+    cancelPackageUpload,
+    handlePackageUpload,
+    handleManualPackageUpload,
+    copyDownloadLink,
+    renamePackageAsset,
+    deletePackageAsset,
+    handleSignatureUpload,
+    addChange,
+    updateChange,
+    applyPreset,
+    removeChange,
+    handleSubmit,
+    handleRollback,
+    handleDelete,
+    handlePushDownload,
+  } = useManageChangelog();
+  const [iconPickerIndex, setIconPickerIndex] = useState<number | null>(null);
+  const selectedIconChange = iconPickerIndex === null ? null : formData.changes[iconPickerIndex] ?? null;
 
   const inputClass =
     'w-full rounded-xl border border-neutral-200 bg-neutral-100/50 px-4 py-3 text-sm text-neutral-900 transition-all placeholder:text-neutral-400 focus:border-blue-500/50 focus:bg-blue-50/50 focus:outline-none dark:border-white/10 dark:bg-black/40 dark:text-white dark:placeholder:text-neutral-600 dark:focus:bg-blue-500/5';
   const labelClass = 'mb-1.5 ml-1 block text-xs font-bold text-neutral-500 dark:text-neutral-400';
   const cardClass =
     'mb-6 rounded-2xl border border-neutral-200/60 bg-white/80 p-6 shadow-sm dark:border-white/5 dark:bg-white/[0.02] dark:shadow-none';
-
-  const firstTargetUuid = useMemo(() => {
-    if (formData.rolloutType !== 'targeted') return '';
-    const list = formData.rolloutValue
-      .split(/[,\s]+/)
-      .map(item => item.trim())
-      .filter(Boolean);
-    return list[0] ?? '';
-  }, [formData.rolloutType, formData.rolloutValue]);
-
-  const fetchLogs = async () => {
-    const response = await api.get<ReleaseLog[]>('/admin/changelog');
-    setLogs(response.data);
-  };
-
-  const fetchPackageAssets = async () => {
-    const response = await api.get<PackageAsset[]>('/admin/package-assets');
-    setPackageAssets(response.data);
-  };
-
-  useEffect(() => {
-    void fetchLogs();
-    void fetchPackageAssets();
-  }, []);
-
-  const updatePlatformField = (platform: PlatformKey, field: keyof PlatformAsset, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      platforms: {
-        ...prev.platforms,
-        [platform]: {
-          ...prev.platforms[platform],
-          [field]: value,
-        },
-      },
-    }));
-  };
-
-  const handlePackageUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-    platform: PlatformKey,
-  ) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = '';
-    if (!file) return;
-
-    setIsUploadingPackage(prev => ({ ...prev, [platform]: true }));
-    const body = new FormData();
-    body.append('file', file);
-
-    try {
-      const response = await api.post<PackageAsset>('/admin/package-assets/upload', body, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 300000,
-      });
-      updatePlatformField(platform, 'url', response.data.downloadUrl || getUploadUrl(response.data.url));
-      await fetchPackageAssets();
-    } catch (error) {
-      alert(getErrorMessage(error, '安装包上传失败，请重试。'));
-    } finally {
-      setIsUploadingPackage(prev => ({ ...prev, [platform]: false }));
-    }
-  };
-
-  const handleManualPackageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = '';
-    if (!file) return;
-
-    setIsManualUploading(true);
-    const body = new FormData();
-    body.append('file', file);
-
-    try {
-      await api.post<PackageAsset>('/admin/package-assets/upload', body, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 300000,
-      });
-      await fetchPackageAssets();
-      setIsPackageManagerOpen(true);
-    } catch (error) {
-      alert(getErrorMessage(error, '安装包上传失败，请重试。'));
-    } finally {
-      setIsManualUploading(false);
-    }
-  };
-
-  const copyDownloadLink = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      alert('下载链接已复制。');
-    } catch {
-      window.prompt('复制下载链接', url);
-    }
-  };
-
-  const renamePackageAsset = async (asset: PackageAsset) => {
-    const nextName = window.prompt('请输入新的安装包文件名', asset.fileName);
-    if (!nextName || nextName.trim() === asset.fileName) return;
-
-    try {
-      await api.put(
-        `/admin/package-assets/${encodeURIComponent(asset.date)}/${encodeURIComponent(asset.fileName)}`,
-        { fileName: nextName.trim() },
-      );
-      await fetchPackageAssets();
-    } catch (error) {
-      alert(getErrorMessage(error, '重命名失败。'));
-    }
-  };
-
-  const deletePackageAsset = async (asset: PackageAsset) => {
-    if (!window.confirm(`确认删除安装包 ${asset.fileName} 吗？`)) return;
-
-    try {
-      await api.delete(
-        `/admin/package-assets/${encodeURIComponent(asset.date)}/${encodeURIComponent(asset.fileName)}`,
-      );
-      await fetchPackageAssets();
-    } catch (error) {
-      alert(getErrorMessage(error, '删除失败。'));
-    }
-  };
-
-  const handleSignatureUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-    platform: PlatformKey,
-  ) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = '';
-    if (!file) return;
-
-    setIsUploadingSig(prev => ({ ...prev, [platform]: true }));
-    try {
-      const content = await file.text();
-      const parsed = parseSigFromText(content);
-      if (!parsed) {
-        alert('.sig 文件解析为空，请检查文件内容。');
-        return;
-      }
-      updatePlatformField(platform, 'signature', parsed);
-    } catch {
-      alert('读取 .sig 文件失败，请重试。');
-    } finally {
-      setIsUploadingSig(prev => ({ ...prev, [platform]: false }));
-    }
-  };
-
-  const addChange = () => {
-    setFormData(prev => ({
-      ...prev,
-      changes: [...prev.changes, { ...emptyChange }],
-    }));
-  };
-
-  const updateChange = (index: number, field: keyof ChangeDraft, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      changes: prev.changes.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, [field]: value } : item,
-      ),
-    }));
-  };
-
-  const applyPreset = (index: number, svg: string, color: string) => {
-    setFormData(prev => ({
-      ...prev,
-      changes: prev.changes.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, iconSvg: svg, iconColor: color } : item,
-      ),
-    }));
-  };
-
-  const removeChange = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      changes: prev.changes.filter((_, itemIndex) => itemIndex !== index),
-    }));
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setIsSubmitting(true);
-    try {
-      await api.post('/admin/changelog', formData);
-      await fetchLogs();
-      setFormData(createInitialForm());
-      alert('版本发布成功。');
-    } catch (error) {
-      alert(getErrorMessage(error, '发布失败，请检查输入后重试。'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRollback = async (id: string) => {
-    if (!window.confirm('确认回滚该版本吗？')) return;
-    try {
-      await api.post(`/admin/changelog/${id}/rollback`);
-      await fetchLogs();
-    } catch (error) {
-      alert(getErrorMessage(error, '回滚失败。'));
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('确认删除该版本记录吗？此操作不可撤销。')) return;
-    try {
-      await api.delete(`/admin/changelog/${id}`);
-      await fetchLogs();
-    } catch (error) {
-      alert(getErrorMessage(error, '删除失败。'));
-    }
-  };
-
-  const handlePushDownload = async (releaseId: string, platform: 'windows' | 'linux') => {
-    const key = `${releaseId}-${platform}`;
-    setIsPushing(prev => ({ ...prev, [key]: true }));
-    try {
-      const response = await api.post<{
-        platform: string;
-        url: string;
-        displayVersion: string;
-      }>(`/admin/changelog/${releaseId}/push-hero-download`, { platform });
-      alert(
-        `已将 ${response.data.displayVersion} 的 ${platformLabels[platform]} 下载地址推送到首页按钮。`,
-      );
-    } catch (error) {
-      alert(getErrorMessage(error, '推送到首页下载按钮失败。'));
-    } finally {
-      setIsPushing(prev => ({ ...prev, [key]: false }));
-    }
-  };
-
   return (
     <div className="w-full space-y-8 pb-12">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -699,26 +333,33 @@ export default function ManageChangelog() {
                   key={index}
                   className="relative mb-5 rounded-xl border border-neutral-200 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[0.02]"
                 >
-                  <div className="mb-3 flex items-start gap-2">
-                    <input
-                      type="color"
-                      value={item.iconColor}
-                      onChange={event => updateChange(index, 'iconColor', event.target.value)}
-                      className="h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded border-0 p-0"
-                    />
-                    <div className="flex-1 space-y-2">
-                      <input
-                        value={item.iconSvg}
-                        onChange={event => updateChange(index, 'iconSvg', event.target.value)}
-                        className={`${inputClass} py-2 font-mono text-[11px]`}
-                        placeholder="SVG 内容"
+                  <div className="flex items-start gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIconPickerIndex(index)}
+                      className="group flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-600 shadow-sm transition-all hover:border-blue-400 hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:border-blue-400 dark:hover:text-blue-300"
+                      title="选择图标"
+                    >
+                      <div
+                        dangerouslySetInnerHTML={{ __html: item.iconSvg }}
+                        className="h-5 w-5 transition-transform group-hover:scale-110"
+                        style={{ color: item.iconColor }}
                       />
+                    </button>
+                    <div className="flex-1">
                       <input
                         value={item.text}
                         onChange={event => updateChange(index, 'text', event.target.value)}
                         className={inputClass}
                         placeholder="变更描述"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setIconPickerIndex(index)}
+                        className="mt-2 text-xs font-bold text-blue-600 transition hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        选择预设图标
+                      </button>
                     </div>
                     <button
                       type="button"
@@ -727,26 +368,6 @@ export default function ManageChangelog() {
                     >
                       <Trash2 size={16} />
                     </button>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 pl-12">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">
-                      预设图标
-                    </span>
-                    {PRESET_ICONS.map(preset => (
-                      <button
-                        key={preset.name}
-                        type="button"
-                        onClick={() => applyPreset(index, preset.svg, preset.color)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg border border-neutral-200 bg-white transition-all hover:border-blue-500 dark:border-white/10 dark:bg-white/5 dark:hover:border-blue-500"
-                        title={preset.name}
-                      >
-                        <div
-                          dangerouslySetInnerHTML={{ __html: preset.svg }}
-                          className="h-3.5 w-3.5"
-                          style={{ color: preset.color }}
-                        />
-                      </button>
-                    ))}
                   </div>
                 </div>
               ))}
@@ -882,6 +503,112 @@ export default function ManageChangelog() {
         </div>
       </div>
 
+      {iconPickerIndex !== null ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/50 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-950">
+            <div className="flex items-start justify-between gap-4 border-b border-neutral-200 px-5 py-4 dark:border-white/10">
+              <div>
+                <h3 className="text-lg font-black text-neutral-900 dark:text-white">
+                  选择更新图标
+                </h3>
+                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  从预设图标中选择，图标样式和颜色会自动匹配。
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIconPickerIndex(null)}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-neutral-200 text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-900 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white"
+                aria-label="关闭图标选择器"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="overflow-auto p-5">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+                {PRESET_ICONS.map(preset => {
+                  const isSelected =
+                    selectedIconChange?.iconSvg === preset.svg &&
+                    selectedIconChange?.iconColor === preset.color;
+
+                  return (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => {
+                        applyPreset(iconPickerIndex, preset.svg, preset.color);
+                        setIconPickerIndex(null);
+                      }}
+                      className={`group flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl border p-3 text-center transition-all ${
+                        isSelected
+                          ? 'border-blue-400 bg-blue-50 text-blue-700 shadow-sm dark:border-blue-400/60 dark:bg-blue-500/10 dark:text-blue-200'
+                          : 'border-neutral-200 bg-neutral-50/70 text-neutral-600 hover:border-blue-300 hover:bg-white hover:text-blue-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-neutral-300 dark:hover:border-blue-400 dark:hover:bg-white/[0.06] dark:hover:text-blue-300'
+                      }`}
+                    >
+                      <span
+                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm transition-transform group-hover:scale-105 dark:bg-white/5"
+                        style={{ color: preset.color }}
+                      >
+                        <span
+                          dangerouslySetInnerHTML={{ __html: preset.svg }}
+                          className="h-5 w-5"
+                        />
+                      </span>
+                      <span className="text-xs font-bold">{preset.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {uploadProgress ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-950/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-neutral-950">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+                <Upload size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-black text-neutral-900 dark:text-white">
+                  {uploadProgress.title}
+                </h3>
+                <p className="mt-1 truncate text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                  {uploadProgress.fileName}
+                </p>
+              </div>
+              <div className="text-lg font-black tabular-nums text-blue-600 dark:text-blue-300">
+                {uploadProgress.percent}%
+              </div>
+            </div>
+
+            <div className="mt-5 h-3 overflow-hidden rounded-full bg-neutral-100 dark:bg-white/10">
+              <div
+                className="h-full rounded-full bg-blue-600 transition-all duration-200 ease-out dark:bg-blue-400"
+                style={{ width: `${uploadProgress.percent}%` }}
+              />
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+              <span>{formatFileSize(uploadProgress.loaded)}</span>
+              <span>{formatFileSize(uploadProgress.total)}</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={cancelPackageUpload}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+            >
+              <X size={16} />
+              取消上传
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {isPackageManagerOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/50 p-4 backdrop-blur-sm">
           <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-950">
@@ -892,7 +619,7 @@ export default function ManageChangelog() {
                   历史安装包管理
                 </h3>
                 <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  安装包按上传日期存放，复制链接会使用站点设置中的网站域名。
+                  安装包按上传日期存放，复制链接会使用站点设置中的网站域名和公开下载入口。
                 </p>
               </div>
               <div className="flex items-center gap-2">

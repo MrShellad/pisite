@@ -2,9 +2,11 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import { HomeLocaleProvider } from './lib/home-i18n';
+import { AdminFeedbackProvider } from './pages/admin/components/AdminFeedback';
 
 const Landing = lazy(() => import('./pages/Landing'));
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'));
+const LegalPage = lazy(() => import('./pages/LegalPage'));
 const ServerSubmissionPage = lazy(() => import('./pages/ServerSubmission'));
 const ServerSuccessPreview = lazy(() => import('./pages/ServerSubmission/SuccessPreview'));
 const Login = lazy(() => import('./pages/admin/Login'));
@@ -22,6 +24,7 @@ const ManageDonorUsers = lazy(() => import('./pages/admin/ManageDonorUsers'));
 const ManageApiKeys = lazy(() => import('./pages/admin/ManageApiKeys'));
 const ManageApiAccess = lazy(() => import('./pages/admin/ManageApiAccess'));
 const ManageSettings = lazy(() => import('./pages/admin/ManageSettings'));
+const ManageLegalPages = lazy(() => import('./pages/admin/ManageLegalPages'));
 const ManageSubmissionEmail = lazy(() => import('./pages/admin/ManageSubmissionEmail'));
 const ManageAdminProfile = lazy(() => import('./pages/admin/ManageAdminProfile'));
 const ManageMcCrawler = lazy(() => import('./pages/admin/ManageMcCrawler'));
@@ -31,7 +34,7 @@ const ManageSignalingServers = lazy(() => import('./pages/admin/ManageSignalingS
 
 function RouteLoader() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-emerald-50 via-lime-50/40 to-stone-50 text-sm font-medium text-emerald-700 dark:from-[#04130a] dark:via-[#07180d] dark:to-[#050505] dark:text-emerald-300">
+    <div className="static-pixel-text flex min-h-screen items-center justify-center bg-gradient-to-b from-emerald-50 via-lime-50/40 to-stone-50 text-sm font-medium text-emerald-700 dark:from-[#04130a] dark:via-[#07180d] dark:to-[#050505] dark:text-emerald-300">
       Loading page...
     </div>
   );
@@ -41,10 +44,13 @@ function App() {
   return (
     <HomeLocaleProvider>
       <BrowserRouter>
-        <Suspense fallback={<RouteLoader />}>
-          <Routes>
+        <AdminFeedbackProvider>
+          <Suspense fallback={<RouteLoader />}>
+            <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/changelog" element={<ChangelogPage />} />
+            <Route path="/privacy" element={<LegalPage />} />
+            <Route path="/terms" element={<LegalPage />} />
             <Route path="/servers/submit" element={<ServerSubmissionPage />} />
             <Route path="/admin/login" element={<Login />} />
             <Route path="/admin/setup" element={<Setup />} />
@@ -62,6 +68,7 @@ function App() {
                 <Route path="api-keys" element={<ManageApiKeys />} />
                 <Route path="api-access" element={<ManageApiAccess />} />
                 <Route path="settings" element={<ManageSettings />} />
+                <Route path="legal" element={<ManageLegalPages />} />
                 <Route path="submission-email" element={<ManageSubmissionEmail />} />
                 <Route path="account" element={<ManageAdminProfile />} />
                 <Route path="mccrawler" element={<ManageMcCrawler />} />
@@ -70,8 +77,9 @@ function App() {
                 <Route path="signaling" element={<ManageSignalingServers />} />
               </Route>
             </Route>
-          </Routes>
-        </Suspense>
+            </Routes>
+          </Suspense>
+        </AdminFeedbackProvider>
       </BrowserRouter>
     </HomeLocaleProvider>
   );

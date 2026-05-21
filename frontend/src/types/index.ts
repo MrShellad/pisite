@@ -150,6 +150,13 @@ export interface VerifySubmissionEmailCodeResponse {
   verifiedAt: string;
 }
 
+export interface LegalPage {
+  slug: 'privacy' | 'terms';
+  title: string;
+  contentHtml: string;
+  updatedAt?: string | null;
+}
+
 export interface SubmissionEmailConfig {
   id: string;
   enabled: boolean;
@@ -165,8 +172,6 @@ export interface SubmissionEmailConfig {
   codeTtlMinutes: number;
   resendCooldownSeconds: number;
   maxVerifyAttempts: number;
-  emailSubjectTemplate: string;
-  emailBodyTemplate: string;
   updatedAt?: string | null;
 }
 
@@ -185,8 +190,25 @@ export interface SubmissionEmailConfigUpdatePayload {
   codeTtlMinutes: number;
   resendCooldownSeconds: number;
   maxVerifyAttempts: number;
-  emailSubjectTemplate: string;
-  emailBodyTemplate: string;
+  emailSubjectTemplate?: string | null;
+  emailBodyTemplate?: string | null;
+}
+
+export type SubmissionEmailTemplateKey = 'verification_code' | 'server_owner_code';
+
+export interface SubmissionEmailTemplate {
+  templateKey: SubmissionEmailTemplateKey;
+  label: string;
+  description: string;
+  subjectTemplate: string;
+  htmlBodyTemplate: string;
+  variables: string;
+  updatedAt?: string | null;
+}
+
+export interface SubmissionEmailTemplateUpdatePayload {
+  subjectTemplate: string;
+  htmlBodyTemplate: string;
 }
 
 export interface SubmissionEmailRule {

@@ -1,7 +1,8 @@
 use crate::models::{
     Claims, SendSubmissionEmailCodePayload, SendSubmissionEmailCodeResponse, SubmissionEmailConfig,
     SubmissionEmailConfigTestPayload, SubmissionEmailRule, SubmissionEmailRulePayload,
-    UpdateSubmissionEmailConfigPayload, VerifySubmissionEmailCodePayload,
+    SubmissionEmailTemplate, UpdateSubmissionEmailConfigPayload,
+    UpdateSubmissionEmailTemplatePayload, VerifySubmissionEmailCodePayload,
     VerifySubmissionEmailCodeResponse,
 };
 use ammonia::clean;
@@ -11,7 +12,8 @@ use axum::{
     http::StatusCode,
 };
 use lettre::{
-    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor, message::Mailbox,
+    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
+    message::{Mailbox, header::ContentType},
     transport::smtp::authentication::Credentials,
 };
 use once_cell::sync::Lazy;
@@ -24,6 +26,9 @@ use uuid::Uuid;
 static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$").expect("valid email regex")
 });
+
+const TEMPLATE_VERIFICATION_CODE: &str = "verification_code";
+const TEMPLATE_SERVER_OWNER_CODE: &str = "server_owner_code";
 
 // ---------------------------------------------------------------------------
 // Internal DB record (includes password — never exposed to frontend)
@@ -68,6 +73,17 @@ struct SubmissionEmailTokenRow {
     verified_at: Option<String>,
     consumed_at: Option<String>,
     is_expired: bool,
+}
+
+#[derive(Clone, FromRow)]
+struct SubmissionEmailTemplateRecord {
+    template_key: String,
+    label: String,
+    description: String,
+    subject_template: String,
+    html_body_template: String,
+    variables: String,
+    updated_at: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -142,6 +158,10 @@ fn build_lettre_message(
         builder = builder.reply_to(reply_to);
     }
 
+    if looks_like_html(body) {
+        builder = builder.header(ContentType::TEXT_HTML);
+    }
+
     builder
         .body(body.to_string())
         .map_err(|e| format!("failed to build email message: {}", e))
@@ -160,6 +180,89 @@ async fn send_email_via_lettre(
         .send(message)
         .await
         .map_err(|e| format!("smtp send failed: {}", e))?;
+    Ok(())
+}
+
+fn looks_like_html(body: &str) -> bool {
+    let lower = body.to_lowercase();
+    lower.contains("<p")
+        || lower.contains("<div")
+        || lower.contains("<br")
+        || lower.contains("<table")
+        || lower.contains("<html")
+        || lower.contains("<strong")
+        || lower.contains("<span")
+}
+
+fn render_email_template(template: &str, variables: &[(&str, String)]) -> String {
+    variables
+        .iter()
+        .fold(template.to_string(), |content, (key, value)| {
+            content
+                .replace(&format!("{{{}}}", key), value)
+                .replace(&format!("{{{{{}}}}}", key), value)
+        })
+}
+
+fn to_template_model(record: SubmissionEmailTemplateRecord) -> SubmissionEmailTemplate {
+    SubmissionEmailTemplate {
+        template_key: record.template_key,
+        label: record.label,
+        description: record.description,
+        subject_template: record.subject_template,
+        html_body_template: record.html_body_template,
+        variables: record.variables,
+        updated_at: record.updated_at,
+    }
+}
+
+async fn load_submission_email_template(
+    pool: &SqlitePool,
+    template_key: &str,
+) -> Result<SubmissionEmailTemplateRecord, (StatusCode, String)> {
+    sqlx::query_as::<_, SubmissionEmailTemplateRecord>(
+        "SELECT
+            template_key,
+            label,
+            description,
+            subject_template,
+            html_body_template,
+            variables,
+            updated_at
+         FROM submission_email_templates
+         WHERE template_key = ?",
+    )
+    .bind(template_key)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+}
+
+pub async fn send_submission_owner_code_email(
+    pool: &SqlitePool,
+    to_email: &str,
+    server_name: &str,
+    owner_code: &str,
+) -> Result<(), (StatusCode, String)> {
+    let email = normalize_submission_email(to_email)?;
+    let config = load_submission_email_config_record(pool).await?;
+    validate_submission_email_config(&config, false)?;
+    let template = load_submission_email_template(pool, TEMPLATE_SERVER_OWNER_CODE).await?;
+    let variables = [
+        ("serverName", server_name.trim().to_string()),
+        ("code", owner_code.trim().to_string()),
+        ("contactEmail", email.clone()),
+    ];
+    let subject = sanitize_header_value(&render_email_template(
+        &template.subject_template,
+        &variables,
+    ));
+    let body = clean(&render_email_template(&template.html_body_template, &variables));
+
+    send_email_via_lettre(&config, &email, &subject, &body)
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+
     Ok(())
 }
 
@@ -471,8 +574,6 @@ pub async fn get_submission_email_config(
             code_ttl_minutes,
             resend_cooldown_seconds,
             max_verify_attempts,
-            email_subject_template,
-            email_body_template,
             updated_at
          FROM submission_email_config
          WHERE id = '1'",
@@ -518,8 +619,18 @@ pub async fn update_submission_email_config(
         code_ttl_minutes: payload.code_ttl_minutes.clamp(5, 60),
         resend_cooldown_seconds: payload.resend_cooldown_seconds.clamp(15, 600),
         max_verify_attempts: payload.max_verify_attempts.clamp(1, 10),
-        email_subject_template: payload.email_subject_template.trim().to_string(),
-        email_body_template: payload.email_body_template.trim().to_string(),
+        email_subject_template: payload
+            .email_subject_template
+            .as_deref()
+            .unwrap_or(&existing.email_subject_template)
+            .trim()
+            .to_string(),
+        email_body_template: payload
+            .email_body_template
+            .as_deref()
+            .unwrap_or(&existing.email_body_template)
+            .trim()
+            .to_string(),
     };
 
     validate_submission_email_config(&config, false)?;
@@ -562,6 +673,84 @@ pub async fn update_submission_email_config(
     .execute(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(StatusCode::OK)
+}
+
+// ---------------------------------------------------------------------------
+// Admin: email templates
+// ---------------------------------------------------------------------------
+
+pub async fn list_submission_email_templates(
+    _claims: Claims,
+    State(pool): State<SqlitePool>,
+) -> Result<Json<Vec<SubmissionEmailTemplate>>, (StatusCode, String)> {
+    let templates = sqlx::query_as::<_, SubmissionEmailTemplateRecord>(
+        "SELECT
+            template_key,
+            label,
+            description,
+            subject_template,
+            html_body_template,
+            variables,
+            updated_at
+         FROM submission_email_templates
+         ORDER BY CASE template_key
+            WHEN 'verification_code' THEN 1
+            WHEN 'server_owner_code' THEN 2
+            ELSE 99
+         END, template_key ASC",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .into_iter()
+    .map(to_template_model)
+    .collect();
+
+    Ok(Json(templates))
+}
+
+pub async fn update_submission_email_template(
+    _claims: Claims,
+    State(pool): State<SqlitePool>,
+    AxumPath(template_key): AxumPath<String>,
+    Json(payload): Json<UpdateSubmissionEmailTemplatePayload>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let subject = sanitize_header_value(&payload.subject_template);
+    let body = clean(&payload.html_body_template).trim().to_string();
+
+    if subject.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Email subject template is required".to_string(),
+        ));
+    }
+
+    if body.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Email body template is required".to_string(),
+        ));
+    }
+
+    let result = sqlx::query(
+        "UPDATE submission_email_templates
+         SET subject_template = ?,
+             html_body_template = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE template_key = ?",
+    )
+    .bind(subject)
+    .bind(body)
+    .bind(template_key.trim())
+    .execute(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if result.rows_affected() == 0 {
+        return Err((StatusCode::NOT_FOUND, "Template not found".to_string()));
+    }
 
     Ok(StatusCode::OK)
 }
@@ -746,16 +935,20 @@ pub async fn send_submission_email_code(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // Build email content from templates
-    let body = config
-        .email_body_template
-        .replace("{code}", &code)
-        .replace("{ttl}", &config.code_ttl_minutes.to_string());
-
-    let subject = config
-        .email_subject_template
-        .replace("{code}", &code)
-        .replace("{ttl}", &config.code_ttl_minutes.to_string());
+    // Build email content from the centralized template module.
+    let template = load_submission_email_template(&pool, TEMPLATE_VERIFICATION_CODE).await?;
+    let variables = [
+        ("code", code.clone()),
+        ("ttl", config.code_ttl_minutes.to_string()),
+    ];
+    let body = clean(&render_email_template(
+        &template.html_body_template,
+        &variables,
+    ));
+    let subject = sanitize_header_value(&render_email_template(
+        &template.subject_template,
+        &variables,
+    ));
 
     // Capture values before moving config into the background task
     let response_expires = i64::from(config.code_ttl_minutes) * 60;

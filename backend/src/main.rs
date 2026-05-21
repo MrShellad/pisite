@@ -48,15 +48,38 @@ async fn main() {
     tokio::fs::create_dir_all(&config.uploads_dir)
         .await
         .expect("failed to create uploads directory");
+    let package_downloads_dir = config.uploads_dir.join("packages");
 
-    let app = Router::new()
+    let mut app = Router::new()
         .merge(routes::create_router(pool.clone()))
-        .nest_service("/uploads", ServeDir::new(config.uploads_dir.clone()))
+        .nest_service(
+            "/api/package-assets/download",
+            ServeDir::new(package_downloads_dir),
+        )
+        .nest_service(
+            "/uploads/admin",
+            ServeDir::new(config.uploads_dir.join("admin")),
+        )
+        .nest_service(
+            "/uploads/mc_covers",
+            ServeDir::new(config.uploads_dir.join("mc_covers")),
+        )
+        .nest_service(
+            "/uploads/server_covers",
+            ServeDir::new(config.uploads_dir.join("server_covers")),
+        )
+        .layer(middleware::from_fn(crate::auth::admin_auth_middleware))
         .layer(middleware::from_fn_with_state(
             pool.clone(),
             crate::handlers::api_key_middleware::api_key_middleware,
         ))
         .layer(build_cors_layer());
+
+    if config.admin_internal_only {
+        app = app.layer(middleware::from_fn(
+            crate::handlers::admin_internal_middleware::admin_internal_only_middleware,
+        ));
+    }
 
     let addr = config.bind_addr().expect("invalid BIND_HOST/PORT");
     println!("backend listening on http://{addr}");

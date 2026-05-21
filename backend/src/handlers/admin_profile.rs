@@ -5,7 +5,8 @@ use bcrypt::{DEFAULT_COST, hash, verify};
 use jsonwebtoken::{EncodingKey, Header, encode};
 
 use crate::{
-    auth::JWT_SECRET,
+    auth::{ADMIN_ROLE, JWT_SECRET},
+    handlers::admin_security::get_session_timeout_minutes,
     models::{AdminProfileResponse, AdminUser, AuthResponse, Claims, UpdateAdminProfilePayload},
 };
 
@@ -70,14 +71,16 @@ pub async fn update_profile(
         })?;
 
     // 签发新 token，确保后续请求 claims.sub 与新邮箱一致
+    let session_timeout_minutes = get_session_timeout_minutes(&pool).await;
     let expiration = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_secs()
-        + 24 * 3600;
+        + (session_timeout_minutes as u64 * 60);
 
     let new_claims = crate::models::Claims {
         sub: payload.newEmail,
+        role: ADMIN_ROLE.to_string(),
         exp: expiration as usize,
     };
     let token = encode(

@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useLayoutEffect } from 'react';
 
 import DeferredSection from '../components/DeferredSection';
 import Hero from '../components/Hero';
@@ -6,6 +6,7 @@ import Navbar from '../components/Navbar';
 import { useDynamicSEO } from './admin/hooks/useDynamicSEO';
 
 const Features = lazy(() => import('../components/Features'));
+const ScreenshotPreview = lazy(() => import('../components/ScreenshotPreview'));
 const FAQ = lazy(() => import('../components/FAQ'));
 const Changelog = lazy(() => import('../components/Changelog'));
 const Sponsors = lazy(() => import('../components/Sponsors'));
@@ -14,14 +15,33 @@ const Footer = lazy(() => import('../components/Footer'));
 export default function Landing() {
   useDynamicSEO();
 
+  useLayoutEffect(() => {
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+
+    if (!window.location.hash) {
+      window.scrollTo(0, 0);
+    }
+
+    return () => {
+      window.history.scrollRestoration = previousScrollRestoration;
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-lime-50/40 to-stone-50 transition-colors duration-500 dark:from-[#04130a] dark:via-[#07180d] dark:to-[#050505]">
+    <div className="static-pixel-text min-h-screen bg-white transition-colors duration-500 dark:bg-gradient-to-b dark:from-[#04130a] dark:via-[#071426] dark:to-[#050505]">
       <Navbar />
       <Hero />
 
       <DeferredSection id="features" placeholderClassName="mx-auto min-h-[420px] max-w-6xl px-4 sm:px-6">
         <Suspense fallback={null}>
           <Features />
+        </Suspense>
+      </DeferredSection>
+
+      <DeferredSection id="screenshots" placeholderClassName="mx-auto min-h-[460px] max-w-7xl px-4 sm:px-6">
+        <Suspense fallback={null}>
+          <ScreenshotPreview />
         </Suspense>
       </DeferredSection>
 

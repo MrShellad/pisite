@@ -24,10 +24,20 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
         path: "/api/auth/login",
         group: "auth",
     },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/auth/admin-security",
+        group: "auth",
+    },
     // ===== public =====
     ApiEndpointCatalogItem {
         method: "GET",
         path: "/api/settings",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/legal-pages/{slug}",
         group: "public",
     },
     ApiEndpointCatalogItem {
@@ -37,7 +47,17 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     },
     ApiEndpointCatalogItem {
         method: "GET",
+        path: "/api/home/bootstrap",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
         path: "/api/features",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/feature-screenshots",
         group: "public",
     },
     ApiEndpointCatalogItem {
@@ -73,6 +93,16 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "GET",
         path: "/api/mc/versions",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/article-pushes",
+        group: "public",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/article-pushes/latest",
         group: "public",
     },
     ApiEndpointCatalogItem {
@@ -178,6 +208,26 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
         group: "admin",
     },
     ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/installations/gpu-mappings",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/installations/gpu-mappings",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/installations/gpu-mappings/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "DELETE",
+        path: "/api/admin/installations/gpu-mappings/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
         method: "PUT",
         path: "/api/admin/settings",
         group: "admin",
@@ -194,6 +244,16 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     },
     ApiEndpointCatalogItem {
         method: "GET",
+        path: "/api/admin/legal-pages",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/legal-pages/{slug}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
         path: "/api/admin/submission-email/config",
         group: "admin",
     },
@@ -205,6 +265,16 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "POST",
         path: "/api/admin/submission-email/config/test",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/submission-email/templates",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/submission-email/templates/{template_key}",
         group: "admin",
     },
     ApiEndpointCatalogItem {
@@ -240,6 +310,26 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "POST",
         path: "/api/admin/features",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/features/screenshots",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/features/screenshots",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/features/screenshots/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "DELETE",
+        path: "/api/admin/features/screenshots/{id}",
         group: "admin",
     },
     ApiEndpointCatalogItem {
@@ -365,6 +455,31 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "POST",
         path: "/api/admin/mc-crawler/force-manifest",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/article-pushes",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/article-pushes",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/article-pushes/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "DELETE",
+        path: "/api/admin/article-pushes/{id}",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/article-pushes/{id}/toggle",
         group: "admin",
     },
     ApiEndpointCatalogItem {
@@ -545,6 +660,26 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
     ApiEndpointCatalogItem {
         method: "GET",
         path: "/api/admin/api-warnings",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/profile",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/profile",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "GET",
+        path: "/api/admin/security",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "PUT",
+        path: "/api/admin/security",
         group: "admin",
     },
     ApiEndpointCatalogItem {

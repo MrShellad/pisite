@@ -7,7 +7,7 @@ export default function ChangelogPage() {
   return (
     <div
       className={`
-        min-h-screen flex flex-col font-sans transition-colors duration-500 ${styleTokens.textPrimary}
+        static-pixel-text min-h-screen flex flex-col font-sans transition-colors duration-500 ${styleTokens.textPrimary}
         bg-gradient-to-r from-emerald-50 via-lime-50 to-stone-50
         dark:from-[#04130a] dark:via-[#07180d] dark:to-[#050505]
       `}

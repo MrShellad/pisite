@@ -1,30 +1,50 @@
-version: "3.9"
+name: pisite
 
 services:
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    image: pisite-backend:${IMAGE_TAG:-latest}
+    platform: ${DOCKER_PLATFORM:-linux/arm64}
+    restart: unless-stopped
+    init: true
     environment:
-      - BIND_HOST=0.0.0.0
-      - PORT=3000
-      - DATABASE_URL=sqlite:///data/flowcore.db?mode=rwc
+      BIND_HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_URL: sqlite:///data/flowcore.db?mode=rwc
+      UPLOADS_DIR: /app/uploads
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      DONOR_JWT_SECRET: ${DONOR_JWT_SECRET:?set DONOR_JWT_SECRET in .env}
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY in .env}
+      ADMIN_INTERNAL_ONLY: ${ADMIN_INTERNAL_ONLY:-false}
     volumes:
       - backend_data:/data
       - backend_uploads:/app/uploads
-    ports:
-      - "127.0.0.1:12000:3000"
+    expose:
+      - "3000"
+    networks:
+      - pisite_internal
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    volumes:
-      - frontend_data:/data
+    image: pisite-frontend:${IMAGE_TAG:-latest}
+    platform: ${DOCKER_PLATFORM:-linux/arm64}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      - backend
     ports:
-      - "127.0.0.1:13000:80"
+      - "${FRONTEND_BIND:-127.0.0.1}:${FRONTEND_PORT:-13000}:80"
+    networks:
+      - pisite_internal
 
 volumes:
   backend_data:
   backend_uploads:
-  frontend_data:
+
+networks:
+  pisite_internal:
+    driver: bridge

@@ -1,8 +1,19 @@
 // frontend/src/pages/admin/ManageFAQ.tsx
-import { Plus, Trash2, Power, MessageCircle } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown, MessageCircle, Plus, Power, Trash2 } from 'lucide-react';
+
+import {
+  DEFAULT_FAQ_ICON,
+  FAQ_EMOJI_PRESETS,
+  FAQ_ICON_COLORS,
+  FAQ_ICON_PRESETS,
+} from './faqIconPresets';
 import { useManageFAQ } from './hooks/useManageFAQ';
 
+type IconPickerTab = 'icons' | 'emojis';
+
 export default function ManageFAQ() {
+  const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
   const {
     faqs, isLoading, isSubmitting, formData,
     handleChange, handleSubmit, handleToggle, handleDelete
@@ -12,6 +23,7 @@ export default function ManageFAQ() {
   const inputClass = "w-full px-4 py-3 bg-neutral-100/50 dark:bg-black/40 border border-neutral-200 dark:border-white/10 rounded-xl focus:outline-none focus:border-blue-500/50 focus:bg-blue-50/50 dark:focus:bg-blue-500/5 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 transition-all text-sm";
   const labelClass = "block text-xs text-neutral-500 dark:text-neutral-400 ml-1 mb-1.5 uppercase tracking-wider font-semibold";
   const cardClass = "p-6 bg-white/80 dark:bg-white/[0.02] border border-neutral-200/60 dark:border-white/5 rounded-2xl relative overflow-hidden backdrop-blur-xl shadow-sm dark:shadow-none";
+  const selectedIconSvg = formData.iconSvg || DEFAULT_FAQ_ICON.svg;
 
   return (
     <div className="space-y-8 pb-12">
@@ -52,16 +64,31 @@ export default function ManageFAQ() {
 
             <div className="p-4 bg-neutral-100/50 dark:bg-black/20 rounded-2xl border border-neutral-200 dark:border-white/5 space-y-4">
               <div>
-                <label className={labelClass}>视觉色彩 (Hex)</label>
+                <label className={labelClass}>FAQ 图标</label>
                 <div className="flex items-center gap-3">
-                  <input type="color" value={formData.iconColor} onChange={e => handleChange('iconColor', e.target.value)} className="w-10 h-10 cursor-pointer rounded-lg bg-transparent border-0 p-0 shrink-0" />
-                  <input value={formData.iconColor} onChange={e => handleChange('iconColor', e.target.value)} className={`${inputClass} font-mono`} />
+                  <div
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-black/40"
+                    style={{ color: formData.iconColor }}
+                  >
+                    <div className="flex h-6 w-6 items-center justify-center" dangerouslySetInnerHTML={{ __html: selectedIconSvg }} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsIconPickerOpen(true)}
+                    className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left text-sm font-bold text-neutral-800 transition hover:border-blue-300 hover:bg-blue-50/40 dark:border-white/10 dark:bg-black/30 dark:text-white dark:hover:border-blue-400/60 dark:hover:bg-blue-500/10"
+                  >
+                    <span className="truncate">选择图标与颜色</span>
+                    <ChevronDown size={16} className="shrink-0 text-neutral-400" />
+                  </button>
                 </div>
               </div>
               
               <div>
-                <label className={labelClass}>SVG 矢量代码</label>
-                <textarea required placeholder='<svg>...</svg>' value={formData.iconSvg} onChange={e => handleChange('iconSvg', e.target.value)} className={`${inputClass} font-mono text-xs h-24`} />
+                <label className={labelClass}>视觉色彩 (Hex)</label>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={formData.iconColor} onChange={e => handleChange('iconColor', e.target.value)} className="h-10 w-10 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent p-0" />
+                  <input value={formData.iconColor} onChange={e => handleChange('iconColor', e.target.value)} className={`${inputClass} font-mono`} />
+                </div>
               </div>
             </div>
 
@@ -134,6 +161,147 @@ export default function ManageFAQ() {
               {faqs.length === 0 && (
                  <div className="text-center py-16 text-neutral-500 dark:text-neutral-600 text-sm bg-neutral-50/50 dark:bg-transparent rounded-2xl border border-dashed border-neutral-200 dark:border-white/10">暂无知识库记录</div>
               )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isIconPickerOpen ? (
+        <FaqIconPicker
+          selectedColor={formData.iconColor}
+          selectedSvg={selectedIconSvg}
+          onClose={() => setIsIconPickerOpen(false)}
+          onColorChange={color => handleChange('iconColor', color)}
+          onSelect={svg => {
+            handleChange('iconSvg', svg);
+            setIsIconPickerOpen(false);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+interface FaqIconPickerProps {
+  selectedColor: string;
+  selectedSvg: string;
+  onClose: () => void;
+  onColorChange: (color: string) => void;
+  onSelect: (svg: string) => void;
+}
+
+function FaqIconPicker({
+  selectedColor,
+  selectedSvg,
+  onClose,
+  onColorChange,
+  onSelect,
+}: FaqIconPickerProps) {
+  const [activeTab, setActiveTab] = useState<IconPickerTab>('icons');
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-[414px] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-950"
+        onClick={event => event.stopPropagation()}
+      >
+        <div className="px-7 pt-6">
+          <div className="flex items-center gap-8">
+            {(['icons', 'emojis'] as IconPickerTab[]).map(tab => {
+              const isActive = activeTab === tab;
+
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`relative pb-3 text-base font-bold transition-colors ${
+                    isActive
+                      ? 'text-neutral-950 dark:text-white'
+                      : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
+                  }`}
+                >
+                  {tab === 'icons' ? 'Icons' : 'Emojis'}
+                  {isActive ? (
+                    <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-neutral-950 dark:bg-white" />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-4 py-5">
+            {FAQ_ICON_COLORS.map(color => {
+              const isSelected = selectedColor.toLowerCase() === color.toLowerCase();
+
+              return (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => onColorChange(color)}
+                  className={`h-8 w-8 rounded-full transition ${
+                    isSelected
+                      ? 'ring-2 ring-neutral-500 ring-offset-2 ring-offset-white dark:ring-neutral-200 dark:ring-offset-neutral-950'
+                      : 'hover:scale-105'
+                  }`}
+                  style={{ backgroundColor: color }}
+                  aria-label={`使用颜色 ${color}`}
+                  title={color}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="border-t border-neutral-200 px-6 py-5 dark:border-white/10">
+          {activeTab === 'icons' ? (
+            <div className="grid grid-cols-8 gap-3">
+              {FAQ_ICON_PRESETS.map(preset => {
+                const Icon = preset.Icon;
+                const isSelected = selectedSvg === preset.svg;
+
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => onSelect(preset.svg)}
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all ${
+                      isSelected
+                        ? 'bg-neutral-100 text-neutral-950 ring-1 ring-neutral-200 dark:bg-white/10 dark:text-white dark:ring-white/10'
+                        : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-white'
+                    }`}
+                    aria-label={`选择 ${preset.label} 图标`}
+                    title={preset.label}
+                  >
+                    <Icon size={21} strokeWidth={2.1} />
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-8 gap-3">
+              {FAQ_EMOJI_PRESETS.map(preset => {
+                const isSelected = selectedSvg === preset.svg;
+
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => onSelect(preset.svg)}
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl text-xl transition-all ${
+                      isSelected
+                        ? 'bg-neutral-100 ring-1 ring-neutral-200 dark:bg-white/10 dark:ring-white/10'
+                        : 'hover:bg-neutral-100 dark:hover:bg-white/10'
+                    }`}
+                    aria-label={`选择 ${preset.label} 表情`}
+                    title={preset.label}
+                    dangerouslySetInnerHTML={{ __html: preset.entity }}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

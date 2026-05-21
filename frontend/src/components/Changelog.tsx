@@ -82,7 +82,7 @@ export default function Changelog({ isFullPage = false }: { isFullPage?: boolean
                 "
               >
                 {entry.isLatest ? (
-                  <div className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full bg-emerald-500/20 blur-3xl" />
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(16,185,129,0.18),transparent_42%)] dark:bg-[radial-gradient(circle_at_100%_0%,rgba(52,211,153,0.14),transparent_44%)]" />
                 ) : null}
 
                 <div className="relative z-10 mb-8 flex items-center gap-4 border-b-2 border-emerald-100/70 pb-6 dark:border-emerald-900/40">

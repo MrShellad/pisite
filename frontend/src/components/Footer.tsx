@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Github, Mail, MessageSquare, Twitter, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { api } from '../api/client';
 import { styleTokens } from '../lib/design-tokens';
@@ -18,7 +19,7 @@ export default function Footer() {
   if (!settings) return null;
 
   return (
-    <footer className="mt-20 border-t-2 border-neutral-200/50 bg-white/30 backdrop-blur-md transition-colors duration-500 dark:border-neutral-800/50 dark:bg-neutral-950/30">
+    <footer className="mt-20 border-t-2 border-neutral-300/70 bg-white/70 backdrop-blur-md transition-colors duration-500 dark:border-neutral-800/50 dark:bg-neutral-950/30">
       <div className="mx-auto max-w-5xl px-6 pb-8 pt-16">
         <div className="mb-16 flex flex-col justify-between gap-12 md:flex-row md:gap-8">
           <div className="max-w-sm space-y-4">
@@ -31,7 +32,7 @@ export default function Footer() {
               </span>
             </div>
 
-            <p className={`text-sm leading-relaxed ${styleTokens.textSecondary}`}>
+            <p className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-400">
               {settings.seoDescription}
             </p>
 
@@ -41,7 +42,7 @@ export default function Footer() {
                   href={settings.githubUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className={`rounded-full text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-white ${styleTokens.focusRing}`}
+                  className={`rounded-full text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white ${styleTokens.focusRing}`}
                   aria-label="GitHub"
                 >
                   <Github size={20} />
@@ -52,7 +53,7 @@ export default function Footer() {
                   href={settings.twitterUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className={`rounded-full text-neutral-400 transition-colors hover:text-emerald-600 dark:hover:text-emerald-300 ${styleTokens.focusRing}`}
+                  className={`rounded-full text-neutral-600 transition-colors hover:text-emerald-600 dark:text-neutral-400 dark:hover:text-emerald-300 ${styleTokens.focusRing}`}
                   aria-label="Twitter"
                 >
                   <Twitter size={20} />
@@ -63,7 +64,7 @@ export default function Footer() {
                   href={settings.discordUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className={`rounded-full text-neutral-400 transition-colors hover:text-emerald-600 dark:hover:text-emerald-300 ${styleTokens.focusRing}`}
+                  className={`rounded-full text-neutral-600 transition-colors hover:text-emerald-600 dark:text-neutral-400 dark:hover:text-emerald-300 ${styleTokens.focusRing}`}
                   aria-label="Discord"
                 >
                   <MessageSquare size={20} />
@@ -72,7 +73,7 @@ export default function Footer() {
               {settings.contactEmail ? (
                 <a
                   href={`mailto:${settings.contactEmail}`}
-                  className={`rounded-full text-neutral-400 transition-colors hover:text-emerald-600 dark:hover:text-emerald-300 ${styleTokens.focusRing}`}
+                  className={`rounded-full text-neutral-600 transition-colors hover:text-emerald-600 dark:text-neutral-400 dark:hover:text-emerald-300 ${styleTokens.focusRing}`}
                   aria-label="Email"
                 >
                   <Mail size={20} />
@@ -87,7 +88,7 @@ export default function Footer() {
             </h4>
             <ul className="space-y-3">
               {friends.length === 0 ? (
-                <li className={`text-sm ${styleTokens.textSecondary}`}>{copy.footer.noFriends}</li>
+                <li className="text-sm text-neutral-700 dark:text-neutral-400">{copy.footer.noFriends}</li>
               ) : (
                 friends.map(link => (
                   <li key={link.id || link.name}>
@@ -95,7 +96,7 @@ export default function Footer() {
                       href={link.url || link.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`rounded-sm text-sm font-medium ${styleTokens.textSecondary} transition-colors hover:text-emerald-600 dark:hover:text-emerald-300 ${styleTokens.focusRing}`}
+                      className={`rounded-sm text-sm font-medium text-neutral-700 transition-colors hover:text-emerald-600 dark:text-neutral-400 dark:hover:text-emerald-300 ${styleTokens.focusRing}`}
                     >
                       {link.name}
                     </a>
@@ -107,22 +108,22 @@ export default function Footer() {
         </div>
 
         <div
-          className={`flex flex-col items-center justify-between gap-4 border-t border-neutral-200/50 pt-8 text-xs font-mono ${styleTokens.textSecondary} dark:border-neutral-800/50 md:flex-row`}
+          className="flex flex-col items-center justify-between gap-4 border-t border-neutral-300/70 pt-8 text-xs font-mono text-neutral-700 dark:border-neutral-800/50 dark:text-neutral-400 md:flex-row"
         >
           <p>{settings.copyright}</p>
           <div className="flex items-center gap-4">
-            <a
-              href="#"
+            <Link
+              to="/privacy"
               className={`rounded-sm transition-colors hover:text-neutral-800 dark:hover:text-neutral-200 ${styleTokens.focusRing}`}
             >
               {copy.footer.privacyPolicy}
-            </a>
-            <a
-              href="#"
+            </Link>
+            <Link
+              to="/terms"
               className={`rounded-sm transition-colors hover:text-neutral-800 dark:hover:text-neutral-200 ${styleTokens.focusRing}`}
             >
               {copy.footer.termsOfService}
-            </a>
+            </Link>
             <span className="ml-2 flex items-center gap-2">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
               {copy.footer.allSystemsNormal}

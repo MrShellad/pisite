@@ -1,13 +1,14 @@
 use crate::handlers::image_storage::{MAX_SERVER_SUBMISSION_IMAGE_BYTES, uuid_webp_file_name};
 use crate::handlers::submission_email::{
     check_submission_email_token, consume_submission_email_token, normalize_submission_email,
-    send_submission_custom_email,
+    send_submission_custom_email, send_submission_owner_code_email,
 };
+use crate::handlers::svg_sanitizer::sanitize_svg;
 use crate::models::{
-    Claims, CreateServerSubmissionPayload, OwnerUpdateServerSubmissionPayload,
+    Claims, CreateServerSubmissionPayload, IconTag, OwnerUpdateServerSubmissionPayload,
     SendSubmissionContactEmailPayload, ServerPingBatchRunResult, ServerPingConfig, ServerStatus,
-    ServerStatusHistory, ServerSubmission, ServerSubmissionOwnerAuthPayload, ServerTagDictPayload,
-    UpdateServerPingConfigPayload, UpdateServerSubmissionPayload,
+    ServerStatusHistory, ServerSubmission, ServerSubmissionOwnerAuthPayload, ServerTagDict,
+    ServerTagDictPayload, UpdateServerPingConfigPayload, UpdateServerSubmissionPayload,
 };
 use ammonia::clean;
 use axum::{
@@ -30,6 +31,12 @@ use tokio::{
 use uuid::Uuid;
 
 const STATUS_PROTOCOL_VERSION: i32 = 760;
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToggleVerifyPayload {
+    pub verified: Option<bool>,
+}
 
 static FALLBACK_MC_VERSION_REGEXES: Lazy<[Regex; 5]> = Lazy::new(|| {
     [
@@ -59,6 +66,33 @@ fn generate_owner_token() -> String {
         .take(12)
         .collect::<String>()
         .to_uppercase()
+}
+
+fn sanitize_icon_tags(tags: &[IconTag]) -> Vec<IconTag> {
+    tags.iter()
+        .cloned()
+        .map(|mut tag| {
+            tag.label = clean(&tag.label).trim().to_string();
+            tag.icon_svg = sanitize_svg(&tag.icon_svg);
+            tag.color = tag.color.trim().to_string();
+            tag
+        })
+        .collect()
+}
+
+fn sanitize_server_submission_tags(submission: &mut ServerSubmission) {
+    submission.features = SqlxJson(sanitize_icon_tags(&submission.features.0));
+    submission.mechanics = SqlxJson(sanitize_icon_tags(&submission.mechanics.0));
+    submission.elements = SqlxJson(sanitize_icon_tags(&submission.elements.0));
+    submission.community = SqlxJson(sanitize_icon_tags(&submission.community.0));
+}
+
+fn sanitize_server_tag_dict_items(dict: &mut [ServerTagDict]) {
+    for item in dict {
+        item.label = clean(&item.label).trim().to_string();
+        item.icon_svg = sanitize_svg(&item.icon_svg);
+        item.color = item.color.trim().to_string();
+    }
 }
 
 fn sanitize_versions(raw_versions: &[String]) -> Vec<String> {
@@ -362,6 +396,10 @@ pub async fn create_server_submission(
     let safe_ip = payload.ip.trim().to_string();
     let safe_contact_email = normalize_submission_email(&payload.contact_email)?;
     let safe_versions = validate_mc_versions(&pool, &payload.versions).await?;
+    let safe_features = sanitize_icon_tags(&payload.features);
+    let safe_mechanics = sanitize_icon_tags(&payload.mechanics);
+    let safe_elements = sanitize_icon_tags(&payload.elements);
+    let safe_community = sanitize_icon_tags(&payload.community);
     validate_server_submission_fields(
         &safe_name,
         &safe_ip,
@@ -418,10 +456,10 @@ pub async fn create_server_submission(
     .bind(payload.has_voice_chat)
     .bind(payload.voice_platform.trim())
     .bind(payload.voice_url.trim())
-    .bind(SqlxJson(&payload.features))
-    .bind(SqlxJson(&payload.mechanics))
-    .bind(SqlxJson(&payload.elements))
-    .bind(SqlxJson(&payload.community))
+    .bind(SqlxJson(&safe_features))
+    .bind(SqlxJson(&safe_mechanics))
+    .bind(SqlxJson(&safe_elements))
+    .bind(SqlxJson(&safe_community))
     .bind(SqlxJson(&payload.tags))
     .execute(&pool)
     .await
@@ -446,10 +484,14 @@ pub async fn get_all_server_submissions(
     _claims: Claims,
     State(pool): State<SqlitePool>,
 ) -> Result<Json<Vec<ServerSubmission>>, (StatusCode, String)> {
-    let submissions = sqlx::query_as::<_, ServerSubmission>(server_submission_select_sql(false))
-        .fetch_all(&pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let mut submissions =
+        sqlx::query_as::<_, ServerSubmission>(server_submission_select_sql(false))
+            .fetch_all(&pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    for item in &mut submissions {
+        sanitize_server_submission_tags(item);
+    }
 
     Ok(Json(submissions))
 }
@@ -463,6 +505,7 @@ pub async fn get_public_server_submissions(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     for item in &mut submissions {
         item.email_verification_id = None;
+        sanitize_server_submission_tags(item);
     }
 
     Ok(Json(submissions))
@@ -499,11 +542,12 @@ pub async fn get_owner_server_submission(
     Json(payload): Json<ServerSubmissionOwnerAuthPayload>,
 ) -> Result<Json<ServerSubmission>, (StatusCode, String)> {
     let id = verify_owner_access(&pool, &payload.contact_email, &payload.code).await?;
-    let submission = sqlx::query_as::<_, ServerSubmission>(server_submission_by_id_sql())
+    let mut submission = sqlx::query_as::<_, ServerSubmission>(server_submission_by_id_sql())
         .bind(&id)
         .fetch_one(&pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    sanitize_server_submission_tags(&mut submission);
 
     Ok(Json(submission))
 }
@@ -522,6 +566,10 @@ pub async fn update_owner_server_submission(
     let safe_description = clean(&update.description);
     let safe_ip = update.ip.trim().to_string();
     let safe_versions = validate_mc_versions(&pool, &update.versions).await?;
+    let safe_features = sanitize_icon_tags(&update.features);
+    let safe_mechanics = sanitize_icon_tags(&update.mechanics);
+    let safe_elements = sanitize_icon_tags(&update.elements);
+    let safe_community = sanitize_icon_tags(&update.community);
 
     validate_server_submission_fields(
         &safe_name,
@@ -566,10 +614,10 @@ pub async fn update_owner_server_submission(
     .bind(update.has_voice_chat)
     .bind(update.voice_platform.trim())
     .bind(update.voice_url.trim())
-    .bind(SqlxJson(&update.features))
-    .bind(SqlxJson(&update.mechanics))
-    .bind(SqlxJson(&update.elements))
-    .bind(SqlxJson(&update.community))
+    .bind(SqlxJson(&safe_features))
+    .bind(SqlxJson(&safe_mechanics))
+    .bind(SqlxJson(&safe_elements))
+    .bind(SqlxJson(&safe_community))
     .bind(SqlxJson(&update.tags))
     .bind(&id)
     .execute(&pool)
@@ -605,6 +653,10 @@ pub async fn update_server_submission(
     let safe_ip = payload.ip.trim().to_string();
     let safe_contact_email = normalize_submission_email(&payload.contact_email)?;
     let safe_versions = validate_mc_versions(&pool, &payload.versions).await?;
+    let safe_features = sanitize_icon_tags(&payload.features);
+    let safe_mechanics = sanitize_icon_tags(&payload.mechanics);
+    let safe_elements = sanitize_icon_tags(&payload.elements);
+    let safe_community = sanitize_icon_tags(&payload.community);
 
     validate_server_submission_fields(
         &safe_name,
@@ -620,8 +672,8 @@ pub async fn update_server_submission(
         &payload.age_recommendation,
     )?;
 
-    let current_submission: (String, bool, Option<String>, Option<String>) = sqlx::query_as(
-        "SELECT contact_email, email_verified, email_verified_at, email_verification_id
+    let current_submission: (String, bool, Option<String>, Option<String>, bool) = sqlx::query_as(
+        "SELECT contact_email, email_verified, email_verified_at, email_verification_id, verified
          FROM server_submissions
          WHERE id = ?",
     )
@@ -647,6 +699,7 @@ pub async fn update_server_submission(
     } else {
         current_submission.3.clone()
     };
+    let current_verified = current_submission.4;
 
     sqlx::query(
         "UPDATE server_submissions
@@ -682,12 +735,12 @@ pub async fn update_server_submission(
     .bind(payload.voice_platform.trim())
     .bind(payload.voice_url.trim())
     .bind(payload.sort_id.max(0))
-    .bind(SqlxJson(&payload.features))
-    .bind(SqlxJson(&payload.mechanics))
-    .bind(SqlxJson(&payload.elements))
-    .bind(SqlxJson(&payload.community))
+    .bind(SqlxJson(&safe_features))
+    .bind(SqlxJson(&safe_mechanics))
+    .bind(SqlxJson(&safe_elements))
+    .bind(SqlxJson(&safe_community))
     .bind(SqlxJson(&payload.tags))
-    .bind(payload.verified)
+    .bind(current_verified)
     .bind(&id)
     .execute(&pool)
     .await
@@ -728,54 +781,71 @@ pub async fn toggle_verify(
     _claims: Claims,
     State(pool): State<SqlitePool>,
     AxumPath(id): AxumPath<String>,
+    payload: Option<Json<ToggleVerifyPayload>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    let (name, contact_email, was_verified): (String, String, bool) =
-        sqlx::query_as("SELECT name, contact_email, verified FROM server_submissions WHERE id = ?")
+    let (name, contact_email, was_verified, owner_token_hash): (String, String, bool, String) =
+        sqlx::query_as(
+            "SELECT name, contact_email, verified, owner_token_hash FROM server_submissions WHERE id = ?",
+        )
             .bind(&id)
             .fetch_optional(&pool)
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
             .ok_or((StatusCode::NOT_FOUND, "Submission not found".to_string()))?;
 
-    let next_verified = !was_verified;
+    let requested_verified = payload
+        .as_ref()
+        .and_then(|Json(payload)| payload.verified);
+    let next_verified = requested_verified.unwrap_or(!was_verified);
     let mut owner_code_sent = false;
+    let mut owner_code_already_issued = false;
     let mut mail_error: Option<String> = None;
 
-    if next_verified {
-        let safe_email = normalize_submission_email(&contact_email)?;
-        let owner_code = generate_owner_token();
-        let owner_token_hash = hash_owner_token(&safe_email, &owner_code);
+    if next_verified == was_verified {
+        owner_code_already_issued = next_verified && !owner_token_hash.trim().is_empty();
+    } else if next_verified {
+        if owner_token_hash.trim().is_empty() {
+            let safe_email = normalize_submission_email(&contact_email)?;
+            let owner_code = generate_owner_token();
+            let next_owner_token_hash = hash_owner_token(&safe_email, &owner_code);
 
-        sqlx::query(
-            "UPDATE server_submissions
-             SET verified = 1,
-                 owner_offline = 0,
-                 owner_token_hash = ?,
-                 owner_token_issued_at = CURRENT_TIMESTAMP
-             WHERE id = ?",
-        )
-        .bind(&owner_token_hash)
-        .bind(&id)
-        .execute(&pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+            sqlx::query(
+                "UPDATE server_submissions
+                 SET verified = 1,
+                     owner_offline = 0,
+                     owner_token_hash = ?,
+                     owner_token_issued_at = CURRENT_TIMESTAMP
+                 WHERE id = ?",
+            )
+            .bind(&next_owner_token_hash)
+            .bind(&id)
+            .execute(&pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-        let subject = format!("您的服务器「{}」已通过审核", name);
-        let body = format!(
-            "您好，\n\n您的服务器「{}」已通过审核并上线。\n\n服务器管理 Code：{}\n\n您可以在服务器提交页面的“修改服务器信息”入口，使用原始邮箱地址和该 Code 修改服务器资料或下线服务器。\n\n请妥善保存该 Code，不要公开分享。",
-            name, owner_code
-        );
-
-        match send_submission_custom_email(&pool, &safe_email, &subject, &body).await {
-            Ok(()) => owner_code_sent = true,
-            Err((_, error)) => {
-                mail_error = Some(error);
-                eprintln!(
-                    "[server_submissions] owner token email failed for {}: {}",
-                    safe_email,
-                    mail_error.as_deref().unwrap_or_default()
-                );
+            match send_submission_owner_code_email(&pool, &safe_email, &name, &owner_code).await {
+                Ok(()) => owner_code_sent = true,
+                Err((_, error)) => {
+                    mail_error = Some(error);
+                    eprintln!(
+                        "[server_submissions] owner token email failed for {}: {}",
+                        safe_email,
+                        mail_error.as_deref().unwrap_or_default()
+                    );
+                }
             }
+        } else {
+            owner_code_already_issued = true;
+            sqlx::query(
+                "UPDATE server_submissions
+                 SET verified = 1,
+                     owner_offline = 0
+                 WHERE id = ?",
+            )
+            .bind(&id)
+            .execute(&pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
         }
     } else {
         sqlx::query("UPDATE server_submissions SET verified = 0 WHERE id = ?")
@@ -788,19 +858,21 @@ pub async fn toggle_verify(
     Ok(Json(serde_json::json!({
         "verified": next_verified,
         "ownerCodeSent": owner_code_sent,
+        "ownerCodeAlreadyIssued": owner_code_already_issued,
         "mailError": mail_error,
     })))
 }
 
 pub async fn get_server_tags_dict(
     State(pool): State<SqlitePool>,
-) -> Result<Json<Vec<crate::models::ServerTagDict>>, (StatusCode, String)> {
-    let dict = sqlx::query_as::<_, crate::models::ServerTagDict>(
+) -> Result<Json<Vec<ServerTagDict>>, (StatusCode, String)> {
+    let mut dict = sqlx::query_as::<_, ServerTagDict>(
         "SELECT * FROM server_tags_dict ORDER BY priority ASC, id ASC",
     )
     .fetch_all(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    sanitize_server_tag_dict_items(&mut dict);
 
     Ok(Json(dict))
 }
@@ -836,7 +908,7 @@ pub async fn create_server_tag_dict(
     .bind(&id)
     .bind(payload.category.trim())
     .bind(clean(&payload.label).trim())
-    .bind(payload.icon_svg.trim())
+    .bind(sanitize_svg(&payload.icon_svg))
     .bind(payload.color.trim())
     .bind(payload.priority)
     .execute(&pool)
@@ -859,7 +931,7 @@ pub async fn update_server_tag_dict(
     )
     .bind(payload.category.trim())
     .bind(clean(&payload.label).trim())
-    .bind(payload.icon_svg.trim())
+    .bind(sanitize_svg(&payload.icon_svg))
     .bind(payload.color.trim())
     .bind(payload.priority)
     .bind(&id)

@@ -59,11 +59,11 @@ export default function FAQ() {
               >
                 <div className="flex flex-1 items-center gap-4">
                   <div
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110"
-                    style={{ backgroundColor: '#14532d', color: faq.iconColor }}
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-emerald-500 transition-transform duration-300 group-hover:scale-110"
+                    style={{ color: faq.iconColor || '#10b981' }}
                   >
                     <div
-                      className="flex h-5 w-5 items-center justify-center drop-shadow-[0_0_8px_currentColor]"
+                      className="flex h-7 w-7 items-center justify-center drop-shadow-[0_0_10px_currentColor] [&_svg]:h-7 [&_svg]:w-7 [&_svg]:stroke-[2.4]"
                       dangerouslySetInnerHTML={{ __html: faq.iconSvg }}
                     />
                   </div>

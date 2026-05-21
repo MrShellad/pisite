@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 
 import { api } from '../../../api/client';
+import { useAdminFeedback } from '../components/AdminFeedback';
 import type { HeroFormData } from '../types/hero';
 
 type HeroApiResponse = HeroFormData & {
@@ -16,6 +17,7 @@ function getTodayDate() {
 }
 
 export function useManageHero() {
+  const { notify } = useAdminFeedback();
   const [formData, setFormData] = useState<HeroFormData>({
     id: '1',
     logoUrl: '',
@@ -24,6 +26,10 @@ export function useManageHero() {
     subtitle: '',
     description: '',
     buttonText: '',
+    titleEn: '',
+    subtitleEn: '',
+    descriptionEn: '',
+    buttonTextEn: '',
     updateDate: getTodayDate(),
     dlMac: '',
     dlWin: '',
@@ -43,6 +49,10 @@ export function useManageHero() {
         setFormData({
           ...heroConfig,
           logoUrl: data.logoUrl || logoSvg || '',
+          titleEn: data.titleEn || '',
+          subtitleEn: data.subtitleEn || '',
+          descriptionEn: data.descriptionEn || '',
+          buttonTextEn: data.buttonTextEn || '',
           updateDate: getTodayDate(),
           steamDeckSourceUrl: data.steamDeckSourceUrl || flatpakScript || '',
         });
@@ -78,10 +88,10 @@ export function useManageHero() {
     setIsSaving(true);
     try {
       await api.put('/admin/hero', formData);
-      alert('Hero config saved successfully.');
+      notify('Hero 已保存', '首页 Hero 配置已更新。', 'success');
     } catch (error) {
       console.error(error);
-      alert('Failed to update Hero config. Please check the network or server logs.');
+      notify('Hero 保存失败', '请检查网络或服务端日志。', 'error');
     } finally {
       setIsSaving(false);
     }

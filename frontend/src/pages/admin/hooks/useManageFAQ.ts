@@ -1,32 +1,42 @@
-// frontend/src/pages/admin/hooks/useManageFAQ.ts
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
 import { api } from '../../../api/client';
+import { DEFAULT_FAQ_ICON } from '../faqIconPresets';
+import { useAdminFeedback } from '../components/AdminFeedback';
 import type { Faq, FaqFormData } from '../types/faq';
 
+const initialFormData: FaqFormData = {
+  id: '',
+  question: '',
+  answer: '',
+  iconSvg: DEFAULT_FAQ_ICON.svg,
+  iconColor: '#3b82f6',
+  priority: 1,
+};
+
 export function useManageFAQ() {
+  const { confirm, notify } = useAdminFeedback();
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState<FaqFormData>({
-    id: '', question: '', answer: '', iconSvg: '', iconColor: '#3b82f6', priority: 1
-  });
+  const [formData, setFormData] = useState<FaqFormData>(initialFormData);
 
-  const fetchFaqs = async () => {
+  const fetchFaqs = useCallback(async () => {
     try {
       const res = await api.get('/admin/faqs/all');
       setFaqs(res.data);
     } catch (err) {
       console.error(err);
+      notify('FAQ 读取失败', '请检查网络或服务端日志。', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [notify]);
 
   useEffect(() => {
-    fetchFaqs();
-  }, []);
+    void fetchFaqs();
+  }, [fetchFaqs]);
 
-  // 泛型保证字段名和值类型的一致性
   const handleChange = (field: keyof FaqFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -36,10 +46,12 @@ export function useManageFAQ() {
     setIsSubmitting(true);
     try {
       await api.post('/admin/faqs', { ...formData, enabled: true });
-      setFormData({ id: '', question: '', answer: '', iconSvg: '', iconColor: '#3b82f6', priority: 1 });
-      fetchFaqs();
+      setFormData(initialFormData);
+      await fetchFaqs();
+      notify('FAQ 已添加', '新的问答条目已保存。', 'success');
     } catch (err) {
-      alert('添加失败，请检查问题 ID 是否重复。');
+      console.error(err);
+      notify('FAQ 添加失败', '请检查问题 ID 是否重复。', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -48,25 +60,40 @@ export function useManageFAQ() {
   const handleToggle = async (id: string) => {
     try {
       await api.put(`/admin/faqs/${id}/toggle`);
-      fetchFaqs();
+      await fetchFaqs();
     } catch (err) {
-      alert('状态切换失败');
+      console.error(err);
+      notify('FAQ 状态切换失败', '请稍后重试。', 'error');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('确定要彻底删除该问题吗？此操作不可逆！')) {
-      try {
-        await api.delete(`/admin/faqs/${id}`);
-        fetchFaqs();
-      } catch (err) {
-        alert('删除失败');
-      }
+    const confirmed = await confirm({
+      title: '删除 FAQ',
+      description: '确定要彻底删除该问题吗？此操作不可逆。',
+      confirmLabel: '删除',
+      tone: 'error',
+    });
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/admin/faqs/${id}`);
+      await fetchFaqs();
+      notify('FAQ 已删除', '该问题已从列表中移除。', 'success');
+    } catch (err) {
+      console.error(err);
+      notify('FAQ 删除失败', '请稍后重试。', 'error');
     }
   };
 
   return {
-    faqs, isLoading, isSubmitting, formData,
-    handleChange, handleSubmit, handleToggle, handleDelete
+    faqs,
+    isLoading,
+    isSubmitting,
+    formData,
+    handleChange,
+    handleSubmit,
+    handleToggle,
+    handleDelete,
   };
 }

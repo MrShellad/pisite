@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useRef } from 'react';
 import {
   AlignLeft,
   ArrowLeft,
@@ -41,6 +42,8 @@ const LANGUAGE_OPTIONS = [
 ];
 
 export default function ServerSubmissionPage() {
+  const heroLogoInputRef = useRef<HTMLInputElement | null>(null);
+  const heroCoverInputRef = useRef<HTMLInputElement | null>(null);
   const {
     formData,
     setFormData,
@@ -115,8 +118,8 @@ export default function ServerSubmissionPage() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(251,146,60,0.18),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.12),_transparent_24%),linear-gradient(180deg,_#fff8f1_0%,_#fffdf9_48%,_#f8fafc_100%)] text-neutral-900 dark:bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.32),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(236,72,153,0.28),_transparent_32%),linear-gradient(180deg,_#020617_0%,_#020617_45%,_#020617_100%)] dark:text-neutral-50">
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        <div className="flex items-center justify-between gap-4">
+      <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 xl:px-10">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <Link
             to="/"
             className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white/80 px-4 py-2 text-sm font-medium text-neutral-700 transition hover:border-orange-300 hover:text-orange-600 dark:border-neutral-800 dark:bg-neutral-950/70 dark:text-neutral-200 dark:hover:border-orange-400/70"
@@ -129,12 +132,12 @@ export default function ServerSubmissionPage() {
           </div>
         </div>
 
-        <div className="mb-10 mt-12 flex flex-col items-center text-center">
+        <div className="mb-8 mt-10 flex flex-col items-center text-center md:mb-10 xl:mb-12">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-neutral-900 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-white dark:bg-neutral-50 dark:text-neutral-900">
             <Server size={14} />
             服务器投稿
           </div>
-          <h1 className="mb-4 text-4xl font-black tracking-tight text-neutral-950 dark:text-neutral-50 md:text-5xl">
+          <h1 className="mb-4 text-3xl font-black tracking-tight text-neutral-950 dark:text-neutral-50 sm:text-4xl md:text-5xl">
             让更多玩家发现你的服务器
           </h1>
           <p className="max-w-2xl text-base leading-7 text-neutral-600 dark:text-neutral-400">
@@ -142,9 +145,9 @@ export default function ServerSubmissionPage() {
           </p>
         </div>
 
-        <div className="grid items-start gap-8 lg:grid-cols-[1fr_1fr]">
-          <section className="sticky top-6 max-h-[calc(100vh-3rem)] space-y-6 overflow-y-auto pb-4 pr-2">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-[32px] border border-neutral-200 bg-white/80 shadow-[0_30px_120px_rgba(15,23,42,0.1)] dark:border-neutral-800 dark:bg-neutral-950/70">
+        <div className="grid items-start gap-6 lg:gap-8 xl:grid-cols-[minmax(360px,0.9fr)_minmax(0,1.25fr)] 2xl:grid-cols-[minmax(420px,0.95fr)_minmax(0,1.35fr)]">
+          <section className="space-y-6 pb-4 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:pr-2">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-[28px] border border-neutral-200 bg-white/80 shadow-[0_30px_120px_rgba(15,23,42,0.1)] dark:border-neutral-800 dark:bg-neutral-950/70 md:aspect-[21/10] xl:aspect-[16/10] 2xl:aspect-[21/11]">
               {formData.hero ? (
                 <img src={formData.hero} alt="Hero 预览" className="h-full w-full object-cover" />
               ) : (
@@ -156,13 +159,13 @@ export default function ServerSubmissionPage() {
               {formData.icon && (
                 <img
                   src={formData.icon}
-                  alt="Icon 预览"
-                  className="absolute left-5 top-5 h-16 w-16 rounded-xl border-2 border-white bg-white object-cover shadow-lg"
+                  alt="Hero Logo 预览"
+                  className="absolute left-4 top-4 h-14 max-w-[160px] rounded-xl border-2 border-white bg-white object-contain p-2 shadow-lg sm:left-5 sm:top-5 sm:h-16 sm:max-w-[180px]"
                 />
               )}
 
-              <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-black/60 px-5 py-4 text-white backdrop-blur">
-                <div className="flex items-end justify-between gap-4">
+              <div className="absolute bottom-4 left-4 right-4 rounded-2xl bg-black/60 px-4 py-3 text-white backdrop-blur sm:bottom-5 sm:left-5 sm:right-5 sm:px-5 sm:py-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
                   <div>
                     <div className="text-xl font-bold">{formData.name || '服务器名称'}</div>
                     <div className="mt-1 flex gap-2 text-xs text-white/70">
@@ -174,7 +177,7 @@ export default function ServerSubmissionPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="text-right text-xs">
+                  <div className="text-left text-xs sm:text-right">
                     <div className="font-bold text-green-400">
                       {formData.onlinePlayers}/{formData.maxPlayers} 在线
                     </div>
@@ -200,7 +203,7 @@ export default function ServerSubmissionPage() {
             </div>
           </section>
 
-          <section className={cardClass}>
+          <section className={`${cardClass} xl:p-7 2xl:p-8`}>
             <div className="mb-6 rounded-2xl border border-neutral-200 bg-neutral-50/80 p-4 dark:border-neutral-800 dark:bg-neutral-900/60">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -292,36 +295,48 @@ export default function ServerSubmissionPage() {
                   1. 视觉资产
                 </h3>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className={labelClass}>服务器 Icon *</label>
-                    <label className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-orange-300 bg-orange-50 text-sm font-semibold text-orange-600 transition hover:bg-orange-100 dark:border-orange-500/60 dark:bg-orange-500/10 dark:text-orange-300">
-                      {isUploading === 'icon' ? '上传中...' : '选择 Icon'}
-                      <input
-                        type="file"
-                        accept="image/webp,.webp"
-                        className="hidden"
-                        onChange={(event) => void handleUpload(event, 'icon')}
-                        disabled={isSubmitting}
-                      />
-                    </label>
+                    <label className={labelClass}>Hero Logo *</label>
+                    <button
+                      type="button"
+                      onClick={() => heroLogoInputRef.current?.click()}
+                      disabled={isSubmitting}
+                      className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-orange-300 bg-orange-50 text-sm font-semibold text-orange-600 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-orange-500/60 dark:bg-orange-500/10 dark:text-orange-300"
+                    >
+                      {isUploading === 'icon' ? '上传中...' : '选择 Logo'}
+                    </button>
+                    <input
+                      ref={heroLogoInputRef}
+                      type="file"
+                      accept="image/webp,.webp"
+                      className="hidden"
+                      onChange={(event) => void handleUpload(event, 'icon')}
+                      disabled={isSubmitting}
+                    />
                     <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-                      {pendingAssets.icon.fileName || '仅支持 WebP，建议 1:1 且不超过 1MB'}
+                      {pendingAssets.icon.fileName || '仅支持 WebP，不限制比例，建议上传类似 MC 官方 Hero 区使用的透明 Logo，不超过 1MB'}
                     </p>
                   </div>
 
                   <div>
                     <label className={labelClass}>Hero 封面 *</label>
-                    <label className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-sky-300 bg-sky-50 text-sm font-semibold text-sky-600 transition hover:bg-sky-100 dark:border-sky-500/60 dark:bg-sky-500/10 dark:text-sky-300">
+                    <button
+                      type="button"
+                      onClick={() => heroCoverInputRef.current?.click()}
+                      disabled={isSubmitting}
+                      className="flex h-12 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-sky-300 bg-sky-50 text-sm font-semibold text-sky-600 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-sky-500/60 dark:bg-sky-500/10 dark:text-sky-300"
+                    >
                       {isUploading === 'hero' ? '上传中...' : '选择封面'}
-                      <input
-                        type="file"
-                        accept="image/webp,.webp"
-                        className="hidden"
-                        onChange={(event) => void handleUpload(event, 'hero')}
-                        disabled={isSubmitting}
-                      />
-                    </label>
+                    </button>
+                    <input
+                      ref={heroCoverInputRef}
+                      type="file"
+                      accept="image/webp,.webp"
+                      className="hidden"
+                      onChange={(event) => void handleUpload(event, 'hero')}
+                      disabled={isSubmitting}
+                    />
                     <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
                       {pendingAssets.hero.fileName || '仅支持 WebP，推荐 16:9 且不超过 1MB'}
                     </p>
@@ -334,7 +349,7 @@ export default function ServerSubmissionPage() {
                   2. 基础信息
                 </h3>
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-3">
                   <div>
                     <label className={labelClass}>服务器名称 *</label>
                     <input
@@ -406,7 +421,7 @@ export default function ServerSubmissionPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-4">
                   <div className="sm:col-span-2">
                     <label className={labelClass}>连接地址 (IP / 域名) *</label>
                     <input
@@ -477,7 +492,7 @@ export default function ServerSubmissionPage() {
                   )}
                 </div>
 
-                <div className="grid items-end gap-4 sm:grid-cols-3">
+                <div className="grid items-end gap-4 md:grid-cols-3">
                   <div>
                     <label className={labelClass}>年龄建议</label>
                     <div className="relative">
@@ -496,7 +511,7 @@ export default function ServerSubmissionPage() {
                       <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
                     </div>
                   </div>
-                  <div className="pb-3 sm:col-span-2">
+                  <div className="pb-3 md:col-span-2">
                     <label className="group flex cursor-pointer items-center gap-3">
                       <div
                         className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-all ${
@@ -585,8 +600,8 @@ export default function ServerSubmissionPage() {
                   </div>
 
                   {formData.socialLinks.map((link, index) => (
-                    <div key={`${link.platform}-${index}`} className="flex flex-col gap-2 sm:flex-row">
-                      <div className="relative w-full sm:w-1/3">
+                    <div key={`${link.platform}-${index}`} className="flex flex-col gap-2 md:flex-row">
+                      <div className="relative w-full md:w-1/3">
                         <select
                           value={link.platform}
                           onChange={(event) => updateSocialLink(index, 'platform', event.target.value)}
@@ -637,8 +652,8 @@ export default function ServerSubmissionPage() {
                   </label>
 
                   {formData.hasVoiceChat && (
-                    <div className="flex gap-4">
-                      <div className="w-1/3">
+                    <div className="flex flex-col gap-4 md:flex-row">
+                      <div className="w-full md:w-1/3">
                         <div className="relative">
                           <select
                             value={formData.voicePlatform}
@@ -681,7 +696,7 @@ export default function ServerSubmissionPage() {
                   </span>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+                <div className="grid gap-4 md:grid-cols-[1fr_auto]">
                   <div>
                     <label className={labelClass}>联系邮箱 *</label>
                     <div className="relative">
@@ -704,43 +719,43 @@ export default function ServerSubmissionPage() {
 
                   {!isOwnerMode && (
                     <div className="flex items-end">
-                    <button
-                      type="button"
-                      onClick={() => void handleSendVerificationCode()}
-                      disabled={isSendingCode}
-                      className="h-12 rounded-2xl border border-orange-200 bg-orange-50 px-5 text-sm font-bold text-orange-700 transition hover:border-orange-300 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300"
-                    >
-                      {isSendingCode ? '发送中...' : verificationId ? '重新发送验证码' : '发送验证码'}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleSendVerificationCode()}
+                        disabled={isSendingCode}
+                        className="h-12 w-full rounded-2xl border border-orange-200 bg-orange-50 px-5 text-sm font-bold text-orange-700 transition hover:border-orange-300 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300 md:w-auto"
+                      >
+                        {isSendingCode ? '发送中...' : verificationId ? '重新发送验证码' : '发送验证码'}
+                      </button>
                     </div>
                   )}
                 </div>
 
                 {!isOwnerMode && (
-                  <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
-                  <div>
-                    <label className={labelClass}>邮箱验证码 *</label>
-                    <input
-                      type="text"
-                      value={verificationCode}
-                      onChange={(event) => setVerificationCode(event.target.value)}
-                      className={fieldClass}
-                      placeholder="输入 6 位验证码"
-                      inputMode="numeric"
-                      maxLength={6}
-                    />
-                  </div>
+                  <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+                    <div>
+                      <label className={labelClass}>邮箱验证码 *</label>
+                      <input
+                        type="text"
+                        value={verificationCode}
+                        onChange={(event) => setVerificationCode(event.target.value)}
+                        className={fieldClass}
+                        placeholder="输入 6 位验证码"
+                        inputMode="numeric"
+                        maxLength={6}
+                      />
+                    </div>
 
-                  <div className="flex items-end">
-                    <button
-                      type="button"
-                      onClick={() => void handleVerifyCode()}
-                      disabled={!verificationId || isVerifyingCode}
-                      className="h-12 rounded-2xl border border-sky-200 bg-sky-50 px-5 text-sm font-bold text-sky-700 transition hover:border-sky-300 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300"
-                    >
-                      {isVerifyingCode ? '验证中...' : '校验验证码'}
-                    </button>
-                  </div>
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={() => void handleVerifyCode()}
+                        disabled={!verificationId || isVerifyingCode}
+                        className="h-12 w-full rounded-2xl border border-sky-200 bg-sky-50 px-5 text-sm font-bold text-sky-700 transition hover:border-sky-300 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300 md:w-auto"
+                      >
+                        {isVerifyingCode ? '验证中...' : '校验验证码'}
+                      </button>
+                    </div>
                   </div>
                 )}
 

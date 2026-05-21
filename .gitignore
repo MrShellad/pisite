@@ -6,10 +6,16 @@ frontend/dist/
 backend/venv/
 backend/__pycache__/
 backend/.env
+.env
+.env.*
+!.env.example
+!frontend/.env.example
 
 
 backend/target
 flowcore.db
 backend/uploads
 docs/*
+!docs/project-feature-gap-analysis.md
 pisiterun.sh
+frontend/scripts/.keep

@@ -21,11 +21,27 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route("/api/auth/check-init", get(handlers::auth::check_init))
         .route("/api/auth/init", post(handlers::auth::init_admin))
         .route("/api/auth/login", post(handlers::auth::login))
+        .route(
+            "/api/auth/admin-security",
+            get(handlers::admin_security::get_public_admin_security_config),
+        )
         // 2. 全局设置与首屏
         .route("/api/settings", get(handlers::settings::get_settings))
         .route("/api/hero", get(handlers::hero::get_hero))
+        .route(
+            "/api/home/bootstrap",
+            get(handlers::home::get_home_bootstrap),
+        )
+        .route(
+            "/api/legal-pages/{slug}",
+            get(handlers::legal_pages::get_public_legal_page),
+        )
         // 3. 核心业务数据 (只返回已启用的前台展示数据)
         .route("/api/features", get(handlers::features::get_features))
+        .route(
+            "/api/feature-screenshots",
+            get(handlers::features::get_feature_screenshots),
+        )
         .route("/api/faqs", get(handlers::faqs::get_faqs))
         .route("/api/sponsors", get(handlers::sponsors::get_sponsors))
         // 4. 更新日志与杂项友链
@@ -43,6 +59,14 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/mc/versions",
             get(handlers::minecraft_api::get_mc_versions),
+        )
+        .route(
+            "/api/article-pushes",
+            get(handlers::article_push::get_public_article_pushes),
+        )
+        .route(
+            "/api/article-pushes/latest",
+            get(handlers::article_push::get_latest_public_article_push),
         )
         .route(
             "/api/server-submissions/email/send-code",
@@ -112,6 +136,16 @@ pub fn create_router(pool: SqlitePool) -> Router {
             "/api/admin/installations",
             get(handlers::stats::get_installation_stats),
         )
+        .route(
+            "/api/admin/installations/gpu-mappings",
+            get(handlers::stats::list_gpu_name_mappings)
+                .post(handlers::stats::create_gpu_name_mapping),
+        )
+        .route(
+            "/api/admin/installations/gpu-mappings/{id}",
+            put(handlers::stats::update_gpu_name_mapping)
+                .delete(handlers::stats::delete_gpu_name_mapping),
+        )
         // 2. 全局设置与首屏管理
         .route(
             "/api/admin/settings",
@@ -122,6 +156,14 @@ pub fn create_router(pool: SqlitePool) -> Router {
             get(handlers::misc::get_admin_friends).put(handlers::misc::update_admin_friends),
         )
         .route(
+            "/api/admin/legal-pages",
+            get(handlers::legal_pages::list_admin_legal_pages),
+        )
+        .route(
+            "/api/admin/legal-pages/{slug}",
+            put(handlers::legal_pages::update_admin_legal_page),
+        )
+        .route(
             "/api/admin/submission-email/config",
             get(handlers::submission_email::get_submission_email_config)
                 .put(handlers::submission_email::update_submission_email_config),
@@ -129,6 +171,14 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/submission-email/config/test",
             post(handlers::submission_email::send_submission_email_test),
+        )
+        .route(
+            "/api/admin/submission-email/templates",
+            get(handlers::submission_email::list_submission_email_templates),
+        )
+        .route(
+            "/api/admin/submission-email/templates/{template_key}",
+            put(handlers::submission_email::update_submission_email_template),
         )
         .route(
             "/api/admin/submission-email/rules",
@@ -147,6 +197,16 @@ pub fn create_router(pool: SqlitePool) -> Router {
             get(handlers::features::get_all_features),
         )
         .route("/api/admin/features", post(handlers::features::add_feature))
+        .route(
+            "/api/admin/features/screenshots",
+            get(handlers::features::get_all_feature_screenshots)
+                .post(handlers::features::add_feature_screenshot),
+        )
+        .route(
+            "/api/admin/features/screenshots/{id}",
+            put(handlers::features::update_feature_screenshot)
+                .delete(handlers::features::delete_feature_screenshot),
+        )
         .route(
             "/api/admin/features/{id}/toggle",
             put(handlers::features::toggle_feature),
@@ -231,6 +291,20 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/mc-crawler/force-manifest",
             post(handlers::minecraft_api::force_sync_version_manifest),
+        )
+        .route(
+            "/api/admin/article-pushes",
+            get(handlers::article_push::get_admin_article_pushes)
+                .post(handlers::article_push::create_article_push),
+        )
+        .route(
+            "/api/admin/article-pushes/{id}",
+            put(handlers::article_push::update_article_push)
+                .delete(handlers::article_push::delete_article_push),
+        )
+        .route(
+            "/api/admin/article-pushes/{id}/toggle",
+            put(handlers::article_push::toggle_article_push),
         )
         .route(
             "/api/admin/server-submissions",
@@ -360,6 +434,11 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .route(
             "/api/admin/profile",
             get(handlers::admin_profile::get_profile).put(handlers::admin_profile::update_profile),
+        )
+        .route(
+            "/api/admin/security",
+            get(handlers::admin_security::get_admin_security_config)
+                .put(handlers::admin_security::update_admin_security_config),
         )
         // 10. API 公网访问控制（策略表）
         .route(

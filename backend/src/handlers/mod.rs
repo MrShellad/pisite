@@ -1,9 +1,11 @@
 // backend/src/handlers/mod.rs
 pub mod admin_internal_middleware;
 pub mod admin_profile;
+pub mod admin_security;
 pub mod api_endpoint_policies;
 pub mod api_key_middleware;
 pub mod api_keys;
+pub mod article_push;
 pub mod auth;
 pub mod changelog;
 pub mod donor_admin;
@@ -12,7 +14,9 @@ pub mod donor_public;
 pub mod faqs;
 pub mod features;
 pub mod hero;
+pub mod home;
 pub mod image_storage;
+pub mod legal_pages;
 pub mod minecraft_api;
 pub mod misc;
 pub mod package_assets;
@@ -22,4 +26,5 @@ pub mod signaling;
 pub mod sponsors;
 pub mod stats;
 pub mod submission_email;
+pub mod svg_sanitizer;
 pub mod upload;

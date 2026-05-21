@@ -4,13 +4,14 @@ use sqlx::SqlitePool;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
-use crate::auth::JWT_SECRET;
+use crate::auth::{DONOR_JWT_SECRET, DONOR_ROLE};
 use crate::donor_support::normalize_mc_uuid;
 use crate::models::{DonorClientAuthResponse, DonorClientLoginPayload, DonorClientMeResponse};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct ClientClaims {
     sub: String, // activation_id
+    role: String,
     exp: usize,
 }
 
@@ -147,12 +148,13 @@ pub async fn login(
 
     let claims = ClientClaims {
         sub: activation_id,
+        role: DONOR_ROLE.to_string(),
         exp: expires as usize,
     };
     let token = encode(
         &Header::default(),
         &claims,
-        &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &EncodingKey::from_secret(DONOR_JWT_SECRET.as_bytes()),
     )
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -178,10 +180,13 @@ fn decode_activation_id(auth_header: Option<&str>) -> Result<String, (StatusCode
     let token = &auth_header[7..];
     let token_data = decode::<ClientClaims>(
         token,
-        &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &DecodingKey::from_secret(DONOR_JWT_SECRET.as_bytes()),
         &Validation::default(),
     )
     .map_err(|_| (StatusCode::UNAUTHORIZED, "Token 无效或已过期".to_string()))?;
+    if token_data.claims.role != DONOR_ROLE {
+        return Err((StatusCode::FORBIDDEN, "授权类型不匹配".to_string()));
+    }
     Ok(token_data.claims.sub)
 }
 
@@ -265,12 +270,13 @@ pub async fn refresh(
 
     let claims = ClientClaims {
         sub: activation_id,
+        role: DONOR_ROLE.to_string(),
         exp: new_expires as usize,
     };
     let token = encode(
         &Header::default(),
         &claims,
-        &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &EncodingKey::from_secret(DONOR_JWT_SECRET.as_bytes()),
     )
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
