@@ -2,7 +2,7 @@
 
 export interface HeroFormData {
   id: string;
-  logoUrl: string; // 銆愪慨鏀广€戝皢 logoSvg 鏇挎崲涓?logoUrl
+  logoUrl: string; // 默认采用 logoUrl，如果未上传则使用 logoSvg
   logoColor: string;
   title: string;
   subtitle: string;
