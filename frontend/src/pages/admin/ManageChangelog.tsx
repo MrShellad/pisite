@@ -61,6 +61,8 @@ export default function ManageChangelog() {
     handleRollback,
     handleDelete,
     handlePushDownload,
+    handlePushPackageAsset,
+    inferPackageAssetPlatform,
   } = useManageChangelog();
   const [iconPickerIndex, setIconPickerIndex] = useState<number | null>(null);
   const selectedIconChange = iconPickerIndex === null ? null : formData.changes[iconPickerIndex] ?? null;
@@ -686,61 +688,84 @@ export default function ManageChangelog() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {packageAssets.map(asset => (
-                    <div
-                      key={`${asset.date}/${asset.fileName}`}
-                      className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03] lg:grid-cols-[1fr_auto]"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
-                            {asset.date}
-                          </span>
-                          <span className="text-xs font-semibold text-neutral-500">
-                            {formatFileSize(asset.sizeBytes)}
-                          </span>
-                        </div>
-                        <div className="mt-2 truncate font-mono text-sm font-bold text-neutral-900 dark:text-white">
-                          {asset.fileName}
-                        </div>
-                        <div className="mt-1 truncate font-mono text-xs text-neutral-500 dark:text-neutral-400">
-                          {asset.downloadUrl}
-                        </div>
-                      </div>
+                  {packageAssets.map(asset => {
+                    const inferredPlatform = inferPackageAssetPlatform(asset.fileName);
+                    const pushKey = `package-${asset.date}-${asset.fileName}`;
 
-                      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                        <a
-                          href={asset.downloadUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-bold text-neutral-700 transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
-                        >
-                          <Download size={14} /> 打开
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => void copyDownloadLink(asset.downloadUrl)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-bold text-neutral-700 transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
-                        >
-                          <Copy size={14} /> 复制链接
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void renamePackageAsset(asset)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-bold text-neutral-700 transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
-                        >
-                          <Edit3 size={14} /> 重命名
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void deletePackageAsset(asset)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
-                        >
-                          <Trash2 size={14} /> 删除
-                        </button>
+                    return (
+                      <div
+                        key={`${asset.date}/${asset.fileName}`}
+                        className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03] lg:grid-cols-[1fr_auto]"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+                              {asset.date}
+                            </span>
+                            <span className="text-xs font-semibold text-neutral-500">
+                              {formatFileSize(asset.sizeBytes)}
+                            </span>
+                            {inferredPlatform ? (
+                              <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">
+                                {platformLabels[inferredPlatform]}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="mt-2 truncate font-mono text-sm font-bold text-neutral-900 dark:text-white">
+                            {asset.fileName}
+                          </div>
+                          <div className="mt-1 truncate font-mono text-xs text-neutral-500 dark:text-neutral-400">
+                            {asset.downloadUrl}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                          {inferredPlatform ? (
+                            <button
+                              type="button"
+                              onClick={() => void handlePushPackageAsset(asset)}
+                              disabled={isPushing[pushKey]}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                            >
+                              <Send size={14} />
+                              {isPushing[pushKey]
+                                ? '推送中...'
+                                : `推送到 ${platformLabels[inferredPlatform]}`}
+                            </button>
+                          ) : null}
+                          <a
+                            href={asset.downloadUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-bold text-neutral-700 transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+                          >
+                            <Download size={14} /> 打开
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => void copyDownloadLink(asset.downloadUrl)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-bold text-neutral-700 transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+                          >
+                            <Copy size={14} /> 复制链接
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void renamePackageAsset(asset)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-bold text-neutral-700 transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10"
+                          >
+                            <Edit3 size={14} /> 重命名
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void deletePackageAsset(asset)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+                          >
+                            <Trash2 size={14} /> 删除
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

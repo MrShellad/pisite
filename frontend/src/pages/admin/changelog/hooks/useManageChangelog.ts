@@ -20,6 +20,16 @@ function markAdminActivity() {
   localStorage.setItem(ADMIN_LAST_ACTIVITY_KEY, String(Date.now()));
 }
 
+function inferPackageAssetPlatform(fileName: string): PlatformKey | null {
+  const lowerName = fileName.trim().toLowerCase();
+
+  if (lowerName.endsWith('.dmg')) return 'darwin';
+  if (lowerName.endsWith('.appimage')) return 'linux';
+  if (lowerName.endsWith('.exe')) return 'windows';
+
+  return null;
+}
+
 export function useManageChangelog() {
   const { confirm, notify, requestInput } = useAdminFeedback();
   const [logs, setLogs] = useState<ReleaseLog[]>([]);
@@ -428,6 +438,36 @@ export function useManageChangelog() {
     }
   };
 
+  const handlePushPackageAsset = async (asset: PackageAsset) => {
+    const platform = inferPackageAssetPlatform(asset.fileName);
+    if (!platform) {
+      notify('暂不支持推送', '只有 .dmg、.AppImage 和 .exe 安装包可以自动推送到首页下载按钮。', 'error');
+      return;
+    }
+
+    const key = `package-${asset.date}-${asset.fileName}`;
+    setIsPushing(prev => ({ ...prev, [key]: true }));
+    try {
+      const response = await api.post<{
+        platform: PlatformKey;
+        url: string;
+        date: string;
+        fileName: string;
+      }>(
+        `/admin/package-assets/${encodeURIComponent(asset.date)}/${encodeURIComponent(asset.fileName)}/push-hero-download`,
+      );
+      notify(
+        '首页下载按钮已更新',
+        `已将 ${response.data.fileName} 推送到 ${platformLabels[response.data.platform]} 下载按钮。`,
+        'success',
+      );
+    } catch (error) {
+      notify('推送失败', getErrorMessage(error, '推送到首页下载按钮失败。'), 'error');
+    } finally {
+      setIsPushing(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
   return {
     logs,
     packageAssets,
@@ -464,5 +504,7 @@ export function useManageChangelog() {
     handleRollback,
     handleDelete,
     handlePushDownload,
+    handlePushPackageAsset,
+    inferPackageAssetPlatform,
   };
 }

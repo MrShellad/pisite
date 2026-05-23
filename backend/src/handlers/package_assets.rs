@@ -40,6 +40,15 @@ pub struct RemotePackageAssetPayload {
     pub file_name: Option<String>,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PushPackageAssetDownloadResponse {
+    pub platform: String,
+    pub url: String,
+    pub date: String,
+    pub file_name: String,
+}
+
 fn sanitize_file_name(raw: &str) -> String {
     let clean = raw
         .trim()
@@ -199,6 +208,20 @@ fn file_name_from_url(url: &reqwest::Url) -> String {
         .map(sanitize_file_name)
         .filter(|value| value != "package.bin")
         .unwrap_or_else(|| "package.bin".to_string())
+}
+
+fn infer_hero_platform_from_file_name(file_name: &str) -> Option<&'static str> {
+    let lower_name = file_name.trim().to_ascii_lowercase();
+
+    if lower_name.ends_with(".dmg") {
+        Some("darwin")
+    } else if lower_name.ends_with(".appimage") {
+        Some("linux")
+    } else if lower_name.ends_with(".exe") {
+        Some("windows")
+    } else {
+        None
+    }
 }
 
 fn remote_download_client() -> Result<reqwest::Client, (StatusCode, String)> {
@@ -467,6 +490,42 @@ pub async fn rename_package_asset(
     Ok(Json(
         package_asset_from_path(&pool, &date, &new_name).await?,
     ))
+}
+
+pub async fn push_package_asset_download_to_hero(
+    _claims: Claims,
+    State(pool): State<SqlitePool>,
+    Path((date, file_name)): Path<(String, String)>,
+) -> Result<Json<PushPackageAssetDownloadResponse>, (StatusCode, String)> {
+    let asset = package_asset_from_path(&pool, &date, &file_name).await?;
+    let Some(platform) = infer_hero_platform_from_file_name(&asset.file_name) else {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Only .dmg, .AppImage and .exe package assets can be pushed to hero download buttons."
+                .to_string(),
+        ));
+    };
+
+    let update_sql = match platform {
+        "darwin" => "UPDATE hero_config SET dl_mac = ?, update_date = ? WHERE id = '1'",
+        "linux" => "UPDATE hero_config SET dl_linux = ?, update_date = ? WHERE id = '1'",
+        "windows" => "UPDATE hero_config SET dl_win = ?, update_date = ? WHERE id = '1'",
+        _ => unreachable!("platform is inferred above"),
+    };
+
+    sqlx::query(update_sql)
+        .bind(&asset.download_url)
+        .bind(&asset.date)
+        .execute(&pool)
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+
+    Ok(Json(PushPackageAssetDownloadResponse {
+        platform: platform.to_string(),
+        url: asset.download_url,
+        date: asset.date,
+        file_name: asset.file_name,
+    }))
 }
 
 pub async fn delete_package_asset(
