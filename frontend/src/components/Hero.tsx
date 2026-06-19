@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { MouseEvent } from 'react';
-import { motion } from 'framer-motion';
-import { Download } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Download, ChevronDown } from 'lucide-react';
 
 import { api } from '../api/client';
 import { getHomeBootstrap, readCachedHomeBootstrap } from '../lib/home-bootstrap';
@@ -42,7 +42,7 @@ function detectOsName(): 'macOS' | 'Linux' | 'Windows' {
 
 const OS_SVGS: Record<string, string> = {
   macOS:
-    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7.58 2 4 5.58 4 10a7.9 7.9 0 0 0 1.5 4.6l5.3 6.9c.3.4.9.4 1.2 0l5.3-6.9A7.9 7.9 0 0 0 20 10c0-4.42-3.58-8-8-8zm0 11.5A3.5 3.5 0 1 1 15.5 10a3.5 3.5 0 0 1-3.5 3.5z"/></svg>',
+    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-.96.04-2.13.64-2.82 1.45-.6.69-1.12 1.83-.98 2.94 1.07.08 2.15-.52 2.81-1.33z"/></svg>',
   Windows:
     '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5L10 4.5V11H3V5.5ZM11 4.3L21 3V11H11V4.3ZM3 12H10V18.5L3 17.5V12ZM11 12H21V19.7L11 18.2V12Z"/></svg>',
   Linux:
@@ -77,6 +77,30 @@ export default function Hero({ previewConfig }: HeroProps) {
     cachedBootstrap?.latestRelease?.version ?? null,
   );
   const [latestDate, setLatestDate] = useState<string | null>(cachedBootstrap?.latestRelease?.date ?? null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const platforms = config
+    ? [
+        {
+          key: 'Windows',
+          label: 'Windows',
+          url: config.dlWin || latestPlatforms?.windows?.url || '',
+          svg: OS_SVGS.Windows,
+        },
+        {
+          key: 'macOS',
+          label: 'macOS',
+          url: config.dlMac || latestPlatforms?.darwin?.url || '',
+          svg: OS_SVGS.macOS,
+        },
+        {
+          key: 'Linux',
+          label: 'Linux',
+          url: config.dlLinux || latestPlatforms?.linux?.url || '',
+          svg: OS_SVGS.Linux,
+        },
+      ]
+    : [];
 
   const hasDownload = osInfo.url.length > 0;
   const steamDeckSourceUrl = (config?.steamDeckSourceUrl || '').trim();
@@ -220,28 +244,105 @@ export default function Hero({ previewConfig }: HeroProps) {
         </motion.p>
 
         <motion.div variants={heroFadeDown} className="flex w-full flex-col items-center sm:w-auto">
-          {hasDownload ? (
-            <motion.a
-              href={osInfo.url}
-              onClick={handleDownloadClick}
-              className={styleTokens.btnDownloadFrosted}
-              whileHover="hover"
-            >
-              <Download className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
-              <span className="font-bold">{localizedButtonText}</span>
+          <div className="relative w-full sm:w-auto flex flex-col items-center">
+            {hasDownload ? (
+              <motion.a
+                href={osInfo.url}
+                onClick={handleDownloadClick}
+                className={styleTokens.btnDownloadFrosted}
+                whileHover="hover"
+              >
+                <Download className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
+                <span className="font-bold">{localizedButtonText}</span>
 
-              <motion.span
-                className="pointer-events-none absolute top-0 h-full w-32 -skew-x-[25deg] bg-gradient-to-r from-transparent via-white/60 to-transparent blur-md"
-                variants={buttonShineSweep}
-                initial="hidden"
-              />
-            </motion.a>
-          ) : (
-            <div className="flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-100/80 px-8 py-3.5 text-sm font-medium text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-400">
-              <Download className="h-5 w-5 opacity-40" />
-              <span>{copy.hero.downloadUnavailable}</span>
-            </div>
-          )}
+                <motion.span
+                  className="pointer-events-none absolute top-0 h-full w-32 -skew-x-[25deg] bg-gradient-to-r from-transparent via-white/60 to-transparent blur-md"
+                  variants={buttonShineSweep}
+                  initial="hidden"
+                />
+              </motion.a>
+            ) : (
+              <div className="flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-100/80 px-8 py-3.5 text-sm font-medium text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-400">
+                <Download className="h-5 w-5 opacity-40" />
+                <span>{copy.hero.downloadUnavailable}</span>
+              </div>
+            )}
+
+            {/* 下载其它平台选项 */}
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="mt-3 text-xs sm:text-sm font-medium text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors flex items-center gap-1 focus-visible:outline-none"
+            >
+              <span>{copy.hero.downloadForOtherPlatforms}</span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* 其它平台下拉菜单 */}
+            <AnimatePresence>
+              {isDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-transparent cursor-default"
+                    onClick={() => setIsDropdownOpen(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-1/2 -ml-36 mt-2 z-50 w-72 rounded-2xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-xl p-2.5 shadow-xl flex flex-col gap-1"
+                  >
+                    {platforms.map((p) => {
+                      const isCurrent = p.key === osInfo.name;
+                      const hasUrl = p.url.length > 0;
+
+                      return (
+                        <a
+                          key={p.key}
+                          href={hasUrl ? p.url : undefined}
+                          onClick={(e) => {
+                            if (!hasUrl) {
+                              e.preventDefault();
+                              return;
+                            }
+                            trackDownload(p.key);
+                            setIsDropdownOpen(false);
+                          }}
+                          className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group ${
+                            hasUrl
+                              ? 'hover:bg-neutral-100 dark:hover:bg-neutral-900/60 cursor-pointer text-neutral-800 dark:text-neutral-200'
+                              : 'opacity-40 cursor-not-allowed text-neutral-400'
+                          } ${
+                            isCurrent
+                              ? 'bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20'
+                              : 'border border-transparent'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className="h-4.5 w-4.5 text-neutral-600 dark:text-neutral-400 flex items-center justify-center [&>svg]:h-full [&>svg]:w-full"
+                              dangerouslySetInnerHTML={{ __html: p.svg }}
+                            />
+                            <span className="font-semibold text-sm">{p.label}</span>
+                            {isCurrent && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">
+                                {copy.hero.detected}
+                              </span>
+                            )}
+                          </div>
+                          {hasUrl ? (
+                            <Download className="h-4 w-4 text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition-colors" />
+                          ) : (
+                            <span className="text-[10px] opacity-70">{copy.hero.downloadUnavailable}</span>
+                          )}
+                        </a>
+                      );
+                    })}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
 
           {showSteamDeckSource ? (
             <motion.a

@@ -32,6 +32,8 @@ const messages = {
       forPlatform: (platform: string) => `适用于 ${platform}`,
       lastUpdate: '最后更新',
       steamDeckSourceButton: '部署SteamDeck软件源',
+      detected: '当前检测',
+      downloadForOtherPlatforms: '下载其它平台版本',
     },
     features: {
       eyebrow: '体验亮点',
@@ -86,6 +88,8 @@ const messages = {
       forPlatform: (platform: string) => `For ${platform}`,
       lastUpdate: 'Last update',
       steamDeckSourceButton: 'Deploy SteamDeck Software Source',
+      detected: 'Detected',
+      downloadForOtherPlatforms: 'Download for other platforms',
     },
     features: {
       eyebrow: 'Highlights',
