@@ -274,7 +274,7 @@ export default function Hero({ previewConfig }: HeroProps) {
               className="mt-3 text-xs sm:text-sm font-medium text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors flex items-center gap-1 focus-visible:outline-none"
             >
               <span>{copy.hero.downloadForOtherPlatforms}</span>
-              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* 其它平台下拉菜单 */}
@@ -318,22 +318,22 @@ export default function Hero({ previewConfig }: HeroProps) {
                               : 'border border-transparent'
                           }`}
                         >
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <div
-                              className="h-4.5 w-4.5 text-neutral-600 dark:text-neutral-400 flex items-center justify-center [&>svg]:h-full [&>svg]:w-full"
+                              className="h-5 w-5 text-neutral-600 dark:text-neutral-400 flex-shrink-0 flex items-center justify-center [&>svg]:h-5 [&>svg]:w-5"
                               dangerouslySetInnerHTML={{ __html: p.svg }}
                             />
-                            <span className="font-semibold text-sm">{p.label}</span>
+                            <span className="font-semibold text-sm whitespace-nowrap">{p.label}</span>
                             {isCurrent && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
                                 {copy.hero.detected}
                               </span>
                             )}
                           </div>
                           {hasUrl ? (
-                            <Download className="h-4 w-4 text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition-colors" />
+                            <Download className="h-4 w-4 text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition-colors flex-shrink-0" />
                           ) : (
-                            <span className="text-[10px] opacity-70">{copy.hero.downloadUnavailable}</span>
+                            <span className="text-[10px] opacity-70 whitespace-nowrap flex-shrink-0">{copy.hero.downloadUnavailable}</span>
                           )}
                         </a>
                       );
