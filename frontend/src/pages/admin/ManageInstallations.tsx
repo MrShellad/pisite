@@ -93,6 +93,7 @@ const tableHeaderCellClass =
   'sticky top-0 z-10 border-b border-neutral-200 bg-white/95 px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:border-white/10 dark:bg-neutral-950/95';
 const tableCellClass = 'border-b border-neutral-100 px-3 py-3 text-center align-middle text-xs dark:border-white/5';
 const pageSizeOptions = [10, 20, 30];
+const firstInstallHighlightWindowMs = 60_000;
 const emptyGpuMappingForm: GpuNameMappingForm = {
   matchText: '',
   displayName: '',
@@ -132,7 +133,25 @@ function formatDateTime(value?: string | null) {
 function parseReportTime(value?: string | null) {
   if (!value) return null;
 
-  const normalized = value.includes('T') ? value : value.replace(' ', 'T');
+  const trimmedValue = value.trim();
+  const dateTimeMatch = trimmedValue.match(
+    /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3})\d*)?(?:\s*(Z|[+-]\d{2}:?\d{2}))?$/i,
+  );
+
+  if (dateTimeMatch && !dateTimeMatch[8]) {
+    const [, year, month, day, hour, minute, second, millisecond = '0'] = dateTimeMatch;
+    return Date.UTC(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      Number(second),
+      Number(millisecond.padEnd(3, '0')),
+    );
+  }
+
+  const normalized = trimmedValue.includes('T') ? trimmedValue : trimmedValue.replace(' ', 'T');
   const time = new Date(normalized).getTime();
   return Number.isNaN(time) ? null : time;
 }
@@ -145,7 +164,7 @@ function isFirstInstallReport(report: InstallationReport) {
     return report.firstInstalledAt === report.lastReportedAt;
   }
 
-  return Math.abs(lastReportedAt - firstInstalledAt) <= 60_000;
+  return Math.abs(lastReportedAt - firstInstalledAt) <= firstInstallHighlightWindowMs;
 }
 
 export default function ManageInstallations() {

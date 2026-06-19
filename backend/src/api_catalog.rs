@@ -418,6 +418,16 @@ pub const API_CATALOG: &[ApiEndpointCatalogItem] = &[
         group: "admin",
     },
     ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/package-assets/remote",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
+        method: "POST",
+        path: "/api/admin/package-assets/{date}/{file_name}/push-hero-download",
+        group: "admin",
+    },
+    ApiEndpointCatalogItem {
         method: "PUT",
         path: "/api/admin/package-assets/{date}/{file_name}",
         group: "admin",

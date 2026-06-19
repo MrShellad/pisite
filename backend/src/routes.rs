@@ -263,6 +263,14 @@ pub fn create_router(pool: SqlitePool) -> Router {
             post(handlers::package_assets::upload_package_asset).layer(DefaultBodyLimit::disable()),
         )
         .route(
+            "/api/admin/package-assets/remote",
+            post(handlers::package_assets::download_remote_package_asset),
+        )
+        .route(
+            "/api/admin/package-assets/{date}/{file_name}/push-hero-download",
+            post(handlers::package_assets::push_package_asset_download_to_hero),
+        )
+        .route(
             "/api/admin/package-assets/{date}/{file_name}",
             put(handlers::package_assets::rename_package_asset)
                 .delete(handlers::package_assets::delete_package_asset),
